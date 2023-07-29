@@ -1,7 +1,7 @@
 opencv-python
 Pillow
 numpy
-scikit-image~
+scikit-image
 scipy
 
 #numpy~=1.24.3
