@@ -1,0 +1,17 @@
+opencv-python
+Pillow
+numpy
+scikit-image~
+scipy
+
+#numpy~=1.24.3
+#Pillow~=9.4.0
+#opencv-python~=4.7.0.72
+#scikit-image~=0.21.0
+#scipy~= 1.10.1
+#future~=0.18.2
+# ^^ Development environment, as of June 2023, Linux Ubuntu 20.04, Windows 11, macOS 13.4
+
+# Note that for PyCharm 2023, to get opencv documentation working, the interpreter
+#  needs to use opencv-python 4.5.5.62. Higher versions with PIP installation
+#  don't do opencv documentation.
