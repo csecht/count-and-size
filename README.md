@@ -102,7 +102,7 @@ Below, resulting image for an input with objects that extend out of frame, which
 
 Command used: `python3 -m size_it -i images/sample3.jpg -s 0.7 --inverse`
 
-Below, text output from the saved settings file for the above image, includes parameter settings, size metrics, and a list of individual object sizes. 
+Below, text output from the saved settings file for the above image, includes parameter settings, millimeter size metrics, and a list of individual object sizes. 
 ![sample3_result_screenshot.png](images/sample3_result_screenshot.jpg)
 
 <pre>

@@ -1509,7 +1509,7 @@ def patience_needed():
               ' black-on-white, then use the --inverse command line option.')
 
 if __name__ == "__main__":
-    # Program exits here if any of the module checks fails.
+    # Program exits here if any of the module checks fail.
     utils.check_platform()
     vcheck.minversion('3.7')
     arguments = manage.arguments()
