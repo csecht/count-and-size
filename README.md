@@ -1,14 +1,14 @@
 # Project: count-and-size
 
-The interactive command line Python program, `size_it.py`, can count and size objects from an image file. Object segmentation is performed with a compact watershed algorithm on a distance transform. Sizing is given as diameter of a minimum enclosing circle. Sizing results are provide in millimeters when a pre-set size standard is used, or in pixels when not. Image processing parameters are selected using slider bars and drop down menus (see screenshots, below). Multiple windows display each processing step and show live updates as parameters change.
+The interactive command line Python program, `size_it.py`, can count and size objects from an image file. Object segmentation is performed with a compact watershed algorithm on a distance transform. Diameters of minimum enclosing circles determine object length. Sizing units are millimeters when a pre-set size standard is used, in pixels when not, or units of the user's choice with a custom standard. The user selects processing parameters from slider bars and drop down menus (see screenshots, below). Multiple windows display each processing step with live updates as parameters change.
 
-This Project was developed to count and size oyster samples at various stages of aquaculture production, but can be used for any group of round or oblong objects on a contrasting background. Objects that are touching or slightly overlapping will be segmented and counted. While accurate counting and sizing of objects in large or poorly contrasted overlapping clusters is unlikely, such clusters can be screened out by limiting the segment size range. The resulting size-selected individual segmented objects should provide fairly accurate counts and size metrics.
+This Project was developed to count and size samples of oyster populations at various stages of aquaculture production, but can be used for sampling any type of round or oblong objects on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can be segmented. While segmentation of samples in large or poorly contrasted overlapping clusters is unlikely, such clusters can be screened out by limiting the size range to provide fairly accurate results for the remaining individual objects.
 
-Sizing standards are chosen from a pull-down menu. Pre-set standards include a hockey puck and various U.S. coins. An option for a custom size standard requires the user to enter a known size of the imaged object to use as the standard. If "None" is chosen as the standard, and it's pixel diameter is entered as 1 (the default settings), then displayed sizes are in pixel units. For any pre-set standard sizes are reported as millimeters. For a custom standard, the units are up to the user.
+Sizing standards are chosen from a pull-down menu. Pre-set standards include a hockey puck and various U.S. coins. If "None" is chosen and the pixel diameter entry is kept as 1 (default settings), then displayed sizes are in pixel units. Pre-set standards report sizes as millimeters. Users have an option for a custom size standard that requires entry of the known size in whatever units are needed.
 
 All modules can be executed on Linux, Windows, and macOS platforms. `size_it.py` is derived from the `contour_it.py` module from the opencv-contour-utils2 GitHub repository.
 
-A text file of object sizes and metrics, settings used, and the resulting image file of sized objects, can be saved. 
+A text file of object sizes and metrics, settings used, and the resulting annotated image file of sized objects, can be saved. 
 
 <sub>Project inspired by code from Adrian Rosebrock:
 https://pyimagesearch.com/2016/03/28/measuring-size-of-objects-in-an-image-with-opencv/
@@ -42,7 +42,7 @@ To list command line options: `python3 -m size_it --help`
       --input PATH/FILE, -i PATH/FILE
                             Path to input image.
       --scale X, -s X       Factor, X, to change displayed image size (default: 0.5).
-      --color C, -c C       Annotation color, C. (default: red; options: yellow, orange, green, purple, white).
+      --color C, -c C       Annotation color, C. (default: red; options: yellow, orange, green, purple, white, black).
       --inverse             Use this option for dark objects on a light background.
 
 To view basic information, author, version, license, etc.: `python3 -m size_it --about`
@@ -83,7 +83,7 @@ As with all repository downloads, it is a good idea to install the requirements 
 4. Once you select "Custom" for a size standard, an entry field pops up for you to fill in the known size.
 5. Large files can take a while to process, so don't immediately start mashing buttons if things seem to be stalled.
 6. Coin size standards that are shiny can be pre-processed to solid white or black. Or just use a flat black or flat white object as a standard.
-7. Sizing metrics are most accurate when the size standard is excluded from analysis. The easiest way to do that is to use a standard that is the largest object among those you are measuring, then reduce the "Contour area size maximum" slider until just the standard's diameter is excluded.
+7. Sizing metrics are most accurate when the size standard is excluded from analysis. The easiest way to do that is to use a standard that is the largest or smallest object in the sample, then adjust the "Contour area size" sliders until just the standard's diameter is excluded.
 
 ### Screenshots:
 All screenshots are from an Ubuntu Linux platform. For Windows and macOS platforms, window and widget look or layout may be slightly different.
@@ -92,7 +92,7 @@ All screenshots are from an Ubuntu Linux platform. For Windows and macOS platfor
 
 Above, the report and settings window, using default settings with the following exceptions to report accurate sample count and size metrics: the Sacagawea dollar size standard was selected, its observed pixel diameter of 128 was entered, and it was excluded from the reported object size metrics by reducing the 'Contour area size maximum' until the coin no longer was annotated with its size (27 mm). The standard's pixel diameter of 128 was obtained from the initial result window when initial default settings were in effect.
 
-Command used, for default image, scale, and color: `python3 -m size_it`
+Command used, for default image, scale, and color: `python3 -m size_it`, which is equivalent to `python3 -m size_it --input images/sample1.jpg --scale 0.5 --color red`
 
 Below, the resulting annotated image. Clicking the "Save settings & sized image" button exports the annotated image file (at its original resolution), and the report text, which includes a list of the 31 individual mm sizes.
 
@@ -102,7 +102,7 @@ Below, resulting image for an input with objects that extend out of frame, which
 
 Command used: `python3 -m size_it -i images/sample3.jpg -s 0.7 --inverse`
 
-Below, text output from the saved settings file for the above image, includes parameter settings, millimeter size metrics, and a list of individual object sizes. 
+Below, text output from the saved settings file for the above image, includes parameter settings, size metrics in millimeters, and a list of individual object sizes. 
 ![sample3_result_screenshot.png](images/sample3_result_screenshot.jpg)
 
 <pre>
