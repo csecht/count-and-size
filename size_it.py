@@ -134,8 +134,8 @@ class ProcessImage(tk.Tk):
             'filter_k': tk.IntVar(),
             'plm_mindist': tk.IntVar(),
             'plm_footprint': tk.IntVar(),
-            'c_lim_min': tk.IntVar(),
-            'c_lim_max': tk.IntVar(),
+            'c_min_r': tk.IntVar(),
+            'c_max_r': tk.IntVar(),
         }
         self.cbox_val = {
             'morphop': tk.StringVar(),
@@ -492,8 +492,12 @@ class ProcessImage(tk.Tk):
         img_w_coef = input_metrics['img_w_coef']
         line_thickness = input_metrics['line_thickness']
         unit_per_px = self.unit_per_px.get()
-        c_lim_min = self.slider_val['c_lim_min'].get()
-        c_lim_max = self.slider_val['c_lim_max'].get()
+
+        # The size range slider values are radii pixels. This is done b/c:
+        #  1) Displayed values have fewer digits, so a cleaner slide bar.
+        #  2) Sizes are diameters, so radii are conceptually easier than areas.
+        c_area_min = self.slider_val['c_min_r'].get() ** 2 * np.pi
+        c_area_max = self.slider_val['c_max_r'].get() ** 2 * np.pi
 
         # Set coordinate point limits to find contours along a file border.
         bottom_edge = GRAY_IMG.shape[0] - 1
@@ -521,7 +525,7 @@ class ProcessImage(tk.Tk):
         if contour_pointset:
             flag = False
             for _c in contour_pointset:
-                if not c_lim_max > cv2.contourArea(_c) >= c_lim_min:
+                if not c_area_max > cv2.contourArea(_c) >= c_area_min:
                     continue
 
                 # Skip contours that touch top or left edge.
@@ -646,11 +650,11 @@ class ImageViewer(ProcessImage):
             'plm_footprint': tk.Scale(master=self.contour_selectors_frame),
             'plm_footprint_lbl': tk.Label(master=self.contour_selectors_frame),
 
-            'c_lim_min': tk.Scale(master=self.contour_selectors_frame),
-            'c_lim_min_lbl': tk.Label(master=self.contour_selectors_frame),
+            'c_min_r': tk.Scale(master=self.contour_selectors_frame),
+            'c_min_r_lbl': tk.Label(master=self.contour_selectors_frame),
 
-            'c_lim_max': tk.Scale(master=self.contour_selectors_frame),
-            'c_lim_max_lbl': tk.Label(master=self.contour_selectors_frame),
+            'c_max_r': tk.Scale(master=self.contour_selectors_frame),
+            'c_max_r_lbl': tk.Label(master=self.contour_selectors_frame),
         }
 
         self.cbox = {
@@ -968,9 +972,9 @@ class ImageViewer(ProcessImage):
 
         self.slider['plm_mindist_lbl'].configure(text='peak_local_max min_distance:',
                                                  **const.LABEL_PARAMETERS)
-        self.slider['plm_mindist'].configure(from_=1, to=100,
+        self.slider['plm_mindist'].configure(from_=1, to=200,
                                              length=scale_len,
-                                             tickinterval=10,
+                                             tickinterval=20,
                                              variable=self.slider_val['plm_mindist'],
                                              **const.SCALE_PARAMETERS)
 
@@ -982,24 +986,24 @@ class ImageViewer(ProcessImage):
                                                variable=self.slider_val['plm_footprint'],
                                                **const.SCALE_PARAMETERS)
 
-        self.slider['c_lim_min_lbl'].configure(text='Contour area size\n'
-                                                    'minimum px:',
+        self.slider['c_min_r_lbl'].configure(text='Circled radius size\n'
+                                                    'minimum pixels:',
                                                **const.LABEL_PARAMETERS)
-        self.slider['c_lim_max_lbl'].configure(text='Contour area size\n'
-                                                    'maximum px:',
+        self.slider['c_max_r_lbl'].configure(text='Circled radius size\n'
+                                                    'maximum pixels:',
                                                **const.LABEL_PARAMETERS)
 
         # Note: may need to adjust c_lim scaling with image size b/c
         #   large contours cannot be selected if max limit is too small.
-        c_lim_min = manage.input_metrics()['fig_width'] * 8
-        c_lim_max = manage.input_metrics()['fig_width'] * 60
-        self.slider['c_lim_min'].configure(from_=1, to=c_lim_min,
-                                           tickinterval=c_lim_min / 10,
-                                           variable=self.slider_val['c_lim_min'],
+        c_min_r = manage.input_metrics()['max_circle_r'] // 8
+        c_max_r = manage.input_metrics()['max_circle_r']
+        self.slider['c_min_r'].configure(from_=1, to=c_min_r,
+                                           tickinterval=c_min_r / 10,
+                                           variable=self.slider_val['c_min_r'],
                                            **const.SCALE_PARAMETERS)
-        self.slider['c_lim_max'].configure(from_=1, to=c_lim_max,
-                                           tickinterval=c_lim_max / 10,
-                                           variable=self.slider_val['c_lim_max'],
+        self.slider['c_max_r'].configure(from_=1, to=c_max_r,
+                                           tickinterval=c_max_r / 10,
+                                           variable=self.slider_val['c_max_r'],
                                            **const.SCALE_PARAMETERS)
 
         # To avoid grabbing all the intermediate values between normal
@@ -1241,14 +1245,14 @@ class ImageViewer(ProcessImage):
                                           **slider_grid_params)
 
 
-        self.slider['c_lim_min_lbl'].grid(column=0, row=17,
+        self.slider['c_min_r_lbl'].grid(column=0, row=17,
                                           **east_grid_params)
-        self.slider['c_lim_min'].grid(column=1, row=17,
+        self.slider['c_min_r'].grid(column=1, row=17,
                                       **slider_grid_params)
 
-        self.slider['c_lim_max_lbl'].grid(column=0, row=18,
+        self.slider['c_max_r_lbl'].grid(column=0, row=18,
                                           **east_grid_params)
-        self.slider['c_lim_max'].grid(column=1, row=18,
+        self.slider['c_max_r'].grid(column=1, row=18,
                                       **slider_grid_params)
 
         self.size_std_px_label.grid(column=0, row=19,
@@ -1330,8 +1334,8 @@ class ImageViewer(ProcessImage):
         self.slider_val['filter_k'].set(5)
         self.slider_val['plm_mindist'].set(40)
         self.slider_val['plm_footprint'].set(3)
-        self.slider_val['c_lim_min'].set(500)
-        self.slider_val['c_lim_max'].set(25000)
+        self.slider_val['c_min_r'].set(8)
+        self.slider_val['c_max_r'].set(300)
 
         # Set/Reset Combobox widgets.
         self.cbox['morphop'].current(0)
@@ -1403,8 +1407,8 @@ class ImageViewer(ProcessImage):
         morph_shape = self.cbox_val['morphshape'].get()
         filter_selected = self.cbox_val['filter'].get()
         th_type = self.cbox_val['th_type'].get()
-        c_lim_min = self.slider_val['c_lim_min'].get()
-        c_lim_max = self.slider_val['c_lim_max'].get()
+        c_min_r = self.slider_val['c_min_r'].get()
+        c_max_r = self.slider_val['c_max_r'].get()
         min_dist = self.slider_val['plm_mindist'].get()
         connections = int(self.cbox_val['ws_connect'].get())
         dt_type = self.cbox_val['dt_type'].get()
@@ -1451,11 +1455,11 @@ class ImageViewer(ProcessImage):
             f'{tab}compactness=0.03\n'  # NOTE: change if changes in watershed method.
             f'{divider}\n'
             f'{"Total distT segments:".ljust(space)}{self.num_dt_segments} <- Match'
-            f' selected objects for better sizing.\n'
-            f'{"Contour area range:".ljust(space)}{c_lim_min}--{c_lim_max} pixels\n'
+            f'  # selected objects for better sizing.\n'
+            f'{"Circled radius range:".ljust(space)}{c_min_r}--{c_max_r} pixels\n'
             f'{"Selected size std.:".ljust(space)}{self.size_std},'
             f' {self.size_std_unit} unit dia.\n'
-            f'{tab}Pixel dia. entered: {self.size_std_px_d.get()},'
+            f'{tab}Pixel diameter entered: {self.size_std_px_d.get()},'
             f' unit/px factor: {self.unit_per_px.get()}\n'
             f'{"# Selected objects:".ljust(space)}{num_selected}\n'
             f'{"Object size metrics,".ljust(space)}mean: {mean_unit_dia}, median:'
@@ -1488,7 +1492,7 @@ class ImageViewer(ProcessImage):
         """
         Improve performance by running only select_and_size
         from ProcessImage and report_results() from ImageViewer.
-        Called from the c_lim_min and c_lim_max sliders.
+        Called from the c_min_r and c_max_r sliders.
         Args:
             event: The implicit mouse button event.
 
@@ -1502,7 +1506,7 @@ class ImageViewer(ProcessImage):
 
 def patience_needed():
     """An informational message to users in a hurry."""
-    if manage.input_metrics()['fig_width'] > 2000:
+    if GRAY_IMG.shape[1] > 2000:
         print('Images over 2000 pixels wide will take longer to process...'
               ' patience Grasshopper.\n  If the threshold image shows up as'
               ' black-on-white, then use the --inverse command line option.')

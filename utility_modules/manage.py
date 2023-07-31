@@ -132,23 +132,22 @@ def input_metrics() -> dict:
     # manage.arguments() has verified the image path, so read from it.
     input_img = cv2.imread(arguments()['input'])
     gray_img = cv2.cvtColor(input_img, cv2.COLOR_RGBA2GRAY)
-    fig_width: int = input_img.shape[1]
+    fig_width: int = gray_img.shape[1]
+
+    max_circle_r: int = round(min(gray_img.shape) / 2)
 
     line_thickness: int = max(round(fig_width * line_thickness_factor), 1)
 
     # Ideas for scaling: https://stackoverflow.com/questions/52846474/
     #   how-to-resize-text-for-cv2-puttext-according-to-the-image-size-in-opencv-python
     img_w_coef: float = max(fig_width * size_factor, 0.2)
-    print('line thickness', line_thickness)
-    print('img_w_coef', img_w_coef)
-
 
     metrics = {
         'input_img': input_img,
         'gray_img': gray_img,
         'img_w_coef': img_w_coef,
         'line_thickness': line_thickness,
-        'fig_width': fig_width,
+        'max_circle_r': max_circle_r,
     }
 
     return metrics
