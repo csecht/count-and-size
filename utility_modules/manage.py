@@ -127,13 +127,16 @@ def input_metrics() -> dict:
 
     # Scaling factors for contours, circles, and text; empirically determined.
     size_factor = 5.5e-04
-    line_thickness_factor = 1.5e-03
+    # line_thickness_factor = 1.5e-03
+    line_thickness_factor = 2e-03
+
 
     # manage.arguments() has verified the image path, so read from it.
     input_img = cv2.imread(arguments()['input'])
     gray_img = cv2.cvtColor(input_img, cv2.COLOR_RGBA2GRAY)
     fig_width: int = gray_img.shape[1]
 
+    # Set maximum enclosing circle radius to 1/2 the shortest image dimension.
     max_circle_r: int = round(min(gray_img.shape) / 2)
 
     line_thickness: int = max(round(fig_width * line_thickness_factor), 1)

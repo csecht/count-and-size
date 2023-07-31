@@ -88,9 +88,9 @@ As with all repository downloads, it is a good idea to install the requirements 
 ### Screenshots:
 All screenshots are from an Ubuntu Linux platform. For Windows and macOS platforms, window and widget look or layout may be slightly different.
 
-![report&settings_screenshot](images/report&settings_screenshot.jpg)
+![report&settings_screenshot](images/report&settings_screenshot.png)
 
-Above, the report and settings window, using default settings with the following exceptions to report accurate sample count and size metrics: the Sacagawea dollar size standard was selected, its observed pixel diameter of 128 was entered, and it was excluded from the reported object size metrics by reducing the 'Contour area size maximum' until the coin no longer was annotated with its size (27 mm). The standard's pixel diameter of 128 was obtained from the initial result window when initial default settings were in effect.
+Above, the report and settings window, using default settings with the following exceptions to report accurate sample count and size metrics: the Sacagawea dollar size standard was selected, its observed pixel diameter of 128 was entered, and it was excluded from the reported object size metrics by reducing the 'Circled radius size maximum' until the coin no longer was annotated with its size (27 mm). The standard's pixel diameter of 128 was obtained from the initial result window when initial default settings were in effect.
 
 Command used, for default image, scale, and color: `python3 -m size_it`, which is equivalent to `python3 -m size_it --input images/sample1.jpg --scale 0.5 --color red`
 
@@ -106,33 +106,33 @@ Below, text output from the saved settings file for the above image, includes pa
 ![sample3_result_screenshot.png](images/sample3_result_screenshot.jpg)
 
 <pre>
-Time saved: 05:12:08PM
-Saved image file: sample3_sizes_051208.jpg
+Time saved: 05:50:07PM
+Saved image file: sample3_sizes_055007.jpg
 Saved settings file: sample3_sizes_settings.txt
-Image: images/sample3.jpg 967x840 px
+Image: images/sample3.jpg 967x840
 
-Contrast:              convertScaleAbs alpha=1.7, beta=0
+Contrast:              convertScaleAbs alpha=1.6, beta=0
 Noise reduction:       cv2.getStructuringElement ksize=5,
                        cv2.getStructuringElement shape=cv2.MORPH_RECT
                        cv2.morphologyEx iterations=2
                        cv2.morphologyEx op=cv2.MORPH_OPEN,
-Filter:                cv2.blur ksize=(5,5)
+Filter:                cv2.blur ksize=(7,7)
 cv2.threshold:         type=cv2.THRESH_OTSU_INVERSE
 cv2.distanceTransform: distanceType=cv2.DIST_L2, maskSize=3
 skimage functions:
-   peak_local_max:     min_distance=21
+   peak_local_max:     min_distance=25
                        footprint=np.ones((3, 3), np.uint8
    watershed:          connectivity=4
                        compactness=0.03
 ════════════════════
-Total distT segments:  180 <- Match selected objects for better sizing.
-Contour area range:    500--9463 pixels
+Total distT segments:  158 <- Match  # selected objects for better sizing.
+Circled radius range:  11--56 pixels
 Selected size std.:    Sacagawea $, 26.49 unit dia.
-                       Pixel dia. entered: 119, unit/px factor: 0.22
+                       Pixel diameter entered: 119, unit/px factor: 0.22
 # Selected objects:    127
-Object size metrics,   mean: 12.2, median: 12, range: 6.9--17.4
+Object size metrics,   mean: 12.2, median: 12, range: 6.8--17.5
 </pre>
-`6.9, 8.5, 8.6, 9.2, 9.5, 9.5, 9.5, 9.7, 9.7, 9.7, 9.8, 9.8, 9.8, 9.8, 9.9, 9.9, 10.0, 10.1, 10.1, 10.1, 10.1, 10.3, 10.4, 10.4, 10.5, 10.5, 10.6, 10.6, 10.7, 10.7, 10.7, 10.7, 10.7, 10.9, 10.9, 11.0, 11.0, 11.0, 11.1, 11.1, 11.1, 11.1, 11.2, 11.3, 11.4, 11.4, 11.4, 11.4, 11.4, 11.5, 11.5, 11.6, 11.6, 11.6, 11.6, 11.7, 11.8, 11.8, 11.9, 11.9, 11.9, 11.9, 11.9, 11.9, 11.9, 12.0, 12.0, 12.0, 12.0, 12.1, 12.1, 12.2, 12.2, 12.3, 12.3, 12.3, 12.3, 12.4, 12.4, 12.4, 12.6, 12.6, 12.6, 12.6, 12.8, 12.8, 12.9, 13.0, 13.0, 13.0, 13.1, 13.1, 13.2, 13.2, 13.2, 13.2, 13.4, 13.4, 13.4, 13.6, 13.8, 13.9, 13.9, 14.0, 14.1, 14.2, 14.2, 14.2, 14.2, 14.6, 14.6, 14.6, 14.7, 14.7, 14.8, 14.8, 15.0, 15.2, 15.3, 15.3, 15.6, 15.9, 16.0, 16.6, 17.0, 17.2, 17.4`
+`6.8, 8.5, 8.6, 9.0, 9.4, 9.5, 9.7, 9.8, 9.8, 9.8, 10.0, 10.0, 10.0, 10.0, 10.1, 10.1, 10.2, 10.2, 10.3, 10.3, 10.3, 10.3, 10.4, 10.5, 10.5, 10.6, 10.7, 10.7, 10.8, 10.8, 10.8, 10.8, 10.9, 11.0, 11.0, 11.1, 11.1, 11.1, 11.1, 11.2, 11.2, 11.3, 11.3, 11.3, 11.3, 11.3, 11.4, 11.4, 11.4, 11.4, 11.5, 11.5, 11.6, 11.6, 11.7, 11.7, 11.7, 11.8, 11.8, 11.8, 11.8, 11.9, 11.9, 11.9, 12.0, 12.0, 12.1, 12.1, 12.1, 12.2, 12.2, 12.2, 12.3, 12.3, 12.3, 12.3, 12.4, 12.4, 12.4, 12.4, 12.6, 12.7, 12.7, 12.7, 12.7, 12.9, 13.0, 13.0, 13.0, 13.1, 13.1, 13.1, 13.2, 13.2, 13.4, 13.5, 13.5, 13.6, 13.7, 13.9, 14.0, 14.1, 14.1, 14.2, 14.2, 14.3, 14.4, 14.5, 14.5, 14.6, 14.7, 14.8, 14.8, 14.8, 14.9, 15.0, 15.0, 15.0, 15.2, 15.2, 15.6, 16.1, 16.4, 16.6, 17.0, 17.1, 17.5`
 
 ### Known Issues:
 Waiting for user feedback.
