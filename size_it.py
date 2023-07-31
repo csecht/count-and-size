@@ -204,7 +204,7 @@ class ProcessImage(tk.Tk):
             cv2.convertScaleAbs(
                 src=GRAY_IMG,
                 alpha=self.slider_val['alpha'].get(),
-                beta=self.slider_val['beta'].get()
+                beta=self.slider_val['beta'].get(),
             )
         )
 
@@ -228,7 +228,7 @@ class ProcessImage(tk.Tk):
         """
 
         # Need (sort of) kernel to be odd, to avoid an annoying shift of
-        #   the displayed
+        #   the displayed image.
         _k = self.slider_val['noise_k'].get()
         noise_k = _k + 1 if _k % 2 == 0 else _k
 
@@ -276,7 +276,6 @@ class ProcessImage(tk.Tk):
 
         filter_selected = self.cbox_val['filter'].get()
         border_type = cv2.BORDER_DEFAULT
-        # const.CV_BORDER[self.cbox_val['border'].get()]
 
         # cv2.GaussianBlur and cv2.medianBlur need to have odd kernels,
         #   but cv2.blur and cv2.bilateralFilter will shift image between
@@ -377,7 +376,6 @@ class ProcessImage(tk.Tk):
                                               distanceType=dt_type,
                                               maskSize=mask_size)
 
-        # Local max is the sure fg?
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         local_max = peak_local_max(distances_img,
                                    min_distance=min_dist,
@@ -390,7 +388,8 @@ class ProcessImage(tk.Tk):
         # Note that markers are single px, colored in gray series?
         labeled_array, self.num_dt_segments = ndimage.label(mask)
 
-        # WHY minus sign? It separates objects much better than without it.
+        # WHY minus sign? It separates objects much better than without it,
+        #  minus symbol turns distances into threshold.
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Need watershed_line to show boundaries on displayed watershed_img contours.
@@ -1413,8 +1412,8 @@ class ImageViewer(ProcessImage):
         p_kernel = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
         num_selected = len(self.mm_size_list)
-        mean_mm_dia = round(mean(self.mm_size_list), 1)
-        median_mm_dia = round(median(self.mm_size_list))
+        mean_unit_dia = round(mean(self.mm_size_list), 1)
+        median_unit_dia = round(median(self.mm_size_list))
         mm_range = f'{min(self.mm_size_list)}--{max(self.mm_size_list)}'
 
         # Only odd kernel integers are used for processing.
@@ -1459,8 +1458,8 @@ class ImageViewer(ProcessImage):
             f'{tab}Pixel dia. entered: {self.size_std_px_d.get()},'
             f' unit/px factor: {self.unit_per_px.get()}\n'
             f'{"# Selected objects:".ljust(space)}{num_selected}\n'
-            f'{"Object size metrics,".ljust(space)}mean: {mean_mm_dia}, median:'
-            f' {median_mm_dia}, range: {mm_range}\n'
+            f'{"Object size metrics,".ljust(space)}mean: {mean_unit_dia}, median:'
+            f' {median_unit_dia}, range: {mm_range}\n'
         )
 
         utils.display_report(frame=self.contour_report_frame,

@@ -134,11 +134,14 @@ def input_metrics() -> dict:
     gray_img = cv2.cvtColor(input_img, cv2.COLOR_RGBA2GRAY)
     fig_width: int = input_img.shape[1]
 
-    line_thickness: int = max(round(fig_width * line_thickness_factor), 2)
+    line_thickness: int = max(round(fig_width * line_thickness_factor), 1)
 
     # Ideas for scaling: https://stackoverflow.com/questions/52846474/
     #   how-to-resize-text-for-cv2-puttext-according-to-the-image-size-in-opencv-python
-    img_w_coef: float = max(fig_width * size_factor, 0.8)
+    img_w_coef: float = max(fig_width * size_factor, 0.2)
+    print('line thickness', line_thickness)
+    print('img_w_coef', img_w_coef)
+
 
     metrics = {
         'input_img': input_img,
