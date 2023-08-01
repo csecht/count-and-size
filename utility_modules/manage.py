@@ -143,12 +143,12 @@ def input_metrics() -> dict:
 
     # Ideas for scaling: https://stackoverflow.com/questions/52846474/
     #   how-to-resize-text-for-cv2-puttext-according-to-the-image-size-in-opencv-python
-    img_w_coef: float = max(fig_width * size_factor, 0.2)
+    font_scale: float = max(fig_width * size_factor, 0.2)
 
     metrics = {
         'input_img': input_img,
         'gray_img': gray_img,
-        'img_w_coef': img_w_coef,
+        'font_scale': font_scale,
         'line_thickness': line_thickness,
         'max_circle_r': max_circle_r,
     }
