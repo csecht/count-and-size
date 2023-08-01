@@ -556,14 +556,18 @@ class ProcessImage(tk.Tk):
                            center=(round(_x), round(_y)),
                            radius=round(_r),
                            color=preferred_color,
-                           thickness=line_thickness)
+                           thickness=line_thickness,
+                           lineType=cv2.LINE_AA,
+                           )
                 cv2.putText(img=self.circled_ws_segments,
                             text=f'{round(unit_size)}',
                             org=(round(_x - offset_x), round(_y + offset_y)),
                             fontFace=const.FONT_TYPE,
                             fontScale=img_w_coef,
                             color=preferred_color,
-                            thickness=line_thickness)
+                            thickness=line_thickness,
+                            lineType=cv2.LINE_AA,
+                            )
 
             # Grab some metrics for reporting.
             # Conversion factors are set in set_size_std().

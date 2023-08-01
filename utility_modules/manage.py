@@ -127,8 +127,8 @@ def input_metrics() -> dict:
 
     # Scaling factors for contours, circles, and text; empirically determined.
     size_factor = 5.5e-04
-    # line_thickness_factor = 1.5e-03
-    line_thickness_factor = 2e-03
+    line_thickness_factor = 1.5e-03
+    # line_thickness_factor = 2e-03
 
 
     # manage.arguments() has verified the image path, so read from it.
