@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
-A tkinter GUI for image processing to count and size objects in
-an image. The watershed algorithm is used interactively by adjusting
-parameter values with slide bars and pull-down menus.
+A tkinter GUI for image processing to count and size objects in an
+image to obtain sample size mean and range. The watershed algorithm is
+used interactively by adjusting parameter values with slide bars and
+pull-down menus. Adjusting contributing factors like contrast,
+brightness, noise, and filter blurring is also interactive.
 
 USAGE Example command lines, from within the count-and-size-main folder:
 python3 -m size_it --help
@@ -81,22 +83,12 @@ class ProcessImage(tk.Tk):
     A suite of OpenCV methods for applying various image processing
     functions involved in identifying objects from an image file.
 
-    OpenCV's methods used: cv2.convertScaleAbs, cv2.getStructuringElement,
-    cv2.morphologyEx, cv filters, cv2.threshold, cv2.Canny,
-    cv2.findContours, cv2.contourArea,cv2.arcLength, cv2.drawContours,
-    cv2.minEnclosingCircle.
-
-    Class methods and internal functions:
-    setup_image_windows > no_exit_on_x
+    Class methods:
     adjust_contrast
     reduce_noise
     filter_image
     watershed_segmentation
-    contour_canny
-    size_the_contours
-    select_shape > find_poly
-    draw_shapes
-    find_circles
+    select_and_size
     """
 
     __slots__ = (
@@ -134,8 +126,8 @@ class ProcessImage(tk.Tk):
             'filter_k': tk.IntVar(),
             'plm_mindist': tk.IntVar(),
             'plm_footprint': tk.IntVar(),
-            'c_lim_min': tk.IntVar(),
-            'c_lim_max': tk.IntVar(),
+            'c_min_r': tk.IntVar(),
+            'c_max_r': tk.IntVar(),
         }
         self.cbox_val = {
             'morphop': tk.StringVar(),
@@ -169,7 +161,8 @@ class ProcessImage(tk.Tk):
         #   utils.save_settings_and_img.
         self.circled_ws_segments = None
 
-        # img_label dictionary is defined in ImageViewer.setup_image_windows()
+        # img_label dictionary is set up in ImageViewer.setup_image_windows(),
+        #  but is used in all Class methods here.
         self.img_label = None
 
         self.contrasted_img = const.STUB_ARRAY
@@ -191,7 +184,7 @@ class ProcessImage(tk.Tk):
         Adjust contrast of the input GRAY_IMG image.
         Updates contrast and brightness via alpha and beta sliders.
         Displays contrasted and redux noise images.
-        Calls reduce_noise, manage.tk_image().
+        Called by process_all(). Calls manage.tk_image().
 
         Returns: None
         """
@@ -204,7 +197,7 @@ class ProcessImage(tk.Tk):
             cv2.convertScaleAbs(
                 src=GRAY_IMG,
                 alpha=self.slider_val['alpha'].get(),
-                beta=self.slider_val['beta'].get()
+                beta=self.slider_val['beta'].get(),
             )
         )
 
@@ -218,17 +211,13 @@ class ProcessImage(tk.Tk):
         """
         Reduce noise in grayscale image with erode and dilate actions of
         cv2.morphologyEx.
-        Uses cv2.getStructuringElement params shape=self.morphshape_val.
-        Uses cv2.morphologyEx params op=self.morph_op,
-        kernel=<local structuring element>, iterations=self.noise_iter,
-        borderType=self.border_val.
-        Calls manage.tk_image().
+        Called by process_all(). Calls manage.tk_image().
 
         Returns: None
         """
 
         # Need (sort of) kernel to be odd, to avoid an annoying shift of
-        #   the displayed
+        #   the displayed image.
         _k = self.slider_val['noise_k'].get()
         noise_k = _k + 1 if _k % 2 == 0 else _k
 
@@ -266,17 +255,16 @@ class ProcessImage(tk.Tk):
 
     def filter_image(self) -> None:
         """
-        Applies a filter selection to blur the image for Canny edge
-        detection or threshold contouring.
-        Called from watershed_segmentation(). Calls manage.tk_image().
+        Applies a filter selection to blur the image for threshold
+        segmentation or an additional noise reduction step.
+        Called from watershed_segmentation() and process_all().
+        Calls manage.tk_image().
 
         Returns: None
-
         """
 
         filter_selected = self.cbox_val['filter'].get()
         border_type = cv2.BORDER_DEFAULT
-        # const.CV_BORDER[self.cbox_val['border'].get()]
 
         # cv2.GaussianBlur and cv2.medianBlur need to have odd kernels,
         #   but cv2.blur and cv2.bilateralFilter will shift image between
@@ -333,9 +321,9 @@ class ProcessImage(tk.Tk):
     def watershed_segmentation(self) -> None:
         """
         Identify object contours with cv2.threshold(), cv2.distanceTransform,
-        and skimage.segmentation.watershed. Threshold types limited to Otsu and Triangle.
-        Called by process_*() methods. Calls manage.tk_image().
-
+        and skimage.segmentation.watershed. Threshold types limited to
+        Otsu and Triangle.
+        Called by process_all(). Calls select_and_size() and manage.tk_image().
         Returns: None.
         """
 
@@ -377,7 +365,6 @@ class ProcessImage(tk.Tk):
                                               distanceType=dt_type,
                                               maskSize=mask_size)
 
-        # Local max is the sure fg?
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         local_max = peak_local_max(distances_img,
                                    min_distance=min_dist,
@@ -390,7 +377,8 @@ class ProcessImage(tk.Tk):
         # Note that markers are single px, colored in gray series?
         labeled_array, self.num_dt_segments = ndimage.label(mask)
 
-        # WHY minus sign? It separates objects much better than without it.
+        # WHY minus sign? It separates objects much better than without it,
+        #  minus symbol turns distances into threshold.
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Need watershed_line to show boundaries on displayed watershed_img contours.
@@ -474,11 +462,13 @@ class ProcessImage(tk.Tk):
 
     def select_and_size(self, contour_pointset: list) -> None:
         """
-        Selects contours based on area size and position in image, draws
-        an enclosing circle around contoured objects, and displays then
+        Select object contours based on area size and position,
+        draw an enclosing circle around contours, then display them
         on the input image. Objects are expected to be oblong so circle
         diameter can represent the object's length.
-        Called by process_*() methods. Calls manage.tk_image().
+        Called by watershed_segmentation(), process_all(), process_sizes().
+        Calls manage.tk_image().
+
         Args:
             contour_pointset: List of selected contours from cv2.findContours.
 
@@ -490,11 +480,15 @@ class ProcessImage(tk.Tk):
 
         contour_size_list = []
         preferred_color = arguments['color']
-        img_w_coef = input_metrics['img_w_coef']
+        font_scale = input_metrics['font_scale']
         line_thickness = input_metrics['line_thickness']
         unit_per_px = self.unit_per_px.get()
-        c_lim_min = self.slider_val['c_lim_min'].get()
-        c_lim_max = self.slider_val['c_lim_max'].get()
+
+        # The size range slider values are radii pixels. This is done b/c:
+        #  1) Displayed values have fewer digits, so a cleaner slide bar.
+        #  2) Sizes are diameters, so radii are conceptually easier than areas.
+        c_area_min = self.slider_val['c_min_r'].get() ** 2 * np.pi
+        c_area_max = self.slider_val['c_max_r'].get() ** 2 * np.pi
 
         # Set coordinate point limits to find contours along a file border.
         bottom_edge = GRAY_IMG.shape[0] - 1
@@ -513,7 +507,7 @@ class ProcessImage(tk.Tk):
             """
             ((txt_w, _), baseline) = cv2.getTextSize(text=size_txt,
                                                      fontFace=const.FONT_TYPE,
-                                                     fontScale=img_w_coef,
+                                                     fontScale=font_scale,
                                                      thickness=line_thickness)
             return txt_w / 2, baseline
 
@@ -522,7 +516,7 @@ class ProcessImage(tk.Tk):
         if contour_pointset:
             flag = False
             for _c in contour_pointset:
-                if not c_lim_max > cv2.contourArea(_c) >= c_lim_min:
+                if not c_area_max > cv2.contourArea(_c) >= c_area_min:
                     continue
 
                 # Skip contours that touch top or left edge.
@@ -550,17 +544,21 @@ class ProcessImage(tk.Tk):
                 offset_x, offset_y = text_offset(size_txt=f'{round(unit_size)}')
 
                 cv2.circle(img=self.circled_ws_segments,
-                           center=(round(_x), round(_y)),
-                           radius=round(_r),
+                           center=(int(_x), int(_y)),
+                           radius=int(_r),
                            color=preferred_color,
-                           thickness=line_thickness)
+                           thickness=line_thickness,
+                           lineType=cv2.LINE_AA,
+                           )
                 cv2.putText(img=self.circled_ws_segments,
                             text=f'{round(unit_size)}',
                             org=(round(_x - offset_x), round(_y + offset_y)),
                             fontFace=const.FONT_TYPE,
-                            fontScale=img_w_coef,
+                            fontScale=font_scale,
                             color=preferred_color,
-                            thickness=line_thickness)
+                            thickness=line_thickness,
+                            lineType=cv2.LINE_AA,
+                            )
 
             # Grab some metrics for reporting.
             # Conversion factors are set in set_size_std().
@@ -647,11 +645,11 @@ class ImageViewer(ProcessImage):
             'plm_footprint': tk.Scale(master=self.contour_selectors_frame),
             'plm_footprint_lbl': tk.Label(master=self.contour_selectors_frame),
 
-            'c_lim_min': tk.Scale(master=self.contour_selectors_frame),
-            'c_lim_min_lbl': tk.Label(master=self.contour_selectors_frame),
+            'c_min_r': tk.Scale(master=self.contour_selectors_frame),
+            'c_min_r_lbl': tk.Label(master=self.contour_selectors_frame),
 
-            'c_lim_max': tk.Scale(master=self.contour_selectors_frame),
-            'c_lim_max_lbl': tk.Label(master=self.contour_selectors_frame),
+            'c_max_r': tk.Scale(master=self.contour_selectors_frame),
+            'c_max_r_lbl': tk.Label(master=self.contour_selectors_frame),
         }
 
         self.cbox = {
@@ -720,14 +718,15 @@ class ImageViewer(ProcessImage):
         self.config_entries()
         self.set_defaults()
         self.grid_widgets()
-        self.set_size_std()  # Called only to remove custom label at startup.
+        self.set_size_std()  # Call here to remove size_cust_label at startup.
         self.grid_img_labels()
         self.display_input_images()
 
     @staticmethod
     def no_exit_on_x():
         """
-        Provide a notice in Terminal. Called from .protocol() in loop.
+        Provide a notice in Terminal.
+        Called from .protocol() in setup_image_windows().
         """
         print('This window cannot be closed from the window bar.\n'
               'It can be minimized to get it out of the way.\n'
@@ -738,7 +737,7 @@ class ImageViewer(ProcessImage):
     def setup_image_windows(self) -> None:
         """
         Create and configure all Toplevel windows and their Labels that
-        are used to display processed images.
+        are used to display and update processed images.
 
         Returns: None
         """
@@ -779,8 +778,8 @@ class ImageViewer(ProcessImage):
 
     def setup_settings_window(self) -> None:
         """
-        Master (main tk window, "app") keybindings, configurations, and grids
-        for contour settings and reporting frames, and utility buttons.
+        Settings and report window (mainloop, "app") keybindings,
+        configurations, and grids for contour settings and reporting frames.
         """
 
         #  Need to set this window toward the top right corner of the screen
@@ -834,7 +833,11 @@ class ImageViewer(ProcessImage):
 
     @staticmethod
     def setup_explanation() -> None:
-        """Informative note at bottom of main window about displayed size units."""
+        """
+        Informative note at bottom of settings (mainloop) window about
+        the displayed size units.
+        Called from __init__.
+        """
 
         explain_label = tk.Label(text='When the entered pixel size is 1 and the selected\n'
                                       ' size standard is None, then circled diameters'
@@ -848,7 +851,7 @@ class ImageViewer(ProcessImage):
 
     def setup_buttons(self) -> None:
         """
-        Assign and grid Buttons in the main (app) and shape windows.
+        Assign and grid Buttons in the settings (mainloop) window.
         Called from __init__.
 
         Returns: None
@@ -857,8 +860,7 @@ class ImageViewer(ProcessImage):
 
         def save_settings():
             """
-            A Button "command" kw caller to avoid messy or lambda
-            statements.
+            A Button kw "command" caller to avoid messy lambda statements.
             """
             sizes = ', '.join(str(i) for i in self.sorted_d)
             # ",".join(str(bit) for bit in self.sorted_d)
@@ -886,7 +888,7 @@ class ImageViewer(ProcessImage):
                               command=save_settings,
                               **button_params)
 
-        # Widget grid in the main window.
+        # Widget grid in the mainloop window.
         reset_btn.grid(column=0, row=2,
                        padx=10,
                        pady=5,
@@ -898,32 +900,35 @@ class ImageViewer(ProcessImage):
 
     def display_input_images(self) -> None:
         """
-        Converts input image and its grayscale to tk image formate and
-        displays them as panels gridded in their toplevel window.
+        Converts input image to tk image formate and displays it as a
+        panel gridded in its toplevel window.
+        Called from __init__.
         Calls manage.tkimage(), which applies scaling, cv -> tk array
         conversion, and updates the panel Label's image parameter.
         """
 
         # Display the input image and its grayscale; both are static, so
-        #  do not need updating, but retain the image display statement
-        #  structure of processed images that do need updating.
-        # Note: Use 'self' to scope the ImageTk.PhotoImage in the Class,
-        #  otherwise it will/may not show b/c of garbage collection.
+        #  they do not need updating, but for consistency's sake they
+        #  retain the image display statement structure used for processed
+        #  images, which do need updating.
+        # Note: here and throughout, use 'self' to scope the
+        #  ImageTk.PhotoImage image in the Class, otherwise it will/may
+        #  not display b/c of garbage collection.
         self.tkimg['input'] = manage.tk_image(INPUT_IMG, colorspace='bgr')
         self.img_label['input'].configure(image=self.tkimg['input'])
         self.img_label['input'].grid(column=0, row=0, padx=5, pady=5)
 
     def config_sliders(self) -> None:
         """
-        Configure arguments for all Scale() sliders in both the main
-        (contour) and shape settings windows. Also set mouse button
-        bindings for all sliders.
+        Configure arguments and mouse button bindings for all Scale
+        widgets in the settings (mainloop) window.
+        Called from __init__.
 
         Returns: None
         """
         # Set minimum width for the enclosing Toplevel by setting a length
-        #   for a single Scale widget that is sufficient to fit everything
-        #   in the Frame given current padding parameters. Need to use only
+        #  for a single Scale widget that is sufficient to fit everything
+        #  in the Frame given current padding parameters. Need to use only
         #  for one Scale() in each Toplevel().
         scale_len = int(self.winfo_screenwidth() * 0.25)
 
@@ -969,9 +974,9 @@ class ImageViewer(ProcessImage):
 
         self.slider['plm_mindist_lbl'].configure(text='peak_local_max min_distance:',
                                                  **const.LABEL_PARAMETERS)
-        self.slider['plm_mindist'].configure(from_=1, to=100,
+        self.slider['plm_mindist'].configure(from_=1, to=200,
                                              length=scale_len,
-                                             tickinterval=10,
+                                             tickinterval=20,
                                              variable=self.slider_val['plm_mindist'],
                                              **const.SCALE_PARAMETERS)
 
@@ -983,24 +988,24 @@ class ImageViewer(ProcessImage):
                                                variable=self.slider_val['plm_footprint'],
                                                **const.SCALE_PARAMETERS)
 
-        self.slider['c_lim_min_lbl'].configure(text='Contour area size\n'
-                                                    'minimum px:',
+        self.slider['c_min_r_lbl'].configure(text='Circled radius size\n'
+                                                    'minimum pixels:',
                                                **const.LABEL_PARAMETERS)
-        self.slider['c_lim_max_lbl'].configure(text='Contour area size\n'
-                                                    'maximum px:',
+        self.slider['c_max_r_lbl'].configure(text='Circled radius size\n'
+                                                    'maximum pixels:',
                                                **const.LABEL_PARAMETERS)
 
         # Note: may need to adjust c_lim scaling with image size b/c
         #   large contours cannot be selected if max limit is too small.
-        c_lim_min = manage.input_metrics()['fig_width'] * 8
-        c_lim_max = manage.input_metrics()['fig_width'] * 60
-        self.slider['c_lim_min'].configure(from_=1, to=c_lim_min,
-                                           tickinterval=c_lim_min / 10,
-                                           variable=self.slider_val['c_lim_min'],
+        c_min_r = manage.input_metrics()['max_circle_r'] // 8
+        c_max_r = manage.input_metrics()['max_circle_r']
+        self.slider['c_min_r'].configure(from_=1, to=c_min_r,
+                                           tickinterval=c_min_r / 10,
+                                           variable=self.slider_val['c_min_r'],
                                            **const.SCALE_PARAMETERS)
-        self.slider['c_lim_max'].configure(from_=1, to=c_lim_max,
-                                           tickinterval=c_lim_max / 10,
-                                           variable=self.slider_val['c_lim_max'],
+        self.slider['c_max_r'].configure(from_=1, to=c_max_r,
+                                           tickinterval=c_max_r / 10,
+                                           variable=self.slider_val['c_max_r'],
                                            **const.SCALE_PARAMETERS)
 
         # To avoid grabbing all the intermediate values between normal
@@ -1020,7 +1025,8 @@ class ImageViewer(ProcessImage):
     def config_comboboxes(self) -> None:
         """
         Configure arguments and mouse button bindings for all Comboboxes
-        in both the main (contour) and shape settings windows.
+        in the settings (mainloop) window.
+        Called from __init__.
 
         Returns: None
         """
@@ -1097,8 +1103,12 @@ class ImageViewer(ProcessImage):
 
     def config_entries(self) -> None:
         """
-        Configure Entry widgets. Provide on-the-fly validation that
-        entries are only digits.
+        Configure arguments and mouse button bindings for all Entry
+        widgets in the settings (mainloop) window.
+        Provide on-the-fly validation that entries are only digits.
+        Called from __init__.
+
+        Returns: None
         """
         def enter_only_digits(entry, action_type) -> bool:
             """
@@ -1147,7 +1157,10 @@ class ImageViewer(ProcessImage):
 
     def grid_widgets(self) -> None:
         """
-        Developer: Grid as a group to make clear spatial relationships.
+        Developer: Grid as a method to clarify spatial relationships.
+        Called from __init__.
+
+        Returns: None
         """
 
         # Use the dict() function with keyword arguments to mimic the
@@ -1242,14 +1255,14 @@ class ImageViewer(ProcessImage):
                                           **slider_grid_params)
 
 
-        self.slider['c_lim_min_lbl'].grid(column=0, row=17,
+        self.slider['c_min_r_lbl'].grid(column=0, row=17,
                                           **east_grid_params)
-        self.slider['c_lim_min'].grid(column=1, row=17,
+        self.slider['c_min_r'].grid(column=1, row=17,
                                       **slider_grid_params)
 
-        self.slider['c_lim_max_lbl'].grid(column=0, row=18,
+        self.slider['c_max_r_lbl'].grid(column=0, row=18,
                                           **east_grid_params)
-        self.slider['c_lim_max'].grid(column=1, row=18,
+        self.slider['c_max_r'].grid(column=1, row=18,
                                       **slider_grid_params)
 
         self.size_std_px_label.grid(column=0, row=19,
@@ -1306,6 +1319,9 @@ class ImageViewer(ProcessImage):
         Labels' 'master' argument for the img window is defined in
         ProcessImage.setup_image_windows(). Label 'image' param is
         updated with .configure() in each PI processing method.
+        Called from __init__.
+
+        Returns: None
         """
 
         self.img_label['contrast'].grid(**const.PANEL_LEFT)
@@ -1321,18 +1337,19 @@ class ImageViewer(ProcessImage):
 
     def set_defaults(self) -> None:
         """
-        Sets selector widgets at startup. Called from "Reset" button.
+        Sets and resets selector widgets.
+        Called from __init__ and "Reset" button.
         """
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
         self.slider_val['beta'].set(0)
-        self.slider_val['noise_k'].set(5)
-        self.slider_val['noise_iter'].set(2)
+        self.slider_val['noise_k'].set(3)
+        self.slider_val['noise_iter'].set(3)
         self.slider_val['filter_k'].set(5)
         self.slider_val['plm_mindist'].set(40)
         self.slider_val['plm_footprint'].set(3)
-        self.slider_val['c_lim_min'].set(500)
-        self.slider_val['c_lim_max'].set(25000)
+        self.slider_val['c_min_r'].set(8)
+        self.slider_val['c_max_r'].set(300)
 
         # Set/Reset Combobox widgets.
         self.cbox['morphop'].current(0)
@@ -1358,6 +1375,7 @@ class ImageViewer(ProcessImage):
         """
         Assign a unit conversion factor to the observed pixel diameter
         of the chosen size standard.
+        Called from process_all(), process_sizes(), __init__.
 
         Returns: None
         """
@@ -1393,7 +1411,8 @@ class ImageViewer(ProcessImage):
         """
         Write the current settings and cv metrics in a Text widget of
         the report_frame. Same text is printed in Terminal from "Save"
-        button. Called from __init__ and process_*() methods.
+        button.
+        Called from process_all(), process_sizes(), __init__.
         """
 
         # Note: recall that *_val dict are inherited from ProcessImage().
@@ -1404,8 +1423,8 @@ class ImageViewer(ProcessImage):
         morph_shape = self.cbox_val['morphshape'].get()
         filter_selected = self.cbox_val['filter'].get()
         th_type = self.cbox_val['th_type'].get()
-        c_lim_min = self.slider_val['c_lim_min'].get()
-        c_lim_max = self.slider_val['c_lim_max'].get()
+        c_min_r = self.slider_val['c_min_r'].get()
+        c_max_r = self.slider_val['c_max_r'].get()
         min_dist = self.slider_val['plm_mindist'].get()
         connections = int(self.cbox_val['ws_connect'].get())
         dt_type = self.cbox_val['dt_type'].get()
@@ -1413,8 +1432,8 @@ class ImageViewer(ProcessImage):
         p_kernel = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
         num_selected = len(self.mm_size_list)
-        mean_mm_dia = round(mean(self.mm_size_list), 1)
-        median_mm_dia = round(median(self.mm_size_list))
+        mean_unit_dia = round(mean(self.mm_size_list), 1)
+        median_unit_dia = round(median(self.mm_size_list))
         mm_range = f'{min(self.mm_size_list)}--{max(self.mm_size_list)}'
 
         # Only odd kernel integers are used for processing.
@@ -1452,15 +1471,15 @@ class ImageViewer(ProcessImage):
             f'{tab}compactness=0.03\n'  # NOTE: change if changes in watershed method.
             f'{divider}\n'
             f'{"Total distT segments:".ljust(space)}{self.num_dt_segments} <- Match'
-            f' selected objects for better sizing.\n'
-            f'{"Contour area range:".ljust(space)}{c_lim_min}--{c_lim_max} pixels\n'
+            f'  # selected objects for better sizing.\n'
+            f'{"Circled radius range:".ljust(space)}{c_min_r}--{c_max_r} pixels\n'
             f'{"Selected size std.:".ljust(space)}{self.size_std},'
             f' {self.size_std_unit} unit dia.\n'
-            f'{tab}Pixel dia. entered: {self.size_std_px_d.get()},'
+            f'{tab}Pixel diameter entered: {self.size_std_px_d.get()},'
             f' unit/px factor: {self.unit_per_px.get()}\n'
             f'{"# Selected objects:".ljust(space)}{num_selected}\n'
-            f'{"Object size metrics,".ljust(space)}mean: {mean_mm_dia}, median:'
-            f' {median_mm_dia}, range: {mm_range}\n'
+            f'{"Object size metrics,".ljust(space)}mean: {mean_unit_dia}, median:'
+            f' {median_unit_dia}, range: {mm_range}\n'
         )
 
         utils.display_report(frame=self.contour_report_frame,
@@ -1468,9 +1487,7 @@ class ImageViewer(ProcessImage):
     def process_all(self, event=None) -> None:
         """
         Runs all image processing methods from ProcessImage().
-        Calls adjust_contrast(), reduce_noise(), filter_image(), and
-        watershed_segmentation() from ProcessImage.
-        Calls report_clahe() from ContourViewer.
+
         Args:
             event: The implicit mouse button event.
 
@@ -1489,7 +1506,7 @@ class ImageViewer(ProcessImage):
         """
         Improve performance by running only select_and_size
         from ProcessImage and report_results() from ImageViewer.
-        Called from the c_lim_min and c_lim_max sliders.
+        Called from the c_min_r and c_max_r sliders.
         Args:
             event: The implicit mouse button event.
 
@@ -1503,13 +1520,13 @@ class ImageViewer(ProcessImage):
 
 def patience_needed():
     """An informational message to users in a hurry."""
-    if manage.input_metrics()['fig_width'] > 2000:
+    if GRAY_IMG.shape[1] > 2000:
         print('Images over 2000 pixels wide will take longer to process...'
               ' patience Grasshopper.\n  If the threshold image shows up as'
               ' black-on-white, then use the --inverse command line option.')
 
 if __name__ == "__main__":
-    # Program exits here if any of the module checks fails.
+    # Program exits here if any of the module checks fail.
     utils.check_platform()
     vcheck.minversion('3.7')
     arguments = manage.arguments()
