@@ -78,12 +78,12 @@ As with all repository downloads, it is a good idea to install the requirements 
 
 ### Tips:
 1. For best results, use a well-contrasted objects that are not in large overlapping clusters.
-2. Backgrounds that are of a fine grain are good to use instead of striving for a uniform featurless background because the de-noise and filtering steps will remove small-grained features. See the use of black burlap in the sample1.jpg figure as an example.
+2. Backgrounds that are of a fine grain are good to use instead of striving for a uniform featureless background because the de-noise and filtering steps will remove small-grained features. See the use of black burlap in the sample1.jpg figure as an example.
 3. Before setting the size standard, adjust parameters to achieve the best separation and counts, then enter the resulting pixel diameter for your selected size standard to convert pixels to units measure. Units are millimeters for the pre-set standards, and whatever you want for custom standards.
 4. Once you select "Custom" for a size standard, an entry field pops up for you to fill in the known size.
 5. Large files can take a while to process, so don't immediately start mashing buttons if things seem to be stalled.
 6. Coin size standards that are shiny can be pre-processed to solid white or black. Or just use a flat black or flat white object as a standard.
-7. Sizing metrics are most accurate when the size standard is excluded from analysis. The easiest way to do that is to use a standard that is the largest or smallest object in the sample, then adjust the "Contour area size" sliders until just the standard's diameter is excluded.
+7. Size metrics are most accurate when the size standard is excluded from analysis. The easiest way to do that is to use a standard that is the largest or smallest object in the sample, then adjust the "Contour area size" sliders until just the standard's diameter is excluded.
 
 ### Screenshots:
 All screenshots are from an Ubuntu Linux platform. For Windows and macOS platforms, window and widget look or layout may be slightly different.

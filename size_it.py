@@ -1343,8 +1343,8 @@ class ImageViewer(ProcessImage):
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
         self.slider_val['beta'].set(0)
-        self.slider_val['noise_k'].set(5)
-        self.slider_val['noise_iter'].set(2)
+        self.slider_val['noise_k'].set(3)
+        self.slider_val['noise_iter'].set(3)
         self.slider_val['filter_k'].set(5)
         self.slider_val['plm_mindist'].set(40)
         self.slider_val['plm_footprint'].set(3)
