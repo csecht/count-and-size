@@ -88,6 +88,7 @@ class ProcessImage(tk.Tk):
     reduce_noise
     filter_image
     watershed_segmentation
+    text_offset
     select_and_size
     """
 
@@ -209,8 +210,8 @@ class ProcessImage(tk.Tk):
 
     def reduce_noise(self) -> None:
         """
-        Reduce noise in grayscale image with erode and dilate actions of
-        cv2.morphologyEx.
+        Reduce noise in the contrast adjust image erode and dilate actions
+        of cv2.morphologyEx operations.
         Called by process_all(). Calls manage.tk_image().
 
         Returns: None
@@ -255,8 +256,9 @@ class ProcessImage(tk.Tk):
 
     def filter_image(self) -> None:
         """
-        Applies a filter selection to blur the image for threshold
-        segmentation or an additional noise reduction step.
+        Applies a filter selection to blur the reduced noise image
+        to prepare for threshold segmentation. Can also serve as a
+        specialized noise reduction step.
         Called from watershed_segmentation() and process_all().
         Calls manage.tk_image().
 
@@ -355,10 +357,10 @@ class ProcessImage(tk.Tk):
         # Generate the markers as local maxima of the distance to the background.
         # Compute the exact Euclidean distance from every binary
         #   pixel to the nearest zero pixel, then find peaks in this distance map.
-        # Calculate the distance transform of the input,
-        #   by replacing each foreground (non-zero) element, with its shortest
-        #   distance to the background (any zero-valued element).
-        #   Returns a float64 ndarray
+        # Calculate the distance transform of the input, by replacing each
+        #   foreground (non-zero) element, with its shortest distance to
+        #   the background (any zero-valued element).
+        #   Returns a float64 ndarray.
         # Note that maskSize=0 calculates the precise mask size only for
         #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
         distances_img = cv2.distanceTransform(src=thresh_img,
@@ -368,8 +370,14 @@ class ProcessImage(tk.Tk):
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         local_max = peak_local_max(distances_img,
                                    min_distance=min_dist,
+                                   exclude_border=True,  # is =min_dist
+                                   num_peaks=np.inf,
                                    footprint=plm_kernel,
-                                   labels=thresh_img)
+                                   labels=thresh_img,
+                                   num_peaks_per_label=np.inf,
+                                   p_norm=np.inf,  # Chebyshev distance
+                                   # p_norm=2,  # Euclidean distance
+                                   )
 
         mask = np.zeros(distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
@@ -416,7 +424,7 @@ class ProcessImage(tk.Tk):
                                            mode=cv2.RETR_EXTERNAL,
                                            method=cv2.CHAIN_APPROX_SIMPLE)
 
-            # The list that is used to draw circles around WS contours.
+            # Grow the list used to draw circles around WS contours.
             self.ws_max_cntrs.append(max(contours, key=cv2.contourArea))
 
         # Convert from float32 to uint8 data type to make a PIL Imagetk
@@ -460,6 +468,26 @@ class ProcessImage(tk.Tk):
         # Now draw enclosing circles around watershed segments to get sizes.
         self.select_and_size(contour_pointset=self.ws_max_cntrs)
 
+    @staticmethod
+    def text_offset(txt2size: str) -> tuple:
+        """
+        Calculate the putText org x & y offset to center text in a
+        cv2.minEnclosingCircle.
+
+        Args:
+            txt2size: The enclosing circle diameter (object size),
+             in specified units, rounded to an integer, and converted
+             to a string.
+        Returns: x and y offsets, as a tuple of pixel units.
+        """
+        ((txt_w, _), baseline) = cv2.getTextSize(
+            text=txt2size,
+            fontFace=const.FONT_TYPE,
+            fontScale=input_metrics['font_scale'],
+            thickness=input_metrics['line_thickness'])
+
+        return txt_w / 2, baseline
+
     def select_and_size(self, contour_pointset: list) -> None:
         """
         Select object contours based on area size and position,
@@ -487,29 +515,13 @@ class ProcessImage(tk.Tk):
         # The size range slider values are radii pixels. This is done b/c:
         #  1) Displayed values have fewer digits, so a cleaner slide bar.
         #  2) Sizes are diameters, so radii are conceptually easier than areas.
+        #  So, need to convert to area for the cv2.contourArea function.
         c_area_min = self.slider_val['c_min_r'].get() ** 2 * np.pi
         c_area_max = self.slider_val['c_max_r'].get() ** 2 * np.pi
 
         # Set coordinate point limits to find contours along a file border.
         bottom_edge = GRAY_IMG.shape[0] - 1
         right_edge = GRAY_IMG.shape[1] - 1
-
-        def text_offset(size_txt: str) -> tuple:
-            """
-            Calculate the putText org x & y offset to center text in a
-            cv2.minEnclosingCircle.
-
-            Args:
-                size_txt: The enclosing circle diameter (object size),
-                 in specified units, rounded to an integer, and converted
-                 to a string.
-            Returns: x and y offsets, as a tuple of pixel units.
-            """
-            ((txt_w, _), baseline) = cv2.getTextSize(text=size_txt,
-                                                     fontFace=const.FONT_TYPE,
-                                                     fontScale=font_scale,
-                                                     thickness=line_thickness)
-            return txt_w / 2, baseline
 
         # Exclude contours not in the specified size range.
         # Exclude contours that have a coordinate point intersecting the img edge.
@@ -541,7 +553,7 @@ class ProcessImage(tk.Tk):
                 ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
                 unit_size: float = _r * 2 * unit_per_px
                 contour_size_list.append(unit_size)
-                offset_x, offset_y = text_offset(size_txt=f'{round(unit_size)}')
+                offset_x, offset_y = self.text_offset(txt2size=f'{round(unit_size)}')
 
                 cv2.circle(img=self.circled_ws_segments,
                            center=(int(_x), int(_y)),
@@ -748,6 +760,8 @@ class ImageViewer(ProcessImage):
         # Allow image label panels in image windows to resize with window.
         #  Note that images don't proportionally resize, just their boundaries;
         #    images will remain anchored at their top left corners.
+        # Configure windows the same as the settings window, to give a yellow
+        #  border when it has focus and light grey when being dragged.
         for _name, toplevel in self.img_window.items():
             toplevel.minsize(200, 100)
             toplevel.protocol('WM_DELETE_WINDOW', self.no_exit_on_x)
@@ -755,6 +769,12 @@ class ImageViewer(ProcessImage):
             toplevel.columnconfigure(1, weight=1)
             toplevel.rowconfigure(0, weight=1)
             toplevel.title(const.WIN_NAME[_name])
+            toplevel.config(
+                bg=const.MASTER_BG,
+                highlightthickness=5,
+                highlightcolor=const.CBLIND_COLOR_TK['yellow'],
+                highlightbackground=const.DRAG_GRAY,
+            )
 
         # The Labels to display scaled images, which are updated using
         #  .configure() for 'image=' in their respective processing methods.
