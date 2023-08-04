@@ -88,7 +88,6 @@ class ProcessImage(tk.Tk):
     reduce_noise
     filter_image
     watershed_segmentation
-    text_offset
     select_and_size
     """
 
@@ -468,26 +467,6 @@ class ProcessImage(tk.Tk):
         # Now draw enclosing circles around watershed segments to get sizes.
         self.select_and_size(contour_pointset=self.ws_max_cntrs)
 
-    @staticmethod
-    def text_offset(txt2size: str) -> tuple:
-        """
-        Calculate the putText org x & y offset to center text in a
-        cv2.minEnclosingCircle.
-
-        Args:
-            txt2size: The enclosing circle diameter (object size),
-             in specified units, rounded to an integer, and converted
-             to a string.
-        Returns: x and y offsets, as a tuple of pixel units.
-        """
-        ((txt_w, _), baseline) = cv2.getTextSize(
-            text=txt2size,
-            fontFace=const.FONT_TYPE,
-            fontScale=input_metrics['font_scale'],
-            thickness=input_metrics['line_thickness'])
-
-        return txt_w / 2, baseline
-
     def select_and_size(self, contour_pointset: list) -> None:
         """
         Select object contours based on area size and position,
@@ -553,7 +532,7 @@ class ProcessImage(tk.Tk):
                 ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
                 unit_size: float = _r * 2 * unit_per_px
                 contour_size_list.append(unit_size)
-                offset_x, offset_y = self.text_offset(txt2size=f'{round(unit_size)}')
+                offset_x, offset_y = manage.text_offset(txt2size=f'{round(unit_size)}')
 
                 cv2.circle(img=self.circled_ws_segments,
                            center=(int(_x), int(_y)),

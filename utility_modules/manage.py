@@ -5,6 +5,8 @@ arguments: handles command line arguments
 input_metrics: reads specified input image and derives associated metrics.
 scale: manages the specified scale factor for display of images.
 tk_image: converts scaled cv2 image to a compatible tk.TK image format.
+ttk_styles: configures platform-specific ttk.Style for Buttons and Comboboxes.
+text_offset: calculates x & y offset for cv2.putText to position text.
 """
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License'
 
@@ -265,3 +267,22 @@ def ttk_styles(mainloop: tkinter.Tk) -> None:
                    background=[('pressed', 'gray30'),
                                ('active', const.CBLIND_COLOR_TK['vermilion'])],
                    )
+
+def text_offset(txt2size: str) -> tuple:
+    """
+    Calculate the putText org x & y offset to center text in a
+    cv2.minEnclosingCircle.
+
+    Args:
+        txt2size: The enclosing circle diameter (object size),
+         in specified units, rounded to an integer, and converted
+         to a string.
+    Returns: x and y offsets, as a tuple of pixel units.
+    """
+    ((txt_w, _), baseline) = cv2.getTextSize(
+        text=txt2size,
+        fontFace=const.FONT_TYPE,
+        fontScale=input_metrics()['font_scale'],
+        thickness=input_metrics()['line_thickness'])
+
+    return txt_w / 2, baseline
