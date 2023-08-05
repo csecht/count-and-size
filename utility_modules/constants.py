@@ -50,7 +50,7 @@ WIN_NAME = {
     'contoured': 'Threshold <- | -> Selected Threshold contours',
     'dist_trans': 'Distances transformed <- | -> Watershed segments',
     'threshold': 'Threshold <- | -> Distances transformed',
-    'ws_contours': 'Size-selected segments, circled, with diameters.',
+    'ws_contours': 'Size-selected objects, circled with diameters.',
 }
 
 # Set ranges for trackbars used to adjust contrast and brightness for

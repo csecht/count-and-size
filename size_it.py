@@ -98,7 +98,7 @@ class ProcessImage(tk.Tk):
         'custom_size'
         'filtered_img'
         'mean_px_size'
-        'mm_size_list'
+        'object_size_list'
         'num_dt_segments'
         'reduced_noise_img'
         'size_std'
@@ -171,7 +171,7 @@ class ProcessImage(tk.Tk):
         self.num_dt_segments = 0
         self.ws_max_cntrs = []
         self.sorted_d = []
-        self.mm_size_list = []
+        self.object_size_list = []
         self.mean_px_size = 0
         self.size_std = ''
         self.size_std_unit = 0
@@ -482,7 +482,7 @@ class ProcessImage(tk.Tk):
         #  it is used to save the result with utils.save_settings_and_img().
         self.circled_ws_segments = INPUT_IMG.copy()
 
-        contour_size_list = []
+        selected_sizes = []
         preferred_color = arguments['color']
         font_scale = input_metrics['font_scale']
         line_thickness = input_metrics['line_thickness']
@@ -498,28 +498,6 @@ class ProcessImage(tk.Tk):
         # Set coordinate point limits to find contours along a file border.
         bottom_edge = GRAY_IMG.shape[0] - 1
         right_edge = GRAY_IMG.shape[1] - 1
-
-        # Note: while this function can be placed as a staticmethod
-        #  or in a module, program performance is much faster when left
-        #  here as an inner function.
-        def text_offset(txt2size: str) -> tuple:
-            """
-            Calculate the putText org x & y offset to center text in a
-            cv2.minEnclosingCircle.
-
-            Args:
-                txt2size: The enclosing circle diameter (object size),
-                 in specified units, rounded to an integer, and converted
-                 to a string.
-            Returns: x and y offsets, as a tuple of pixel units.
-            """
-            ((txt_w, _), baseline) = cv2.getTextSize(
-                text=txt2size,
-                fontFace=const.FONT_TYPE,
-                fontScale=input_metrics['font_scale'],
-                thickness=input_metrics['line_thickness'])
-
-            return txt_w / 2, baseline
 
         # Exclude contours not in the specified size range.
         # Exclude contours that have a coordinate point intersecting the img edge.
@@ -547,11 +525,17 @@ class ProcessImage(tk.Tk):
                     continue
 
                 # Draw a circle enclosing the contour, measure its diameter,
-                #  and save each unit_size measurement to a list for reporting.
+                #  and save each object_size measurement to a list for reporting.
                 ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
-                unit_size: float = _r * 2 * unit_per_px
-                contour_size_list.append(unit_size)
-                offset_x, offset_y = text_offset(txt2size=f'{round(unit_size)}')
+                object_size: float = _r * 2 * unit_per_px
+                selected_sizes.append(object_size)
+
+                ((txt_w, _), baseline) = cv2.getTextSize(
+                    text=f'{round(object_size)}',
+                    fontFace=const.FONT_TYPE,
+                    fontScale=font_scale,
+                    thickness=line_thickness)
+                offset_x = txt_w / 2
 
                 cv2.circle(img=self.circled_ws_segments,
                            center=(int(_x), int(_y)),
@@ -561,8 +545,8 @@ class ProcessImage(tk.Tk):
                            lineType=cv2.LINE_AA,
                            )
                 cv2.putText(img=self.circled_ws_segments,
-                            text=f'{round(unit_size)}',
-                            org=(round(_x - offset_x), round(_y + offset_y)),
+                            text=f'{round(object_size)}',
+                            org=(round(_x - offset_x), round(_y + baseline)),
                             fontFace=const.FONT_TYPE,
                             fontScale=font_scale,
                             color=preferred_color,
@@ -570,11 +554,11 @@ class ProcessImage(tk.Tk):
                             lineType=cv2.LINE_AA,
                             )
 
-            # Grab some metrics for reporting.
+            # Grab some metrics for reporting; size == diameter.
             # Conversion factors are set in set_size_std().
-            if contour_size_list:
-                self.mm_size_list = [round(_d, 1) for _d in contour_size_list]
-                self.sorted_d = sorted(self.mm_size_list)
+            if selected_sizes:
+                self.object_size_list = [round(_d, 1) for _d in selected_sizes]
+                self.sorted_d = sorted(self.object_size_list)
 
         else:
             print('No objects were found to size. Try changing threshold type.\n'
@@ -1449,10 +1433,10 @@ class ImageViewer(ProcessImage):
         mask_size = int(self.cbox_val['dt_mask_size'].get())
         p_kernel = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
-        num_selected = len(self.mm_size_list)
-        mean_unit_dia = round(mean(self.mm_size_list), 1)
-        median_unit_dia = round(median(self.mm_size_list))
-        mm_range = f'{min(self.mm_size_list)}--{max(self.mm_size_list)}'
+        num_selected = len(self.object_size_list)
+        mean_unit_dia = round(mean(self.object_size_list), 1)
+        median_unit_dia = round(median(self.object_size_list))
+        mm_range = f'{min(self.object_size_list)}--{max(self.object_size_list)}'
 
         # Only odd kernel integers are used for processing.
         _nk = self.slider_val['noise_k'].get()
