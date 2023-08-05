@@ -270,11 +270,11 @@ SIZE_STANDARDS = {
     'None': 1.0,
     'Custom': 0,
     'Puck': 76.2,
-    'Cent': 19.05,
-    'Nickel': 21.21,
+    'Cent': 19.0,
+    'Nickel': 21.2,
     'Dime': 17.91,
-    'Quarter': 24.26,
-    'Half Dollar': 30.61,
-    'Sacagawea $': 26.49,
+    'Quarter': 24.3,
+    'Half Dollar': 30.6,
+    'Sacagawea $': 26.5,
     'Eisenhower $': 38.1
 }

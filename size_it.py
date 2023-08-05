@@ -307,7 +307,7 @@ class ProcessImage(tk.Tk):
             filtered_img = cv2.blur(src=self.reduced_noise_img,
                                     ksize=(filter_k, filter_k),
                                     borderType=border_type)
-        else:
+        else:  # there are no other choices, but include for future.
             filtered_img = cv2.blur(src=self.reduced_noise_img,
                                     ksize=(filter_k, filter_k),
                                     borderType=border_type)
@@ -1014,8 +1014,8 @@ class ImageViewer(ProcessImage):
         #  click and release movement, bind sliders to call the main
         #  processing and reporting function only on left button release.
         # Most are bound to process_all(), but to speed program
-        # responsiveness when changing the size range, just the sizing
-        # method is called.
+        # responsiveness when changing the size range, only call the
+        # sizing method to avoid image processing overhead.
         # Note that the <if '_lbl'> condition doesn't seem to be needed to
         #   improve performance, but is there for clarity's sake.
         for name, widget in self.slider.items():
@@ -1446,8 +1446,13 @@ class ImageViewer(ProcessImage):
 
         if _fk != 0:
             filter_k = _fk + 1 if _fk % 2 == 0 else _fk
-        else:
+        else:  # is zero
             filter_k = _fk
+
+        if self.size_std in 'None, Custom':
+            unit = 'unk unit'
+        else:  # is a pre-set standard with diameter in millimeters.
+            unit = 'mm'
 
         # Text is formatted for clarity in window, terminal, and saved file.
         space = 23
@@ -1472,11 +1477,10 @@ class ImageViewer(ProcessImage):
             f'{"   watershed:".ljust(space)}connectivity={connections}\n'
             f'{tab}compactness=0.03\n'  # NOTE: change if changes in watershed method.
             f'{divider}\n'
-            f'{"Total distT segments:".ljust(space)}{self.num_dt_segments} <- Match'
-            f'  # selected objects for better sizing.\n'
-            f'{"Circled radius range:".ljust(space)}{c_min_r}--{c_max_r} pixels\n'
+            f'{"# distTrans segments:".ljust(space)}{self.num_dt_segments}\n'
+            f'{"Selected size range:".ljust(space)}{c_min_r}--{c_max_r} pixels, diameter\n'
             f'{"Selected size std.:".ljust(space)}{self.size_std},'
-            f' {self.size_std_unit} unit dia.\n'
+            f' {self.size_std_unit} {unit} diameter\n'
             f'{tab}Pixel diameter entered: {self.size_std_px_d.get()},'
             f' unit/px factor: {self.unit_per_px.get()}\n'
             f'{"# Selected objects:".ljust(space)}{num_selected}\n'
