@@ -333,7 +333,6 @@ class ProcessImage(tk.Tk):
         # see also: http://scipy-lectures.org/packages/scikit-image/index.html
 
         connections = int(self.cbox_val['ws_connect'].get())
-
         th_type = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
         dt_type = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
         mask_size = int(self.cbox_val['dt_mask_size'].get())
@@ -352,10 +351,8 @@ class ProcessImage(tk.Tk):
                                       type=th_type)  # need *_INVERSE for black on white image.
 
         ################################ Distance transformation:
-        # Now we want to separate the two objects in image.
+        # Now we want to separate objects in image.
         # Generate the markers as local maxima of the distance to the background.
-        # Compute the exact Euclidean distance from every binary
-        #   pixel to the nearest zero pixel, then find peaks in this distance map.
         # Calculate the distance transform of the input, by replacing each
         #   foreground (non-zero) element, with its shortest distance to
         #   the background (any zero-valued element).
@@ -502,6 +499,28 @@ class ProcessImage(tk.Tk):
         bottom_edge = GRAY_IMG.shape[0] - 1
         right_edge = GRAY_IMG.shape[1] - 1
 
+        # Note: while this function can be placed as a staticmethod
+        #  or in a module, program performance is much faster when left
+        #  here as an inner function.
+        def text_offset(txt2size: str) -> tuple:
+            """
+            Calculate the putText org x & y offset to center text in a
+            cv2.minEnclosingCircle.
+
+            Args:
+                txt2size: The enclosing circle diameter (object size),
+                 in specified units, rounded to an integer, and converted
+                 to a string.
+            Returns: x and y offsets, as a tuple of pixel units.
+            """
+            ((txt_w, _), baseline) = cv2.getTextSize(
+                text=txt2size,
+                fontFace=const.FONT_TYPE,
+                fontScale=input_metrics['font_scale'],
+                thickness=input_metrics['line_thickness'])
+
+            return txt_w / 2, baseline
+
         # Exclude contours not in the specified size range.
         # Exclude contours that have a coordinate point intersecting the img edge.
         if contour_pointset:
@@ -532,7 +551,7 @@ class ProcessImage(tk.Tk):
                 ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
                 unit_size: float = _r * 2 * unit_per_px
                 contour_size_list.append(unit_size)
-                offset_x, offset_y = manage.text_offset(txt2size=f'{round(unit_size)}')
+                offset_x, offset_y = text_offset(txt2size=f'{round(unit_size)}')
 
                 cv2.circle(img=self.circled_ws_segments,
                            center=(int(_x), int(_y)),
@@ -1360,7 +1379,7 @@ class ImageViewer(ProcessImage):
             self.cbox['th_type'].current(0)  # cv2.THRESH_OTSU
 
         self.cbox['dt_type'].current(1)  # cv2.DIST_L2
-        self.cbox['dt_mask_size'].current(1)  # 3
+        self.cbox['dt_mask_size'].current(1)  # cv2.DIST_MASK_3 == 3
         self.cbox['ws_connect'].current(1)
         self.cbox['size_std'].current(0)
 
