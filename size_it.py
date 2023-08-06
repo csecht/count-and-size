@@ -96,7 +96,8 @@ class ProcessImage(tk.Tk):
         'circled_ws_segments'
         'contrasted_img'
         'custom_size'
-        'filtered_img'
+        'filtered_img',
+        'img_label',
         'mean_px_size'
         'object_size_list'
         'num_dt_segments'
@@ -1093,8 +1094,7 @@ class ImageViewer(ProcessImage):
                                          **const.LABEL_PARAMETERS)
         self.cbox['size_std'].config(textvariable=self.cbox_val['size_std'],
                                      width=12 + width_correction,
-                                     values=list(const.SIZE_STANDARDS.keys()),
-                                     **const.COMBO_PARAMETERS)
+                                     values=list(const.SIZE_STANDARDS.keys()), **const.COMBO_PARAMETERS)
 
         # Now bind functions to all Comboboxes.
         # Note that the if condition doesn't seem to be needed to improve
@@ -1171,6 +1171,9 @@ class ImageViewer(ProcessImage):
             padx=5,
             pady=(4, 0),
             sticky=tk.E)
+        east_params_rel = dict(
+            pady=(4, 0),
+            sticky=tk.E)
         slider_grid_params = dict(
             padx=5,
             pady=(4, 0),
@@ -1182,54 +1185,36 @@ class ImageViewer(ProcessImage):
 
         # Widgets gridded in the self.contour_selectors_frame Frame.
         # Sorted by row number:
-        self.slider['alpha_lbl'].grid(column=0, row=0,
-                                      **east_grid_params)
-        self.slider['alpha'].grid(column=1, row=0,
-                                  **slider_grid_params)
+        self.slider['alpha_lbl'].grid(column=0, row=0, **east_grid_params)
+        self.slider['alpha'].grid(column=1, row=0, **slider_grid_params)
 
-        self.slider['beta_lbl'].grid(column=0, row=1,
-                                     **east_grid_params)
-        self.slider['beta'].grid(column=1, row=1,
-                                 **slider_grid_params)
+        self.slider['beta_lbl'].grid(column=0, row=1, **east_grid_params)
+        self.slider['beta'].grid(column=1, row=1, **slider_grid_params)
 
-        self.cbox['morphop_lbl'].grid(column=0, row=2,
-                                      **east_grid_params)
-        self.cbox['morphop'].grid(column=1, row=2,
-                                  **west_grid_params)
+        self.cbox['morphop_lbl'].grid(column=0, row=2, **east_grid_params)
+        self.cbox['morphop'].grid(column=1, row=2, **west_grid_params)
 
         # Note: Put morph shape on same row as morph op.
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['morphshape'].grid(column=1, row=2,
-                                     **east_grid_params)
+        self.cbox['morphshape'].grid(column=1, row=2, **east_grid_params)
 
-        self.slider['noise_k_lbl'].grid(column=0, row=4,
-                                        **east_grid_params)
-        self.slider['noise_k'].grid(column=1, row=4,
-                                    **slider_grid_params)
+        self.slider['noise_k_lbl'].grid(column=0, row=4, **east_grid_params)
+        self.slider['noise_k'].grid(column=1, row=4, **slider_grid_params)
 
-        self.slider['noise_iter_lbl'].grid(column=0, row=5,
-                                           **east_grid_params)
-        self.slider['noise_iter'].grid(column=1, row=5,
-                                       **slider_grid_params)
+        self.slider['noise_iter_lbl'].grid(column=0, row=5, **east_grid_params)
+        self.slider['noise_iter'].grid(column=1, row=5, **slider_grid_params)
 
-        self.cbox['filter_lbl'].grid(column=0, row=6,
-                                     **east_grid_params)
-        self.cbox['filter'].grid(column=1, row=6,
-                                 **west_grid_params)
+        self.cbox['filter_lbl'].grid(column=0, row=6, **east_grid_params)
+        self.cbox['filter'].grid(column=1, row=6, **west_grid_params)
 
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['th_type'].grid(column=1, row=6,
-                                  **east_grid_params)
+        self.cbox['th_type'].grid(column=1, row=6, **east_grid_params)
 
-        self.slider['filter_k_lbl'].grid(column=0, row=9,
-                                         **east_grid_params)
-        self.slider['filter_k'].grid(column=1, row=9,
-                                     **slider_grid_params)
+        self.slider['filter_k_lbl'].grid(column=0, row=9, **east_grid_params)
+        self.slider['filter_k'].grid(column=1, row=9, **slider_grid_params)
 
-        self.cbox['dt_type_lbl'].grid(column=0, row=10,
-                                      **east_grid_params)
-        self.cbox['dt_type'].grid(column=1, row=10,
-                                  **west_grid_params)
+        self.cbox['dt_type_lbl'].grid(column=0, row=10, **east_grid_params)
+        self.cbox['dt_type'].grid(column=1, row=10, **west_grid_params)
 
         # May not be optimized placement for non-Linux platforms, but
         #  is easy to understand.
@@ -1243,41 +1228,27 @@ class ImageViewer(ProcessImage):
                                        sticky=tk.W)
 
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['ws_connect'].grid(column=1, row=10,
-                                     **east_grid_params)
+        self.cbox['ws_connect'].grid(column=1, row=10, **east_grid_params)
 
-        self.slider['plm_mindist_lbl'].grid(column=0, row=12,
-                                            **east_grid_params)
-        self.slider['plm_mindist'].grid(column=1, row=12,
-                                        **slider_grid_params)
+        self.slider['plm_mindist_lbl'].grid(column=0, row=12, **east_grid_params)
+        self.slider['plm_mindist'].grid(column=1, row=12, **slider_grid_params)
 
-        self.slider['plm_footprint_lbl'].grid(column=0, row=13,
-                                              **east_grid_params)
-        self.slider['plm_footprint'].grid(column=1, row=13,
-                                          **slider_grid_params)
+        self.slider['plm_footprint_lbl'].grid(column=0, row=13, **east_grid_params)
+        self.slider['plm_footprint'].grid(column=1, row=13,  **slider_grid_params)
 
+        self.slider['c_min_r_lbl'].grid(column=0, row=17, **east_grid_params)
+        self.slider['c_min_r'].grid(column=1, row=17, **slider_grid_params)
 
-        self.slider['c_min_r_lbl'].grid(column=0, row=17,
-                                          **east_grid_params)
-        self.slider['c_min_r'].grid(column=1, row=17,
-                                      **slider_grid_params)
+        self.slider['c_max_r_lbl'].grid(column=0, row=18, **east_grid_params)
+        self.slider['c_max_r'].grid(column=1, row=18, **slider_grid_params)
 
-        self.slider['c_max_r_lbl'].grid(column=0, row=18,
-                                          **east_grid_params)
-        self.slider['c_max_r'].grid(column=1, row=18,
-                                      **slider_grid_params)
-
-        self.size_std_px_label.grid(column=0, row=19,
-                                    **east_grid_params)
-        self.size_std_px_entry.grid(column=1, row=19,
-                                    **west_grid_params)
+        self.size_std_px_label.grid(column=0, row=19, **east_grid_params)
+        self.size_std_px_entry.grid(column=1, row=19, **west_grid_params)
 
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['size_std'].grid(column=1, row=19,
-                                   **east_grid_params)
+        self.cbox['size_std'].grid(column=1, row=19,  **east_grid_params)
 
-        self.size_cust_entry.grid(column=1, row=20,
-                                 **east_grid_params)
+        self.size_cust_entry.grid(column=1, row=20, **east_grid_params)
 
         # Use update() because update_idletasks() doesn't always work to
         #  get the gridded widgets' correct winfo_width.
@@ -1288,32 +1259,27 @@ class ImageViewer(ProcessImage):
         morphshape_padx = (0, self.cbox['morphshape'].winfo_width() + 10)
         self.cbox['morphshape_lbl'].grid(column=1, row=2,
                                          padx=morphshape_padx,
-                                         pady=(4, 0),
-                                         sticky=tk.E)
+                                         **east_params_rel)
 
         thtype_padx = (0, self.cbox['th_type'].winfo_width() + 10)
         self.cbox['th_type_lbl'].grid(column=1, row=6,
                                       padx=thtype_padx,
-                                      pady=(4, 0),
-                                      sticky=tk.E)
+                                      **east_params_rel)
 
         ws_connect_padx = (0, self.cbox['ws_connect'].winfo_width() + 10)
         self.cbox['ws_connect_lbl'].grid(column=1, row=10,
                                          padx=ws_connect_padx,
-                                         pady=(4, 0),
-                                         sticky=tk.E)
+                                         **east_params_rel)
 
         size_std_padx = (0, self.cbox['size_std'].winfo_width() + 10)
         self.cbox['size_std_lbl'].grid(column=1, row=19,
                                        padx=size_std_padx,
-                                       pady=(4, 0),
-                                       sticky=tk.E)
+                                       **east_params_rel)
 
         custom_std_padx = (0, self.size_cust_entry.winfo_width() + 10)
         self.size_cust_label.grid(column=1, row=20,
                                   padx=custom_std_padx,
-                                pady=(4, 0),
-                                sticky=tk.E)
+                                  **east_params_rel)
 
     def grid_img_labels(self) -> None:
         """
@@ -1342,6 +1308,8 @@ class ImageViewer(ProcessImage):
         Sets and resets selector widgets.
         Called from __init__ and "Reset" button.
         """
+        # Settings are optimized for the default sample1.jpg input.
+
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
         self.slider_val['beta'].set(0)
