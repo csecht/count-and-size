@@ -15,6 +15,10 @@ https://pyimagesearch.com/2016/03/28/measuring-size-of-objects-in-an-image-with-
 https://pyimagesearch.com/2015/11/02/watershed-opencv/
 </sub>
 
+<sub>The to_precision.py module is from:
+https://github.com/BebeSparkelSparkel/to-precision/releases/tag/0.0.0
+</sub>
+
 Development environment was Linux Ubuntu 20.04, Windows 11, and macOS 13.2.
 
 ### Usage examples:
@@ -134,6 +138,7 @@ Object size metrics,   mean: 12.1, median: 12, range: 6.9--17.7
 6. Coin size standards that are shiny can be pre-processed to solid white or black. Or just use a flat black or flat white object as a standard.
 7. Fill in the pixel diameter and type of size standard once segmentation and counts are optimized. In addition to making the size ranges (as radii) easier to navigate, it will also provide the most accurate size metrics.
 8. Size metrics are most accurate when the size standard is excluded from analysis. The easiest way to do that is to use a standard that is the largest or smallest object in the sample, then adjust the "Contour area size" sliders until just the standard's diameter is excluded.
+9. Note that when a custom size standard is used, the displayed object sizes and their summary metrics are presented with the same number of significant figures as the entered size value. See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained. Depending on the magnitude of the entered size, displayed values may be in power notation. Saved individual size lists, however, are converted to decimal numbers. When a preset standard is used, sizes are displayed as integers, but saved individual sizes will have one decimal precision.
 
 ### Known Issues:
 Waiting for user feedback.
