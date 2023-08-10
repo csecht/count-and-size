@@ -272,7 +272,7 @@ SIZE_STANDARDS = {
     'Puck': 76.2,
     'Cent': 19.0,
     'Nickel': 21.2,
-    'Dime': 17.91,
+    'Dime': 17.9,
     'Quarter': 24.3,
     'Half Dollar': 30.6,
     'Sacagawea $': 26.5,
