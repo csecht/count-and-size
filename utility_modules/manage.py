@@ -13,17 +13,16 @@ ttk_styles: configures platform-specific ttk.Style for Buttons and Comboboxes.
 import argparse
 import sys
 import tkinter
-
 # noinspection PyCompatibility
 from __main__ import __doc__
+from pathlib import Path
+from tkinter import ttk
 
 # Third party imports.
 import cv2
 import numpy as np
-from pathlib import Path
 from PIL import Image, ImageTk
 from PIL.ImageTk import PhotoImage
-from tkinter import ttk
 
 # Local application imports.
 import utility_modules
@@ -83,9 +82,9 @@ def arguments() -> dict:
         sys.exit(0)
 
     if not Path.exists(utils.valid_path_to(args.input)):
-       print(f'COULD NOT OPEN the image: {args.input}  <-Check spelling.\n'
+        print(f'COULD NOT OPEN the image: {args.input}  <-Check spelling.\n'
               "If spelled correctly, then try using the file's absolute (full) path.")
-       sys.exit(0)
+        sys.exit(0)
 
     if args.scale <= 0:
         print('--scale X: X must be greater than zero.')
@@ -130,7 +129,6 @@ def input_metrics() -> dict:
     size_factor = 5.5e-04
     line_thickness_factor = 1.5e-03
     # line_thickness_factor = 2e-03
-
 
     # manage.arguments() has verified the image path, so read from it.
     input_img = cv2.imread(arguments()['input'])

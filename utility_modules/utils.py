@@ -4,7 +4,6 @@ Functions:
 check_platform - Exit if not Linux, Windows, or macOS.
 valid_path_to - Get correct path to program's files.
 save_settings_and_img- Save files of result image and its settings.
-scale_img - Resize displayed images.
 display_report - Place a formatted text string into a specified Frame.
 text_array - Generate an image array of text.
 quit_keys -  Error-free and informative exit from the program.
@@ -148,35 +147,6 @@ def save_settings_and_img(img2save,
     print(f'Result image and its settings were saved to files.'
           f'{data2save}')
 
-
-def scale_img(img: np.ndarray, scale: float) -> np.ndarray:
-    """
-    Change size of displayed images from original (input) size.
-    Intended mainly for when input image is too large to fit on screen.
-
-    Args:
-        img: A numpy.ndarray of image to be scaled.
-        scale: The multiplication factor to grow or shrink the
-                displayed image. Defined from cmd line arg '--scale'.
-                Default from argparse is 1.0.
-
-    Returns: A scaled np.ndarray object; if *scale* is 1, then no change.
-    """
-
-    # Is redundant with check of --scale value in args_handler().
-    scale = 1 if scale == 0 else scale
-
-    # Provide the best interpolation method for slight improvement of
-    #  resized image depending on whether it is down- or up-scaled.
-    interpolate = cv2.INTER_AREA if scale < 0 else cv2.INTER_CUBIC
-
-    scaled_image = cv2.resize(src=img,
-                              dsize=None,
-                              fx=scale, fy=scale,
-                              interpolation=interpolate)
-    return scaled_image
-
-
 def display_report(frame: tk.Frame, report: str) -> None:
     """
     Places a formatted text string into the specified Frame; allows for
@@ -231,7 +201,7 @@ def display_report(frame: tk.Frame, report: str) -> None:
 def quit_gui(mainloop: tk.Tk,
              gui=True,
              keybind=None,
-             plot=None) -> None:
+             ) -> None:
     """Safe and informative exit from the program.
 
     Args:

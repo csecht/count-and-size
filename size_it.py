@@ -30,14 +30,14 @@ import sys
 
 from pathlib import Path
 from statistics import mean, median
+from typing import List
 
 # Local application imports.
 from utility_modules import (vcheck,
                              utils,
                              manage,
                              constants as const,
-                             to_precision as to_p
-                             )
+                             to_precision as to_p)
 
 # Third party imports.
 # tkinter(Tk/Tcl) is included with most Python3 distributions,
@@ -75,8 +75,6 @@ except (ImportError, ModuleNotFoundError) as import_err:
         '  https://docs.opencv2.org/4.6.0/d5/de5/tutorial_py_setup_in_windows.html\n\n'
         f'Error message:\n{import_err}')
 
-
-# pylint: disable=use-dict-literal, no-member
 
 class ProcessImage(tk.Tk):
     """
@@ -253,7 +251,6 @@ class ProcessImage(tk.Tk):
                                               colorspace='bgr')
         self.img_label['redux'].configure(image=self.tkimg['redux'])
 
-
     def filter_image(self) -> None:
         """
         Applies a filter selection to blur the reduced noise image
@@ -346,12 +343,11 @@ class ProcessImage(tk.Tk):
         #   are implemented only for 8-bit single-channel images.
         #   For other cv2.THRESH_*, thresh needs to be manually provided.
         # Convert values above thresh to a maxval of 255, white.
-        _, thresh_img = cv2.threshold(self.filtered_img, #self.reduced_noise_img,
+        _, thresh_img = cv2.threshold(src=self.filtered_img,
                                       thresh=0,
                                       maxval=255,
                                       type=th_type)  # need *_INVERSE for black on white image.
 
-        ################################ Distance transformation:
         # Now we want to separate objects in image.
         # Generate the markers as local maxima of the distance to the background.
         # Calculate the distance transform of the input, by replacing each
@@ -413,11 +409,11 @@ class ProcessImage(tk.Tk):
 
             # ...otherwise, allocate memory for the label region and draw
             #   it on the mask.
-            mask = np.zeros(watershed_img.shape, dtype="uint8")
+            mask = np.zeros(shape=watershed_img.shape, dtype="uint8")
             mask[watershed_img == label] = 255
 
             # Detect contours in the mask and grab the largest one.
-            contours, _ = cv2.findContours(mask.copy(),
+            contours, _ = cv2.findContours(image=mask.copy(),
                                            mode=cv2.RETR_EXTERNAL,
                                            method=cv2.CHAIN_APPROX_SIMPLE)
 
@@ -433,16 +429,15 @@ class ProcessImage(tk.Tk):
         watershed_gray = np.uint8(watershed_img)
 
         ws_contours, _ = cv2.findContours(watershed_gray,
-                                           mode=cv2.RETR_EXTERNAL,
-                                           method=cv2.CHAIN_APPROX_SIMPLE)
+                                          mode=cv2.RETR_EXTERNAL,
+                                          method=cv2.CHAIN_APPROX_SIMPLE)
 
         cv2.drawContours(watershed_gray,
                          contours=ws_contours,
                          contourIdx=-1,  # all contours.
-                         color=120, # (120, 120, 120),  # mid-gray
+                         color=(120, 120, 120),  # mid-gray
                          thickness=-1,  # filled
-                         lineType=cv2.LINE_AA,
-                         )
+                         lineType=cv2.LINE_AA)
 
         # Put thresh image panel next to filtered panel in the same window.
         self.tkimg['thresh'] = manage.tk_image(image=thresh_img,
@@ -483,9 +478,9 @@ class ProcessImage(tk.Tk):
         self.circled_ws_segments = INPUT_IMG.copy()
         self.sorted_size_list.clear()
 
-        selected_sizes: list[float] = []
-        preferred_color = arguments['color']
-        font_scale = input_metrics['font_scale']
+        selected_sizes: List[float] = []
+        preferred_color: tuple = arguments['color']
+        font_scale: float = input_metrics['font_scale']
         line_thickness: int = input_metrics['line_thickness']
 
         # The size range slider values are radii pixels. This is done b/c:
@@ -725,8 +720,8 @@ class ImageViewer(ProcessImage):
 
         self.size_cust_entry = tk.Entry(self.contour_selectors_frame)
         self.size_cust_label = tk.Label(self.contour_selectors_frame,
-                                       text="Enter custom standard's size:",
-                                       **const.LABEL_PARAMETERS)
+                                        text="Enter custom standard's size:",
+                                        **const.LABEL_PARAMETERS)
 
         # NOTE: dict item order affects the order that windows are
         #  drawn, so here use an inverse order of processing steps to
@@ -788,11 +783,11 @@ class ImageViewer(ProcessImage):
         # Configure windows the same as the settings window, to give a yellow
         #  border when it has focus and light grey when being dragged.
         for _name, toplevel in self.img_window.items():
-            toplevel.minsize(200, 100)
-            toplevel.protocol('WM_DELETE_WINDOW', self.no_exit_on_x)
-            toplevel.columnconfigure(0, weight=1)
-            toplevel.columnconfigure(1, weight=1)
-            toplevel.rowconfigure(0, weight=1)
+            toplevel.minsize(width=200, height=100)
+            toplevel.protocol(name='WM_DELETE_WINDOW', func=self.no_exit_on_x)
+            toplevel.columnconfigure(index=0, weight=1)
+            toplevel.columnconfigure(index=1, weight=1)
+            toplevel.rowconfigure(index=0, weight=1)
             toplevel.title(const.WIN_NAME[_name])
             toplevel.config(
                 bg=const.MASTER_BG,
@@ -845,8 +840,10 @@ class ImageViewer(ProcessImage):
             highlightcolor=const.CBLIND_COLOR_TK['yellow'],
             highlightbackground=const.DRAG_GRAY,
         )
+
         # Need to provide exit info msg to Terminal.
-        self.protocol('WM_DELETE_WINDOW', lambda: utils.quit_gui(app))
+        self.protocol(name='WM_DELETE_WINDOW',
+                      func=lambda: utils.quit_gui(app))
 
         self.bind_all('<Escape>', lambda _: utils.quit_gui(app))
         self.bind_all('<Control-q>', lambda _: utils.quit_gui(app))
@@ -884,13 +881,14 @@ class ImageViewer(ProcessImage):
         Called from __init__.
         """
 
-        explain_label = tk.Label(text='When the entered pixel size is 1 and the selected\n'
-                                      ' size standard is None, then circled diameters'
-                                      ' are pixels.\nDiameters are millimeters for any pre-set'
-                                      ' size standard,\nand whatever you want for custom '
-                                      'standards.',
-                                  font=const.WIDGET_FONT,
-                                  bg=const.MASTER_BG)
+        explain_label = tk.Label(
+            text='When the entered pixel size is 1 and the selected\n'
+                 ' size standard is None, then circled diameters'
+                 ' are pixels.\nDiameters are millimeters for any pre-set'
+                 ' size standard,\nand whatever you want for custom '
+                 'standards.',
+            font=const.WIDGET_FONT,
+            bg=const.MASTER_BG)
         explain_label.grid(column=1, row=2, rowspan=2,
                            padx=10, sticky=tk.EW)
 
@@ -1073,7 +1071,8 @@ class ImageViewer(ProcessImage):
         in the settings (mainloop) window.
         Called from __init__.
 
-        Returns: None
+        Returns:
+             None
         """
 
         # Different Combobox widths are needed to account for font widths
@@ -1170,7 +1169,6 @@ class ImageViewer(ProcessImage):
 
         self.size_cust_entry.bind('<Return>', func=self.process_sizes)
         self.size_cust_entry.bind('<KP_Enter>', func=self.process_sizes)
-
 
     def grid_widgets(self) -> None:
         """
@@ -1550,6 +1548,7 @@ def patience_needed():
         print('Images over 2000 pixels wide will take longer to process...'
               ' patience Grasshopper.\n  If the threshold image shows up as'
               ' black-on-white, then use the --inverse command line option.')
+
 
 if __name__ == "__main__":
     # Program exits here if any of the module checks fail.
