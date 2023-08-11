@@ -23,7 +23,6 @@ Requires Python3.7 or later and the packages opencv-python and numpy.
 See this distribution's requirements.txt file for details.
 Developed in Python 3.8-3.9.
 """
-
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License
 
 # Standard library imports.
@@ -37,6 +36,7 @@ from utility_modules import (vcheck,
                              utils,
                              manage,
                              constants as const,
+                             to_precision as to_p
                              )
 
 # Third party imports.
@@ -46,7 +46,7 @@ try:
     import cv2
     import numpy as np
     import tkinter as tk
-    from tkinter import ttk
+    from tkinter import ttk, messagebox
     from skimage.segmentation import watershed
     from skimage.feature import peak_local_max
     from scipy import ndimage
@@ -89,25 +89,26 @@ class ProcessImage(tk.Tk):
     filter_image
     watershed_segmentation
     select_and_size
+    custom_sigfig
     """
 
     __slots__ = (
-        'cbox_val'
-        'circled_ws_segments'
-        'contrasted_img'
-        'custom_size'
-        'filtered_img'
-        'mean_px_size'
-        'mm_size_list'
-        'num_dt_segments'
-        'reduced_noise_img'
-        'size_std'
-        'size_std_px_d'
-        'size_std_unit'
-        'slider_val'
-        'sorted_d'
-        'tkimg'
-        'unit_per_px'
+        'cbox_val',
+        'circled_ws_segments',
+        'contrasted_img',
+        'custom_size_entry',
+        'filtered_img',
+        'img_label',
+        'mean_px_size',
+        'num_dt_segments',
+        'reduced_noise_img',
+        'size_std',
+        'size_std_px',
+        'size_std_size',
+        'slider_val',
+        'sorted_size_list',
+        'tkimg',
+        'unit_per_px',
         'ws_max_cntrs',
         'tk',
     )
@@ -170,14 +171,14 @@ class ProcessImage(tk.Tk):
         self.filtered_img = const.STUB_ARRAY
         self.num_dt_segments = 0
         self.ws_max_cntrs = []
-        self.sorted_d = []
-        self.mm_size_list = []
+        self.sorted_size_list = []
         self.mean_px_size = 0
         self.size_std = ''
-        self.size_std_unit = 0
+        self.size_std_size = 0
         self.unit_per_px = tk.DoubleVar()
-        self.size_std_px_d = tk.StringVar()
-        self.custom_size = tk.StringVar()
+        self.size_std_px = tk.StringVar()
+        self.custom_size_entry = tk.StringVar()
+        self.num_sigfig = 0
 
     def adjust_contrast(self) -> None:
         """
@@ -209,8 +210,8 @@ class ProcessImage(tk.Tk):
 
     def reduce_noise(self) -> None:
         """
-        Reduce noise in grayscale image with erode and dilate actions of
-        cv2.morphologyEx.
+        Reduce noise in the contrast adjust image erode and dilate actions
+        of cv2.morphologyEx operations.
         Called by process_all(). Calls manage.tk_image().
 
         Returns: None
@@ -255,8 +256,9 @@ class ProcessImage(tk.Tk):
 
     def filter_image(self) -> None:
         """
-        Applies a filter selection to blur the image for threshold
-        segmentation or an additional noise reduction step.
+        Applies a filter selection to blur the reduced noise image
+        to prepare for threshold segmentation. Can also serve as a
+        specialized noise reduction step.
         Called from watershed_segmentation() and process_all().
         Calls manage.tk_image().
 
@@ -306,7 +308,7 @@ class ProcessImage(tk.Tk):
             filtered_img = cv2.blur(src=self.reduced_noise_img,
                                     ksize=(filter_k, filter_k),
                                     borderType=border_type)
-        else:
+        else:  # there are no other choices, but include for future.
             filtered_img = cv2.blur(src=self.reduced_noise_img,
                                     ksize=(filter_k, filter_k),
                                     borderType=border_type)
@@ -332,7 +334,6 @@ class ProcessImage(tk.Tk):
         # see also: http://scipy-lectures.org/packages/scikit-image/index.html
 
         connections = int(self.cbox_val['ws_connect'].get())
-
         th_type = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
         dt_type = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
         mask_size = int(self.cbox_val['dt_mask_size'].get())
@@ -351,14 +352,12 @@ class ProcessImage(tk.Tk):
                                       type=th_type)  # need *_INVERSE for black on white image.
 
         ################################ Distance transformation:
-        # Now we want to separate the two objects in image.
+        # Now we want to separate objects in image.
         # Generate the markers as local maxima of the distance to the background.
-        # Compute the exact Euclidean distance from every binary
-        #   pixel to the nearest zero pixel, then find peaks in this distance map.
-        # Calculate the distance transform of the input,
-        #   by replacing each foreground (non-zero) element, with its shortest
-        #   distance to the background (any zero-valued element).
-        #   Returns a float64 ndarray
+        # Calculate the distance transform of the input, by replacing each
+        #   foreground (non-zero) element, with its shortest distance to
+        #   the background (any zero-valued element).
+        #   Returns a float64 ndarray.
         # Note that maskSize=0 calculates the precise mask size only for
         #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
         distances_img = cv2.distanceTransform(src=thresh_img,
@@ -368,8 +367,14 @@ class ProcessImage(tk.Tk):
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         local_max = peak_local_max(distances_img,
                                    min_distance=min_dist,
+                                   exclude_border=True,  # is =min_dist
+                                   num_peaks=np.inf,
                                    footprint=plm_kernel,
-                                   labels=thresh_img)
+                                   labels=thresh_img,
+                                   num_peaks_per_label=np.inf,
+                                   p_norm=np.inf,  # Chebyshev distance
+                                   # p_norm=2,  # Euclidean distance
+                                   )
 
         mask = np.zeros(distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
@@ -416,7 +421,7 @@ class ProcessImage(tk.Tk):
                                            mode=cv2.RETR_EXTERNAL,
                                            method=cv2.CHAIN_APPROX_SIMPLE)
 
-            # The list that is used to draw circles around WS contours.
+            # Grow the list used to draw circles around WS contours.
             self.ws_max_cntrs.append(max(contours, key=cv2.contourArea))
 
         # Convert from float32 to uint8 data type to make a PIL Imagetk
@@ -451,14 +456,13 @@ class ProcessImage(tk.Tk):
 
         # Note: use watershed_gray or watershed_img with skimage watershed,
         #  but use watershed_img with cv2.watershed.
-        watershed_img = np.uint8(watershed_img)
+        # watershed_img = np.uint8(watershed_img)
         self.tkimg['watershed'] = manage.tk_image(
             image=watershed_gray,  # better with skimage watershed.
             colorspace='bgr')
         self.img_label['watershed'].configure(image=self.tkimg['watershed'])
 
         # Now draw enclosing circles around watershed segments to get sizes.
-        self.select_and_size(contour_pointset=self.ws_max_cntrs)
 
     def select_and_size(self, contour_pointset: list) -> None:
         """
@@ -474,42 +478,26 @@ class ProcessImage(tk.Tk):
 
         Returns: None
         """
-        # Note that circled_ws_segments is an instance attribute (self) because
-        #  it is used to save the result with utils.save_settings_and_img().
+        # Note that circled_ws_segments is an instance attribute because
+        #  it is the result image for utils.save_settings_and_img().
         self.circled_ws_segments = INPUT_IMG.copy()
+        self.sorted_size_list.clear()
 
-        contour_size_list = []
+        selected_sizes: list[float] = []
         preferred_color = arguments['color']
         font_scale = input_metrics['font_scale']
-        line_thickness = input_metrics['line_thickness']
-        unit_per_px = self.unit_per_px.get()
+        line_thickness: int = input_metrics['line_thickness']
 
         # The size range slider values are radii pixels. This is done b/c:
         #  1) Displayed values have fewer digits, so a cleaner slide bar.
         #  2) Sizes are diameters, so radii are conceptually easier than areas.
+        #  So, need to convert to area for the cv2.contourArea function.
         c_area_min = self.slider_val['c_min_r'].get() ** 2 * np.pi
         c_area_max = self.slider_val['c_max_r'].get() ** 2 * np.pi
 
         # Set coordinate point limits to find contours along a file border.
         bottom_edge = GRAY_IMG.shape[0] - 1
         right_edge = GRAY_IMG.shape[1] - 1
-
-        def text_offset(size_txt: str) -> tuple:
-            """
-            Calculate the putText org x & y offset to center text in a
-            cv2.minEnclosingCircle.
-
-            Args:
-                size_txt: The enclosing circle diameter (object size),
-                 in specified units, rounded to an integer, and converted
-                 to a string.
-            Returns: x and y offsets, as a tuple of pixel units.
-            """
-            ((txt_w, _), baseline) = cv2.getTextSize(text=size_txt,
-                                                     fontFace=const.FONT_TYPE,
-                                                     fontScale=font_scale,
-                                                     thickness=line_thickness)
-            return txt_w / 2, baseline
 
         # Exclude contours not in the specified size range.
         # Exclude contours that have a coordinate point intersecting the img edge.
@@ -537,11 +525,31 @@ class ProcessImage(tk.Tk):
                     continue
 
                 # Draw a circle enclosing the contour, measure its diameter,
-                #  and save each unit_size measurement to a list for reporting.
+                #  and save each object_size measurement to a list for reporting.
                 ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
-                unit_size: float = _r * 2 * unit_per_px
-                contour_size_list.append(unit_size)
-                offset_x, offset_y = text_offset(size_txt=f'{round(unit_size)}')
+
+                # Note: sizes are full-length floats.
+                object_size = _r * 2 * self.unit_per_px.get()
+
+                # Need to set precision for display of annotated image.
+                if self.size_std == 'Custom':
+                    size2display = self.custom_sigfig(size=object_size)
+                    selected_sizes.append(float(size2display))
+                else:  # is one of the preset stds, or None
+                    # Round ndigits=1 here b/c that is the precision of
+                    #  preset mm sizes in const.SIZE_STANDARDS.
+                    # num_sigfig is used for reporting summary metrics;
+                    #   3 is based on the mm values in const.SIZE_STANDARDS.
+                    self.num_sigfig = 3
+                    selected_sizes.append(round(number=object_size, ndigits=1))
+                    size2display = round(number=object_size)
+
+                ((txt_width, _), baseline) = cv2.getTextSize(
+                    text=str(size2display),
+                    fontFace=const.FONT_TYPE,
+                    fontScale=font_scale,
+                    thickness=line_thickness)
+                offset_x = txt_width / 2
 
                 cv2.circle(img=self.circled_ws_segments,
                            center=(int(_x), int(_y)),
@@ -551,8 +559,8 @@ class ProcessImage(tk.Tk):
                            lineType=cv2.LINE_AA,
                            )
                 cv2.putText(img=self.circled_ws_segments,
-                            text=f'{round(unit_size)}',
-                            org=(round(_x - offset_x), round(_y + offset_y)),
+                            text=str(size2display),
+                            org=(round(_x - offset_x), round(_y + baseline)),
                             fontFace=const.FONT_TYPE,
                             fontScale=font_scale,
                             color=preferred_color,
@@ -560,22 +568,43 @@ class ProcessImage(tk.Tk):
                             lineType=cv2.LINE_AA,
                             )
 
-            # Grab some metrics for reporting.
-            # Conversion factors are set in set_size_std().
-            if contour_size_list:
-                self.mm_size_list = [round(_d, 1) for _d in contour_size_list]
-                self.sorted_d = sorted(self.mm_size_list)
-
+            # The sorted size list is used for reporting individual sizes
+            #   and size summary metrics.
+            if selected_sizes:
+                self.sorted_size_list = sorted(selected_sizes)
+            else:
+                utils.no_objects_found_msg()
         else:
-            print('No objects were found to size. Try changing threshold type.\n'
-                  '   Use threshold type *_INVERSE for light-on-dark, not for'
-                  ' dark-on-light contrasts.\n'
-                  '   Also, "Contour area size" sliders may need adjusting.')
+            utils.no_objects_found_msg()
 
         # Circled sized objects are in their own window.
         self.tkimg['ws_circled'] = manage.tk_image(image=self.circled_ws_segments,
                                                    colorspace='bgr')
         self.img_label['ws_circled'].configure(image=self.tkimg['ws_circled'])
+
+    def custom_sigfig(self, size: float) -> str:
+        """
+        Count number of significant figures in the custom size standard
+        and report the object size with that number of sig. fig.
+        Remove any decimal points and leading zeros, then count
+        remaining digits to determine number of sig. fig. Trim the
+        size to that specification.
+        Calls: to_p.to_precision()
+
+        Args:
+            size: The object size, as float.
+        Returns: The object size string with corrected number of
+                significant figures.
+        """
+
+        # See: https://en.wikipedia.org/wiki/Significant_figures#
+        #  Significant_figures_rules_explained
+
+        num_size_digits = self.custom_size_entry.get().replace('.', '')
+        self.num_sigfig = len(str(num_size_digits).lstrip('0'))
+
+        return to_p.to_precision(value=size, precision=self.num_sigfig)
+
 
 class ImageViewer(ProcessImage):
     """
@@ -601,12 +630,20 @@ class ImageViewer(ProcessImage):
     """
 
     __slots__ = (
-        'cbox', 'contour_report_frame', 'contour_selectors_frame',
-        'img_label', 'img_window', 'mean_px_size',
-        'size_settings_txt', 'size_std', 'size_cust_entry',
-        'size_cust_label', 'size_std_px_entry',
-        'size_std_px_label', 'size_cust_entry',
-        'size_cust_label', 'size_std_unit', 'slider',
+        'cbox',
+        'contour_report_frame',
+        'contour_selectors_frame',
+        'img_label',
+        'img_window',
+        'mean_px_size',
+        'size_cust_entry',
+        'size_cust_label',
+        'size_settings_txt',
+        'size_std',
+        'size_std_px_entry',
+        'size_std_px_label',
+        'size_std_size',
+        'slider',
     )
 
     def __init__(self):
@@ -688,7 +725,7 @@ class ImageViewer(ProcessImage):
 
         self.size_cust_entry = tk.Entry(self.contour_selectors_frame)
         self.size_cust_label = tk.Label(self.contour_selectors_frame,
-                                       text='Enter custom diameter or length:',
+                                       text="Enter custom standard's size:",
                                        **const.LABEL_PARAMETERS)
 
         # NOTE: dict item order affects the order that windows are
@@ -748,6 +785,8 @@ class ImageViewer(ProcessImage):
         # Allow image label panels in image windows to resize with window.
         #  Note that images don't proportionally resize, just their boundaries;
         #    images will remain anchored at their top left corners.
+        # Configure windows the same as the settings window, to give a yellow
+        #  border when it has focus and light grey when being dragged.
         for _name, toplevel in self.img_window.items():
             toplevel.minsize(200, 100)
             toplevel.protocol('WM_DELETE_WINDOW', self.no_exit_on_x)
@@ -755,6 +794,12 @@ class ImageViewer(ProcessImage):
             toplevel.columnconfigure(1, weight=1)
             toplevel.rowconfigure(0, weight=1)
             toplevel.title(const.WIN_NAME[_name])
+            toplevel.config(
+                bg=const.MASTER_BG,
+                highlightthickness=5,
+                highlightcolor=const.CBLIND_COLOR_TK['yellow'],
+                highlightbackground=const.DRAG_GRAY,
+            )
 
         # The Labels to display scaled images, which are updated using
         #  .configure() for 'image=' in their respective processing methods.
@@ -858,12 +903,12 @@ class ImageViewer(ProcessImage):
         """
         manage.ttk_styles(self)
 
-        def save_settings():
+        def save_results():
             """
             A Button kw "command" caller to avoid messy lambda statements.
             """
-            sizes = ', '.join(str(i) for i in self.sorted_d)
-            # ",".join(str(bit) for bit in self.sorted_d)
+            sizes = ', '.join(str(i) for i in self.sorted_size_list)
+            # ",".join(str(i) for i in self.sorted_size_list)
             utils.save_settings_and_img(img2save=self.circled_ws_segments,
                                         txt2save=self.size_settings_txt + sizes,
                                         caller='sizes')
@@ -885,7 +930,7 @@ class ImageViewer(ProcessImage):
                                **button_params)
 
         save_btn = ttk.Button(text='Save settings & sized image',
-                              command=save_settings,
+                              command=save_results,
                               **button_params)
 
         # Widget grid in the mainloop window.
@@ -1012,8 +1057,8 @@ class ImageViewer(ProcessImage):
         #  click and release movement, bind sliders to call the main
         #  processing and reporting function only on left button release.
         # Most are bound to process_all(), but to speed program
-        # responsiveness when changing the size range, just the sizing
-        # method is called.
+        # responsiveness when changing the size range, only call the
+        # sizing method to avoid image processing overhead.
         # Note that the <if '_lbl'> condition doesn't seem to be needed to
         #   improve performance, but is there for clarity's sake.
         for name, widget in self.slider.items():
@@ -1103,49 +1148,21 @@ class ImageViewer(ProcessImage):
 
     def config_entries(self) -> None:
         """
-        Configure arguments and mouse button bindings for all Entry
-        widgets in the settings (mainloop) window.
-        Provide on-the-fly validation that entries are only digits.
+        Configure arguments and mouse button bindings for Entry widgets
+        in the settings (mainloop) window.
         Called from __init__.
 
         Returns: None
         """
-        def enter_only_digits(entry, action_type) -> bool:
-            """
-            Only digits are accepted and displayed in Entry field.
-            Used with register() to configure Entry kw validatecommand. Example:
-            myentry.configure(
-                validate='key', textvariable=myvalue,
-                validatecommand=(myentry.register(enter_only_digits), '%P', '%d')
-                )
-
-            :param entry: value entered into an Entry() widget (%P).
-            :param action_type: edit action code (%d).
-            :return: True or False
-            """
-            # Need to restrict entries to only digits,
-            #   MUST use action type parameter to allow user to delete first number
-            #   entered then re-enter following backspace deletion.
-            # source: https://stackoverflow.com/questions/4140437/
-            # %P = value of the entry if the edit is allowed
-            # Desired action type 1 is "insert", %d.
-            if action_type == '1' and not entry.isdigit():
-                return False
-
-            return True
 
         self.size_std_px_entry.config(
-            textvariable=self.size_std_px_d,
+            textvariable=self.size_std_px,
             width=6,
-            validate='all',
-            validatecommand=(self.size_std_px_entry.register(enter_only_digits), '%P', '%d')
         )
 
         self.size_cust_entry.config(
-            textvariable=self.custom_size,
+            textvariable=self.custom_size_entry,
             width=6,
-            validate='all',
-            validatecommand=(self.size_cust_entry.register(enter_only_digits), '%P', '%d')
         )
 
         self.size_std_px_entry.bind('<Return>', func=self.process_sizes)
@@ -1169,6 +1186,9 @@ class ImageViewer(ProcessImage):
             padx=5,
             pady=(4, 0),
             sticky=tk.E)
+        east_params_rel = dict(
+            pady=(4, 0),
+            sticky=tk.E)
         slider_grid_params = dict(
             padx=5,
             pady=(4, 0),
@@ -1180,54 +1200,36 @@ class ImageViewer(ProcessImage):
 
         # Widgets gridded in the self.contour_selectors_frame Frame.
         # Sorted by row number:
-        self.slider['alpha_lbl'].grid(column=0, row=0,
-                                      **east_grid_params)
-        self.slider['alpha'].grid(column=1, row=0,
-                                  **slider_grid_params)
+        self.slider['alpha_lbl'].grid(column=0, row=0, **east_grid_params)
+        self.slider['alpha'].grid(column=1, row=0, **slider_grid_params)
 
-        self.slider['beta_lbl'].grid(column=0, row=1,
-                                     **east_grid_params)
-        self.slider['beta'].grid(column=1, row=1,
-                                 **slider_grid_params)
+        self.slider['beta_lbl'].grid(column=0, row=1, **east_grid_params)
+        self.slider['beta'].grid(column=1, row=1, **slider_grid_params)
 
-        self.cbox['morphop_lbl'].grid(column=0, row=2,
-                                      **east_grid_params)
-        self.cbox['morphop'].grid(column=1, row=2,
-                                  **west_grid_params)
+        self.cbox['morphop_lbl'].grid(column=0, row=2, **east_grid_params)
+        self.cbox['morphop'].grid(column=1, row=2, **west_grid_params)
 
         # Note: Put morph shape on same row as morph op.
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['morphshape'].grid(column=1, row=2,
-                                     **east_grid_params)
+        self.cbox['morphshape'].grid(column=1, row=2, **east_grid_params)
 
-        self.slider['noise_k_lbl'].grid(column=0, row=4,
-                                        **east_grid_params)
-        self.slider['noise_k'].grid(column=1, row=4,
-                                    **slider_grid_params)
+        self.slider['noise_k_lbl'].grid(column=0, row=4, **east_grid_params)
+        self.slider['noise_k'].grid(column=1, row=4, **slider_grid_params)
 
-        self.slider['noise_iter_lbl'].grid(column=0, row=5,
-                                           **east_grid_params)
-        self.slider['noise_iter'].grid(column=1, row=5,
-                                       **slider_grid_params)
+        self.slider['noise_iter_lbl'].grid(column=0, row=5, **east_grid_params)
+        self.slider['noise_iter'].grid(column=1, row=5, **slider_grid_params)
 
-        self.cbox['filter_lbl'].grid(column=0, row=6,
-                                     **east_grid_params)
-        self.cbox['filter'].grid(column=1, row=6,
-                                 **west_grid_params)
+        self.cbox['filter_lbl'].grid(column=0, row=6, **east_grid_params)
+        self.cbox['filter'].grid(column=1, row=6, **west_grid_params)
 
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['th_type'].grid(column=1, row=6,
-                                  **east_grid_params)
+        self.cbox['th_type'].grid(column=1, row=6, **east_grid_params)
 
-        self.slider['filter_k_lbl'].grid(column=0, row=9,
-                                         **east_grid_params)
-        self.slider['filter_k'].grid(column=1, row=9,
-                                     **slider_grid_params)
+        self.slider['filter_k_lbl'].grid(column=0, row=9, **east_grid_params)
+        self.slider['filter_k'].grid(column=1, row=9, **slider_grid_params)
 
-        self.cbox['dt_type_lbl'].grid(column=0, row=10,
-                                      **east_grid_params)
-        self.cbox['dt_type'].grid(column=1, row=10,
-                                  **west_grid_params)
+        self.cbox['dt_type_lbl'].grid(column=0, row=10, **east_grid_params)
+        self.cbox['dt_type'].grid(column=1, row=10, **west_grid_params)
 
         # May not be optimized placement for non-Linux platforms, but
         #  is easy to understand.
@@ -1241,41 +1243,27 @@ class ImageViewer(ProcessImage):
                                        sticky=tk.W)
 
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['ws_connect'].grid(column=1, row=10,
-                                     **east_grid_params)
+        self.cbox['ws_connect'].grid(column=1, row=10, **east_grid_params)
 
-        self.slider['plm_mindist_lbl'].grid(column=0, row=12,
-                                            **east_grid_params)
-        self.slider['plm_mindist'].grid(column=1, row=12,
-                                        **slider_grid_params)
+        self.slider['plm_mindist_lbl'].grid(column=0, row=12, **east_grid_params)
+        self.slider['plm_mindist'].grid(column=1, row=12, **slider_grid_params)
 
-        self.slider['plm_footprint_lbl'].grid(column=0, row=13,
-                                              **east_grid_params)
-        self.slider['plm_footprint'].grid(column=1, row=13,
-                                          **slider_grid_params)
+        self.slider['plm_footprint_lbl'].grid(column=0, row=13, **east_grid_params)
+        self.slider['plm_footprint'].grid(column=1, row=13,  **slider_grid_params)
 
+        self.slider['c_min_r_lbl'].grid(column=0, row=17, **east_grid_params)
+        self.slider['c_min_r'].grid(column=1, row=17, **slider_grid_params)
 
-        self.slider['c_min_r_lbl'].grid(column=0, row=17,
-                                          **east_grid_params)
-        self.slider['c_min_r'].grid(column=1, row=17,
-                                      **slider_grid_params)
+        self.slider['c_max_r_lbl'].grid(column=0, row=18, **east_grid_params)
+        self.slider['c_max_r'].grid(column=1, row=18, **slider_grid_params)
 
-        self.slider['c_max_r_lbl'].grid(column=0, row=18,
-                                          **east_grid_params)
-        self.slider['c_max_r'].grid(column=1, row=18,
-                                      **slider_grid_params)
-
-        self.size_std_px_label.grid(column=0, row=19,
-                                    **east_grid_params)
-        self.size_std_px_entry.grid(column=1, row=19,
-                                    **west_grid_params)
+        self.size_std_px_label.grid(column=0, row=19, **east_grid_params)
+        self.size_std_px_entry.grid(column=1, row=19, **west_grid_params)
 
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['size_std'].grid(column=1, row=19,
-                                   **east_grid_params)
+        self.cbox['size_std'].grid(column=1, row=19,  **east_grid_params)
 
-        self.size_cust_entry.grid(column=1, row=20,
-                                 **east_grid_params)
+        self.size_cust_entry.grid(column=1, row=20, **east_grid_params)
 
         # Use update() because update_idletasks() doesn't always work to
         #  get the gridded widgets' correct winfo_width.
@@ -1286,32 +1274,27 @@ class ImageViewer(ProcessImage):
         morphshape_padx = (0, self.cbox['morphshape'].winfo_width() + 10)
         self.cbox['morphshape_lbl'].grid(column=1, row=2,
                                          padx=morphshape_padx,
-                                         pady=(4, 0),
-                                         sticky=tk.E)
+                                         **east_params_rel)
 
         thtype_padx = (0, self.cbox['th_type'].winfo_width() + 10)
         self.cbox['th_type_lbl'].grid(column=1, row=6,
                                       padx=thtype_padx,
-                                      pady=(4, 0),
-                                      sticky=tk.E)
+                                      **east_params_rel)
 
         ws_connect_padx = (0, self.cbox['ws_connect'].winfo_width() + 10)
         self.cbox['ws_connect_lbl'].grid(column=1, row=10,
                                          padx=ws_connect_padx,
-                                         pady=(4, 0),
-                                         sticky=tk.E)
+                                         **east_params_rel)
 
         size_std_padx = (0, self.cbox['size_std'].winfo_width() + 10)
         self.cbox['size_std_lbl'].grid(column=1, row=19,
                                        padx=size_std_padx,
-                                       pady=(4, 0),
-                                       sticky=tk.E)
+                                       **east_params_rel)
 
         custom_std_padx = (0, self.size_cust_entry.winfo_width() + 10)
         self.size_cust_label.grid(column=1, row=20,
                                   padx=custom_std_padx,
-                                pady=(4, 0),
-                                sticky=tk.E)
+                                  **east_params_rel)
 
     def grid_img_labels(self) -> None:
         """
@@ -1340,10 +1323,12 @@ class ImageViewer(ProcessImage):
         Sets and resets selector widgets.
         Called from __init__ and "Reset" button.
         """
+        # Settings are optimized for the default sample1.jpg input.
+
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
         self.slider_val['beta'].set(0)
-        self.slider_val['noise_k'].set(3)
+        self.slider_val['noise_k'].set(5)
         self.slider_val['noise_iter'].set(3)
         self.slider_val['filter_k'].set(5)
         self.slider_val['plm_mindist'].set(40)
@@ -1361,15 +1346,15 @@ class ImageViewer(ProcessImage):
             self.cbox['th_type'].current(0)  # cv2.THRESH_OTSU
 
         self.cbox['dt_type'].current(1)  # cv2.DIST_L2
-        self.cbox['dt_mask_size'].current(1)  # 3
+        self.cbox['dt_mask_size'].current(1)  # cv2.DIST_MASK_3 == 3
         self.cbox['ws_connect'].current(1)
         self.cbox['size_std'].current(0)
 
         # Set to 1 to avoid division by 0.
-        self.size_std_px_d.set('1')
+        self.size_std_px.set('1')
         self.mean_px_size = 1
 
-        self.custom_size.set('0')
+        self.custom_size_entry.set('0')
 
     def set_size_std(self) -> None:
         """
@@ -1380,32 +1365,57 @@ class ImageViewer(ProcessImage):
         Returns: None
         """
 
-        # Need to avoid division by zero if that's what the user entered.
-        #   1 is the default value for this reason.
-        # Pre-validation of Entry() values occurs in config_entries().
-        if self.size_std_px_d.get() in '0, ""':
-            self.size_std_px_d.set('1')
+        custom_size: str = self.custom_size_entry.get()
+        size_std_px: str = self.size_std_px.get()
+        self.size_std: str = self.cbox_val['size_std'].get()
 
-        if self.custom_size.get() == "":
-            self.custom_size.set('0')
+        # source: https://stackoverflow.com/questions/6189956/
+        #   easy-way-of-finding-decimal-places
+        # Numbers w/o a decimal will return -1; 1 is used for round() so
+        #  that all custom sizes are interpreted as floats.
+        # num_custom_dig = custom_size[::-1].find('.')
 
-        self.size_std = self.cbox_val['size_std'].get()
+        # Need to verify the pixel diameter entry:
+        try:
+            int(size_std_px)
+            if int(size_std_px) <= 0:
+                raise ValueError
+        except ValueError:
+            _m = 'Enter only integers > 0 for the pixel diameter'
+            messagebox.showerror(title='Invalid entry',
+                                 detail=_m)
+            self.size_std_px.set('1')
+            size_std_px = '1'
+
         # For clarity, need to not show the custom size Entry widgets when
         #  'Custom' is not selected, but show them when it is.
-        if self.size_std != 'Custom':
-            self.size_std_unit = const.SIZE_STANDARDS[self.size_std]
-            self.custom_size.set('0')
+        # Verify that entries are positive numbers.
+        #  Custom sizes can be entered as integer, float, or power operator.
+        if self.size_std != 'Custom':  # is one of the preset standards
+            self.size_std_size = const.SIZE_STANDARDS[self.size_std]
+            self.custom_size_entry.set('0')
             self.size_cust_entry.grid_remove()
             self.size_cust_label.grid_remove()
+            self.unit_per_px.set(self.size_std_size / int(size_std_px))
+
         else:  # is Custom
             self.size_cust_entry.grid()
             self.size_cust_label.grid()
-            if int(self.custom_size.get()) > 0:
-                self.size_std_unit = int(self.custom_size.get())
-            else:
-                print('Enter an integer >0 for your custom size standard.')
+            try:
+                float(custom_size)
+                self.size_std_size = float(custom_size)
 
-        self.unit_per_px.set(round(self.size_std_unit / int(self.size_std_px_d.get()), 2))
+                if self.size_std_size <= 0:
+                    raise ValueError
+
+                self.unit_per_px.set(self.size_std_size / int(size_std_px))
+
+            except ValueError:
+                _m = "Enter a custom size > 0."
+                messagebox.showerror(title='Invalid entry',
+                                     detail=_m)
+                self.custom_size_entry.set('0')
+                self.size_std_size = 0
 
     def report_results(self) -> None:
         """
@@ -1431,21 +1441,37 @@ class ImageViewer(ProcessImage):
         mask_size = int(self.cbox_val['dt_mask_size'].get())
         p_kernel = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
-        num_selected = len(self.mm_size_list)
-        mean_unit_dia = round(mean(self.mm_size_list), 1)
-        median_unit_dia = round(median(self.mm_size_list))
-        mm_range = f'{min(self.mm_size_list)}--{max(self.mm_size_list)}'
 
         # Only odd kernel integers are used for processing.
         _nk = self.slider_val['noise_k'].get()
-        _fk = self.slider_val['filter_k'].get()
-
         noise_k = _nk + 1 if _nk % 2 == 0 else _nk
 
-        if _fk != 0:
-            filter_k = _fk + 1 if _fk % 2 == 0 else _fk
-        else:
+        _fk = self.slider_val['filter_k'].get()
+        if _fk == 0:
             filter_k = _fk
+        else:
+            filter_k = _fk + 1 if _fk % 2 == 0 else _fk
+
+        if self.size_std in 'None, Custom':
+            unit = 'unk unit'
+        else:  # is a pre-set standard with diameter in millimeters.
+            unit = 'mm'
+
+        # Work up some summary metrics.
+        if self.sorted_size_list:
+            num_selected = len(self.sorted_size_list)
+            unit_per_px: str = to_p.to_precision(value=self.unit_per_px.get(),
+                                                 precision=self.num_sigfig)
+            mean_unit_dia: str = to_p.to_precision(value=mean(self.sorted_size_list),
+                                                   precision=self.num_sigfig)
+            median_unit_dia = median(self.sorted_size_list)
+            mm_range = f'{min(self.sorted_size_list)}--{max(self.sorted_size_list)}'
+        else:
+            num_selected = 'n/a'
+            unit_per_px = 'n/a'
+            mean_unit_dia = 'n/a'
+            median_unit_dia = 'n/a'
+            mm_range = 'n/a'
 
         # Text is formatted for clarity in window, terminal, and saved file.
         space = 23
@@ -1470,13 +1496,12 @@ class ImageViewer(ProcessImage):
             f'{"   watershed:".ljust(space)}connectivity={connections}\n'
             f'{tab}compactness=0.03\n'  # NOTE: change if changes in watershed method.
             f'{divider}\n'
-            f'{"Total distT segments:".ljust(space)}{self.num_dt_segments} <- Match'
-            f'  # selected objects for better sizing.\n'
-            f'{"Circled radius range:".ljust(space)}{c_min_r}--{c_max_r} pixels\n'
+            f'{"# distTrans segments:".ljust(space)}{self.num_dt_segments}\n'
+            f'{"Selected size range:".ljust(space)}{c_min_r}--{c_max_r} pixels, diameter\n'
             f'{"Selected size std.:".ljust(space)}{self.size_std},'
-            f' {self.size_std_unit} unit dia.\n'
-            f'{tab}Pixel diameter entered: {self.size_std_px_d.get()},'
-            f' unit/px factor: {self.unit_per_px.get()}\n'
+            f' {self.size_std_size} {unit} diameter\n'
+            f'{tab}Pixel diameter entered: {self.size_std_px.get()},'
+            f' unit/px factor: {unit_per_px}\n'
             f'{"# Selected objects:".ljust(space)}{num_selected}\n'
             f'{"Object size metrics,".ljust(space)}mean: {mean_unit_dia}, median:'
             f' {median_unit_dia}, range: {mm_range}\n'
@@ -1498,6 +1523,7 @@ class ImageViewer(ProcessImage):
         self.filter_image()
         self.set_size_std()
         self.watershed_segmentation()
+        self.select_and_size(contour_pointset=self.ws_max_cntrs)
         self.report_results()
 
         return event
@@ -1513,7 +1539,7 @@ class ImageViewer(ProcessImage):
         Returns: *event* as a formality; is functionally None.
         """
         self.set_size_std()
-        self.select_and_size(self.ws_max_cntrs)
+        self.select_and_size(contour_pointset=self.ws_max_cntrs)
         self.report_results()
 
         return event

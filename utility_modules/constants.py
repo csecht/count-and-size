@@ -50,7 +50,7 @@ WIN_NAME = {
     'contoured': 'Threshold <- | -> Selected Threshold contours',
     'dist_trans': 'Distances transformed <- | -> Watershed segments',
     'threshold': 'Threshold <- | -> Distances transformed',
-    'ws_contours': 'Size-selected segments, circled, with diameters.',
+    'ws_contours': 'Size-selected objects, circled with diameters.',
 }
 
 # Set ranges for trackbars used to adjust contrast and brightness for
@@ -270,11 +270,11 @@ SIZE_STANDARDS = {
     'None': 1.0,
     'Custom': 0,
     'Puck': 76.2,
-    'Cent': 19.05,
-    'Nickel': 21.21,
-    'Dime': 17.91,
-    'Quarter': 24.26,
-    'Half Dollar': 30.61,
-    'Sacagawea $': 26.49,
+    'Cent': 19.0,
+    'Nickel': 21.2,
+    'Dime': 17.9,
+    'Quarter': 24.3,
+    'Half Dollar': 30.6,
+    'Sacagawea $': 26.5,
     'Eisenhower $': 38.1
 }

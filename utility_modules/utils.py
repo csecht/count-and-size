@@ -8,6 +8,7 @@ scale_img - Resize displayed images.
 display_report - Place a formatted text string into a specified Frame.
 text_array - Generate an image array of text.
 quit_keys -  Error-free and informative exit from the program.
+no_objects_found - A simple message box when a contour pointset is empty.
 """
 # Copyright (C) 2022-2023 C.S. Echt, under GNU General Public License'
 
@@ -17,6 +18,7 @@ import sys
 import tkinter as tk
 from datetime import datetime
 from pathlib import Path
+from tkinter import messagebox
 
 # Third party imports.
 import cv2
@@ -260,3 +262,13 @@ def quit_gui(mainloop: tk.Tk,
         sys.exit(0)
 
     return keybind
+
+def no_objects_found_msg():
+    """
+    Pop-up info when segments not found or their sizes out of range.
+    """
+    _m = ('No objects were found to size. Try changing threshold type.\n'
+          'Use threshold type *_INVERSE for light-on-dark, not for'
+          ' dark-on-light contrasts.\n'
+          'Also, "Contour radius size" sliders may need adjusting.')
+    messagebox.showinfo(detail=_m)

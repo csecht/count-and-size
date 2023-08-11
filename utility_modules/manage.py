@@ -5,6 +5,7 @@ arguments: handles command line arguments
 input_metrics: reads specified input image and derives associated metrics.
 scale: manages the specified scale factor for display of images.
 tk_image: converts scaled cv2 image to a compatible tk.TK image format.
+ttk_styles: configures platform-specific ttk.Style for Buttons and Comboboxes.
 """
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License'
 

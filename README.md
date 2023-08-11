@@ -1,8 +1,8 @@
 # Project: count-and-size
 
-The interactive command line Python program, `size_it.py`, can count and size objects from an image file. Object segmentation is performed with a compact watershed algorithm on a distance transform. Diameters of minimum enclosing circles determine object length. Sizing units are millimeters when a pre-set size standard is used, in pixels when not, or units of the user's choice with a custom standard. The user selects processing parameters from slider bars and drop down menus (see screenshots, below). Multiple windows display each processing step with live updates as parameters change.
+The interactive Python program, `size_it.py`, can count and size objects from an image file. The main utility is to obtain mean, range, and individual sizes for a sample population. Object segmentation is performed with a compact watershed algorithm on a distance transform. Diameters of minimum enclosing circles determine object lengths. Sizing units are millimeters when a pre-set size standard is used, pixels when not, or determined by the user for a custom standard. Image processing parameters are selected from slider bars and drop down menus (see screenshots, below). Multiple windows display each processing step with live updates as parameters change.
 
-This Project was developed to count and size samples of oyster populations at various stages of aquaculture production, but can be used for sampling any type of round or oblong objects on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can be segmented. While segmentation of samples in large or poorly contrasted overlapping clusters is unlikely, such clusters can be screened out by limiting the size range to provide fairly accurate results for the remaining individual objects.
+This Project was developed to count and size samples of oyster populations at various stages of aquaculture production, but can be used for measuring any kind of round or oblong objects on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can usually be segmented. While segmentation of objects in large or poorly contrasted overlapping clusters is unlikely, such clusters can be screened out by limiting the size range to provide fairly accurate metrics for the remaining individual objects.
 
 Sizing standards are chosen from a pull-down menu. Pre-set standards include a hockey puck and various U.S. coins. If "None" is chosen and the pixel diameter entry is kept as 1 (default settings), then displayed sizes are in pixel units. Pre-set standards report sizes as millimeters. Users have an option for a custom size standard that requires entry of the known size in whatever units are needed.
 
@@ -13,6 +13,10 @@ A text file of object sizes and metrics, settings used, and the resulting annota
 <sub>Project inspired by code from Adrian Rosebrock:
 https://pyimagesearch.com/2016/03/28/measuring-size-of-objects-in-an-image-with-opencv/
 https://pyimagesearch.com/2015/11/02/watershed-opencv/
+</sub>
+
+<sub>The to_precision.py module is from:
+https://github.com/BebeSparkelSparkel/to-precision/releases/tag/0.0.0
 </sub>
 
 Development environment was Linux Ubuntu 20.04, Windows 11, and macOS 13.2.
@@ -76,15 +80,6 @@ Alternative commands (system dependent):
 
 As with all repository downloads, it is a good idea to install the requirements in a Python virtual environment to avoid undesired changes in your system's Python library.
 
-### Tips:
-1. For best results, use a well-contrasted objects that are not in large overlapping clusters.
-2. Backgrounds that are of a fine grain are good to use instead of striving for a uniform featureless background because the de-noise and filtering steps will remove small-grained features. See the use of black burlap in the sample1.jpg figure as an example.
-3. Before setting the size standard, adjust parameters to achieve the best separation and counts, then enter the resulting pixel diameter for your selected size standard to convert pixels to units measure. Units are millimeters for the pre-set standards, and whatever you want for custom standards.
-4. Once you select "Custom" for a size standard, an entry field pops up for you to fill in the known size.
-5. Large files can take a while to process, so don't immediately start mashing buttons if things seem to be stalled.
-6. Coin size standards that are shiny can be pre-processed to solid white or black. Or just use a flat black or flat white object as a standard.
-7. Size metrics are most accurate when the size standard is excluded from analysis. The easiest way to do that is to use a standard that is the largest or smallest object in the sample, then adjust the "Contour area size" sliders until just the standard's diameter is excluded.
-
 ### Screenshots:
 All screenshots are from an Ubuntu Linux platform. For Windows and macOS platforms, window and widget look or layout may be slightly different.
 
@@ -133,6 +128,17 @@ Selected size std.:    Sacagawea $, 26.49 unit dia.
 Object size metrics,   mean: 12.1, median: 12, range: 6.9--17.7
 </pre>
 `6.9, 7.9, 7.9, 8.6, 8.9, 9.1, 9.2, 9.3, 9.5, 9.5, 9.6, 9.7, 9.7, 9.8, 9.8, 9.8, 9.9, 9.9, 10.0, 10.1, 10.2, 10.2, 10.2, 10.4, 10.4, 10.4, 10.5, 10.6, 10.6, 10.7, 10.7, 10.8, 10.8, 10.9, 10.9, 10.9, 11.0, 11.0, 11.0, 11.1, 11.1, 11.2, 11.2, 11.2, 11.2, 11.2, 11.3, 11.3, 11.4, 11.4, 11.4, 11.5, 11.5, 11.5, 11.6, 11.6, 11.7, 11.7, 11.8, 11.8, 11.8, 11.8, 11.8, 11.8, 11.9, 12.0, 12.1, 12.1, 12.1, 12.1, 12.1, 12.2, 12.3, 12.3, 12.3, 12.5, 12.5, 12.5, 12.5, 12.5, 12.6, 12.6, 12.7, 12.7, 12.7, 12.7, 12.8, 12.9, 12.9, 13.0, 13.0, 13.1, 13.1, 13.2, 13.2, 13.3, 13.3, 13.4, 13.7, 13.7, 13.9, 13.9, 14.0, 14.1, 14.1, 14.2, 14.2, 14.2, 14.3, 14.3, 14.4, 14.4, 14.4, 14.6, 14.6, 14.6, 14.7, 14.8, 15.0, 15.0, 15.1, 15.2, 15.5, 15.7, 16.2, 16.5, 16.9, 17.1, 17.7`
+
+### Tips:
+1. For best results, use a well-contrasted objects that are not in large overlapping clusters.
+2. Backgrounds that are of a fine grain are good to use instead of striving for a uniform featureless background because the de-noise and filtering steps will remove small-grained features. See the use of black burlap in the sample1.jpg figure as an example.
+3. Before setting the size standard, adjust parameters to achieve the best separation and counts, then enter the resulting pixel diameter for your selected size standard to convert pixels to units measure. Units are millimeters for the pre-set standards, and whatever you want for custom standards.
+4. Once you select "Custom" for a size standard, an entry field pops up for you to fill in the known size.
+5. Large files can take a while to process, so don't immediately start mashing buttons if things seem to be stalled.
+6. Coin size standards that are shiny can be pre-processed to solid white or black. Or just use a flat black or flat white object as a standard.
+7. Fill in the pixel diameter and type of size standard once segmentation and counts are optimized. In addition to making the size ranges (as radii) easier to navigate, it will also provide the most accurate size metrics.
+8. Size metrics are most accurate when the size standard is excluded from analysis. The easiest way to do that is to use a standard that is the largest or smallest object in the sample, then adjust the "Contour area size" sliders until just the standard's diameter is excluded.
+9. Note that when a custom size standard is used, the displayed object sizes and their summary metrics are presented with the same number of significant figures as the entered size value. See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained. Depending on the magnitude of the entered size, displayed values may be in power notation. Saved individual size lists, however, are converted to decimal numbers. When a preset standard is used, sizes are displayed as integers, but saved individual sizes will have one decimal precision.
 
 ### Known Issues:
 Waiting for user feedback.
