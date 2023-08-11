@@ -156,17 +156,15 @@ class ProcessImage(tk.Tk):
             'thresh': tk.PhotoImage(),
         }
 
-        # The image used to display final result and passed to
-        #   utils.save_settings_and_img.
-        self.circled_ws_segments = None
-
         # img_label dictionary is set up in ImageViewer.setup_image_windows(),
         #  but is used in all Class methods here.
-        self.img_label = None
+        self.img_label = {}
 
         self.contrasted_img = const.STUB_ARRAY
         self.reduced_noise_img = const.STUB_ARRAY
         self.filtered_img = const.STUB_ARRAY
+        self.circled_ws_segments = const.STUB_ARRAY
+
         self.num_dt_segments = 0
         self.ws_max_cntrs = []
         self.sorted_size_list = []
@@ -760,10 +758,10 @@ class ImageViewer(ProcessImage):
         Provide a notice in Terminal.
         Called from .protocol() in setup_image_windows().
         """
-        print('This window cannot be closed from the window bar.\n'
+        print('This window cannot be closed from its window bar.\n'
               'It can be minimized to get it out of the way.\n'
-              'You can quit the program from the OpenCV Settings Report'
-              '  window bar or Esc or Ctrl-Q keys.'
+              'You can quit the program from the Count & Size Settings Report'
+              ' window bar or with the Esc or Ctrl-Q keys.'
               )
 
     def setup_image_windows(self) -> None:
@@ -1032,24 +1030,24 @@ class ImageViewer(ProcessImage):
                                                **const.SCALE_PARAMETERS)
 
         self.slider['c_min_r_lbl'].configure(text='Circled radius size\n'
-                                                    'minimum pixels:',
-                                               **const.LABEL_PARAMETERS)
+                                                  'minimum pixels:',
+                                             **const.LABEL_PARAMETERS)
         self.slider['c_max_r_lbl'].configure(text='Circled radius size\n'
-                                                    'maximum pixels:',
-                                               **const.LABEL_PARAMETERS)
+                                                  'maximum pixels:',
+                                             **const.LABEL_PARAMETERS)
 
         # Note: may need to adjust c_lim scaling with image size b/c
         #   large contours cannot be selected if max limit is too small.
         c_min_r = manage.input_metrics()['max_circle_r'] // 8
         c_max_r = manage.input_metrics()['max_circle_r']
         self.slider['c_min_r'].configure(from_=1, to=c_min_r,
-                                           tickinterval=c_min_r / 10,
-                                           variable=self.slider_val['c_min_r'],
-                                           **const.SCALE_PARAMETERS)
+                                         tickinterval=c_min_r / 10,
+                                         variable=self.slider_val['c_min_r'],
+                                         **const.SCALE_PARAMETERS)
         self.slider['c_max_r'].configure(from_=1, to=c_max_r,
-                                           tickinterval=c_max_r / 10,
-                                           variable=self.slider_val['c_max_r'],
-                                           **const.SCALE_PARAMETERS)
+                                         tickinterval=c_max_r / 10,
+                                         variable=self.slider_val['c_max_r'],
+                                         **const.SCALE_PARAMETERS)
 
         # To avoid grabbing all the intermediate values between normal
         #  click and release movement, bind sliders to call the main
@@ -1247,7 +1245,7 @@ class ImageViewer(ProcessImage):
         self.slider['plm_mindist'].grid(column=1, row=12, **slider_grid_params)
 
         self.slider['plm_footprint_lbl'].grid(column=0, row=13, **east_grid_params)
-        self.slider['plm_footprint'].grid(column=1, row=13,  **slider_grid_params)
+        self.slider['plm_footprint'].grid(column=1, row=13, **slider_grid_params)
 
         self.slider['c_min_r_lbl'].grid(column=0, row=17, **east_grid_params)
         self.slider['c_min_r'].grid(column=1, row=17, **slider_grid_params)
@@ -1259,7 +1257,7 @@ class ImageViewer(ProcessImage):
         self.size_std_px_entry.grid(column=1, row=19, **west_grid_params)
 
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['size_std'].grid(column=1, row=19,  **east_grid_params)
+        self.cbox['size_std'].grid(column=1, row=19, **east_grid_params)
 
         self.size_cust_entry.grid(column=1, row=20, **east_grid_params)
 
@@ -1507,6 +1505,7 @@ class ImageViewer(ProcessImage):
 
         utils.display_report(frame=self.contour_report_frame,
                              report=self.size_settings_txt)
+
     def process_all(self, event=None) -> None:
         """
         Runs all image processing methods from ProcessImage().
@@ -1541,6 +1540,7 @@ class ImageViewer(ProcessImage):
         self.report_results()
 
         return event
+
 
 def patience_needed():
     """An informational message to users in a hurry."""
