@@ -91,26 +91,16 @@ def arguments() -> dict:
         sys.exit(0)
 
     if args.color == 'green':
-        args.color = (0, 255, 0)
-    elif args.color == 'yellow':
-        args.color = const.CBLIND_COLOR_CV['yellow']
-    elif args.color == 'purple':
-        args.color = const.CBLIND_COLOR_CV['reddish purple']
-    elif args.color == 'red':
-        args.color = const.CBLIND_COLOR_CV['vermilion']
-    elif args.color == 'orange':
-        args.color = const.CBLIND_COLOR_CV['orange']
-    elif args.color == 'white':
-        args.color = const.CBLIND_COLOR_CV['white']
-    elif args.color == 'black':
-        args.color = const.CBLIND_COLOR_CV['black']
+        color = (0, 255, 0)
+    else:
+        color = const.CBLIND_COLOR_CV[args.color]
 
     arg_dict = {
         'about': args.about,
         'input': args.input,
         'scale': args.scale,
-        'color': args.color,
         'inverse': args.inverse,
+        'color': color,
     }
 
     return arg_dict
