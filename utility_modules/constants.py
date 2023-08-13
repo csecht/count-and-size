@@ -139,13 +139,16 @@ Hex values source: https://www.rgbtohex.net/
 See also: https://matplotlib.org/stable/tutorials/colors/colormaps.html
 """
 # OpenCV uses a BGR (B, G, R) color convention, instead of RGB.
+# Includes key aliases to accommodate easier cmd line --color options
 CBLIND_COLOR_CV = {
     'blue': (178, 114, 0),
     'orange': (0, 159, 230),
     'sky blue': (233, 180, 86),
     'blueish green': (115, 158, 0),
     'vermilion': (0, 94, 213),
+    'red': (0, 94, 213),
     'reddish purple': (167, 121, 204),
+    'purple': (167, 121, 204),
     'yellow': (66, 228, 240),
     'black': (0, 0, 0),
     'white': (255, 255, 255),
@@ -158,6 +161,7 @@ CBLIND_COLOR_TK = {
     'sky blue': '#56B4E9',
     'blueish green': '#009E73',
     'vermilion': '#D55E00',
+    'red': '#D55E00',
     'reddish purple': '#CC79A7',
     'yellow': '#F0E442',
     'black': 'black',
