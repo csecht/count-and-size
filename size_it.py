@@ -117,7 +117,6 @@ class ProcessImage(tk.Tk):
         # Note: The matching selector widgets for the following
         #  control variables are in ContourViewer __init__.
         self.slider_val = {
-            # Used for contours.
             'alpha': tk.DoubleVar(),
             'beta': tk.IntVar(),
             'noise_k': tk.IntVar(),
@@ -904,7 +903,6 @@ class ImageViewer(ProcessImage):
             A Button kw "command" caller to avoid messy lambda statements.
             """
             sizes = ', '.join(str(i) for i in self.sorted_size_list)
-            # ",".join(str(i) for i in self.sorted_size_list)
             utils.save_settings_and_img(img2save=self.circled_ws_segments,
                                         txt2save=self.size_settings_txt + sizes,
                                         caller='sizes')
@@ -1460,7 +1458,8 @@ class ImageViewer(ProcessImage):
                                                  precision=self.num_sigfig)
             mean_unit_dia: str = to_p.to_precision(value=mean(self.sorted_size_list),
                                                    precision=self.num_sigfig)
-            median_unit_dia = median(self.sorted_size_list)
+            median_unit_dia: str = to_p.to_precision(value=median(self.sorted_size_list),
+                                                     precision=self.num_sigfig)
             mm_range = f'{min(self.sorted_size_list)}--{max(self.sorted_size_list)}'
         else:
             num_selected = 'n/a'
