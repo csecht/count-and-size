@@ -886,12 +886,27 @@ class ImageViewer(ProcessImage):
         inverse_no.select()
 
         manage.ttk_styles(self)
+
+        def call_start(event=None) -> None:
+            """Remove this start window, then call the suite of methods
+            to get things going.
+            Called from process_now_button and Return/Enter keys.
+            Args:
+                event: The implicit key action event, when used.
+            Returns: *event* as a formality; is functionally None.
+            """
+            start_win.destroy()
+            self.start_now()
+            return event
+
         process_now_button = ttk.Button(master=start_win,
                                         text='Process now',
                                         style='My.TButton',
                                         width=0,
-                                        command=lambda: self.start_now(start_win),
-                                        )
+                                        command=call_start)
+        # Allow return/enter keys to mimic the process_now button.
+        start_win.bind('<Return>', func=call_start)
+        start_win.bind('<KP_Enter>', func=call_start)
 
         # Window grid settings; sorted by row.
         padding = dict(padx=6, pady=6)
@@ -911,17 +926,12 @@ class ImageViewer(ProcessImage):
 
         process_now_button.grid(row=3, column=1, **padding, sticky=tk.E)
 
-    def start_now(self, calling_window: tk.Toplevel):
+    def start_now(self) -> None:
         """
         Initiate the processing pipeline by setting up and configuring
         all settings widgets.
-        Called from setup_start_window() "Process now" button.
-
-        Args:
-            calling_window: The calling toplevel that needs removal.
+        Called from setup_start_window().
         """
-        # Remove the start window.
-        calling_window.destroy()
 
         self.setup_image_windows()
         self.setup_settings_window()
