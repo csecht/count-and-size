@@ -1060,15 +1060,7 @@ class ImageViewer(ProcessImage):
         # Finally, show mainloop window that was withdrawn at program start
         #  in initialize_main_win(). Deiconifying once everything is
         #  configured shortens the visual transition time.
-        # Need to make settings window topmost to place it above the
-        #   app window.
-        # In macOS, -topmost places Combobox selections BEHIND the window,
-        #    but focus_force() makes it visible; must be a tkinter bug?
-        self.wm_deiconify()
-        if const.MY_OS in 'lin, win':
-            self.attributes('-topmost', True)
-        else:  # is macOS
-            self.focus_force()
+        app.wm_deiconify()
 
     @staticmethod
     def setup_explanation() -> None:
@@ -1445,7 +1437,7 @@ class ImageViewer(ProcessImage):
                                            pady=(4, 0),
                                            sticky=tk.W)
         self.cbox['dt_mask_size'].grid(column=1, row=10,
-                                       padx=(200, 0),
+                                       padx=(215, 0),
                                        pady=(4, 0),
                                        sticky=tk.W)
 
@@ -1758,6 +1750,7 @@ class ImageViewer(ProcessImage):
         self.report_results()
 
         return event
+
 
 if __name__ == "__main__":
     # Program exits here if any of the module checks fail or if the
