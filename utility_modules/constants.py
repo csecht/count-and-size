@@ -2,8 +2,8 @@
 Constants used throughout main script and modules:
 ALPHA_MAX
 BETA_MAX
-CBLIND_COLOR_CV
-CBLIND_COLOR_TK
+COLORS_CV
+COLORS_TK
 CONTOUR_METHOD
 CONTOUR_MODE
 CV_BORDER
@@ -139,43 +139,44 @@ Hex values source: https://www.rgbtohex.net/
 See also: https://matplotlib.org/stable/tutorials/colors/colormaps.html
 """
 # OpenCV uses a BGR (B, G, R) color convention, instead of RGB.
-# Includes key aliases to accommodate easier cmd line --color options
-CBLIND_COLOR_CV = {
+COLORS_CV = {
     'blue': (178, 114, 0),
     'orange': (0, 159, 230),
     'sky blue': (233, 180, 86),
     'blueish green': (115, 158, 0),
     'vermilion': (0, 94, 213),
-    'red': (0, 94, 213),
     'reddish purple': (167, 121, 204),
     'purple': (167, 121, 204),
     'yellow': (66, 228, 240),
     'black': (0, 0, 0),
     'white': (255, 255, 255),
+    'red': (0, 0, 255),
+    'green': (0, 255, 0)
 }
 
-CBLIND_COLOR_TK = {
+COLORS_TK = {
     'blue': '#0072B2',
-    'dark blue': 'MidnightBlue',
     'orange': '#E69F00',
+    'dark blue': 'MidnightBlue',
     'sky blue': '#56B4E9',
     'blueish green': '#009E73',
     'vermilion': '#D55E00',
-    'red': '#D55E00',
     'reddish purple': '#CC79A7',
     'yellow': '#F0E442',
     'black': 'black',
     'white': 'white',
     'tk_white': '',  # system's default, conditional on MY_OS
+    'red': 'red1',
+    'green':'green1',
 }
 
 # Need tk to match system's default white shade.
 if MY_OS == 'dar':  # macOS
-    CBLIND_COLOR_TK['tk_white'] = 'white'
+    COLORS_TK['tk_white'] = 'white'
 elif MY_OS == 'lin':  # Linux (Ubuntu)
-    CBLIND_COLOR_TK['tk_white'] = 'grey85'
+    COLORS_TK['tk_white'] = 'grey85'
 else:  # platform is 'win'  # Windows (10)
-    CBLIND_COLOR_TK['tk_white'] = 'grey95'
+    COLORS_TK['tk_white'] = 'grey95'
 
 STD_CONTOUR_COLOR = {'green': (0, 255, 0)}
 
@@ -199,10 +200,10 @@ FONT_TYPE = cv2.FONT_HERSHEY_SIMPLEX
 if MY_OS == 'lin':
     WIDGET_FONT = 'TkTooltipFont', 8
     radio_params = dict(
-        fg=CBLIND_COLOR_TK['yellow'],
+        fg=COLORS_TK['yellow'],
         activebackground='gray50',  # Default is 'white'.
-        activeforeground=CBLIND_COLOR_TK['sky blue'],  # Default is 'black'.
-        selectcolor=CBLIND_COLOR_TK['dark blue'])
+        activeforeground=COLORS_TK['sky blue'],  # Default is 'black'.
+        selectcolor=COLORS_TK['dark blue'])
 elif MY_OS == 'win':
     WIDGET_FONT = 'TkTooltipFont', 8
     radio_params = dict(fg='black')
@@ -213,7 +214,7 @@ else:  # is macOS
 MASTER_BG = 'gray80'
 DARK_BG = 'gray20'
 DRAG_GRAY = 'gray65'
-WIDGET_FG = CBLIND_COLOR_TK['yellow']
+WIDGET_FG = COLORS_TK['yellow']
 
 LABEL_PARAMETERS = dict(
     font=WIDGET_FONT,
@@ -227,7 +228,7 @@ SCALE_PARAMETERS = dict(
     showvalue=False,
     sliderlength=20,
     font=WIDGET_FONT,
-    bg=CBLIND_COLOR_TK['dark blue'],
+    bg=COLORS_TK['dark blue'],
     fg=WIDGET_FG,
     troughcolor=MASTER_BG,
 )
@@ -245,7 +246,7 @@ RADIO_PARAMETERS = dict(
 if MY_OS == 'lin':
     COMBO_PARAMETERS = dict(
         font=WIDGET_FONT,
-        foreground=CBLIND_COLOR_TK['yellow'],
+        foreground=COLORS_TK['yellow'],
         takefocus=False,
         state='readonly')
 elif MY_OS == 'win':  # is Windows

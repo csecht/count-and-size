@@ -46,7 +46,7 @@ try:
     import cv2
     import numpy as np
     import tkinter as tk
-    from tkinter import ttk, messagebox
+    from tkinter import ttk, messagebox, filedialog
     from skimage.segmentation import watershed
     from skimage.feature import peak_local_max
     from scipy import ndimage
@@ -96,8 +96,11 @@ class ProcessImage(tk.Tk):
         'contrasted_img',
         'custom_size_entry',
         'filtered_img',
+        'gray_img',
         'img_label',
+        'input_img',
         'mean_px_size',
+        'metrics',
         'num_dt_segments',
         'reduced_noise_img',
         'size_std',
@@ -126,6 +129,7 @@ class ProcessImage(tk.Tk):
             'plm_footprint': tk.IntVar(),
             'c_min_r': tk.IntVar(),
             'c_max_r': tk.IntVar(),
+            'scale': tk.DoubleVar(),
         }
         self.cbox_val = {
             'morphop': tk.StringVar(),
@@ -137,7 +141,10 @@ class ProcessImage(tk.Tk):
             'ws_connect': tk.StringVar(),
             'size_std': tk.StringVar(),
             'size_custom': tk.StringVar(),
+            'color': tk.StringVar(),
         }
+
+        self.do_inverse_th = tk.StringVar()
 
         # Arrays of images to be processed. When used within a method,
         #  the purpose of self.tkimg[*] as an instance attribute is to
@@ -155,10 +162,15 @@ class ProcessImage(tk.Tk):
             'thresh': tk.PhotoImage(),
         }
 
+        # metrics dict is populated in ImageViewer.setup_start_window()
+        self.metrics = {}
+
         # img_label dictionary is set up in ImageViewer.setup_image_windows(),
         #  but is used in all Class methods here.
         self.img_label = {}
 
+        self.input_img = const.STUB_ARRAY
+        self.gray_img = const.STUB_ARRAY
         self.contrasted_img = const.STUB_ARRAY
         self.reduced_noise_img = const.STUB_ARRAY
         self.filtered_img = const.STUB_ARRAY
@@ -177,7 +189,7 @@ class ProcessImage(tk.Tk):
 
     def adjust_contrast(self) -> None:
         """
-        Adjust contrast of the input GRAY_IMG image.
+        Adjust contrast of the input self.gray_img image.
         Updates contrast and brightness via alpha and beta sliders.
         Displays contrasted and redux noise images.
         Called by process_all(). Calls manage.tk_image().
@@ -191,7 +203,7 @@ class ProcessImage(tk.Tk):
 
         self.contrasted_img = (
             cv2.convertScaleAbs(
-                src=GRAY_IMG,
+                src=self.gray_img,
                 alpha=self.slider_val['alpha'].get(),
                 beta=self.slider_val['beta'].get(),
             )
@@ -199,8 +211,10 @@ class ProcessImage(tk.Tk):
 
         # Using .configure to update image avoids the white flash each time an
         #  image is updated were a Label() to be re-made here each call.
-        self.tkimg['contrast'] = manage.tk_image(image=self.contrasted_img,
-                                                 colorspace='bgr')
+        self.tkimg['contrast'] = manage.tk_image(
+            image=self.contrasted_img,
+            scale_coef=self.slider_val['scale'].get()
+        )
         self.img_label['contrast'].configure(image=self.tkimg['contrast'])
 
     def reduce_noise(self) -> None:
@@ -244,8 +258,10 @@ class ProcessImage(tk.Tk):
             borderType=border_type
         )
 
-        self.tkimg['redux'] = manage.tk_image(image=self.reduced_noise_img,
-                                              colorspace='bgr')
+        self.tkimg['redux'] = manage.tk_image(
+            image=self.reduced_noise_img,
+            scale_coef=self.slider_val['scale'].get()
+        )
         self.img_label['redux'].configure(image=self.tkimg['redux'])
 
     def filter_image(self) -> None:
@@ -308,8 +324,10 @@ class ProcessImage(tk.Tk):
                                     borderType=border_type)
 
         # NOTE: filtered_img dtype is uint8
-        self.tkimg['filter'] = manage.tk_image(image=filtered_img,
-                                               colorspace='bgr')
+        self.tkimg['filter'] = manage.tk_image(
+            image=filtered_img,
+            scale_coef=self.slider_val['scale'].get()
+        )
         self.img_label['filter'].configure(image=self.tkimg['filter'])
 
         self.filtered_img = filtered_img
@@ -437,13 +455,17 @@ class ProcessImage(tk.Tk):
                          lineType=cv2.LINE_AA)
 
         # Put thresh image panel next to filtered panel in the same window.
-        self.tkimg['thresh'] = manage.tk_image(image=thresh_img,
-                                               colorspace='bgr')
+        self.tkimg['thresh'] = manage.tk_image(
+            image=thresh_img,
+            scale_coef=self.slider_val['scale'].get()
+        )
         self.img_label['thresh'].configure(image=self.tkimg['thresh'])
 
         # Dist trans and watershed images are in same window
-        self.tkimg['dist_trans'] = manage.tk_image(image=distances_img,
-                                                   colorspace='bgr')
+        self.tkimg['dist_trans'] = manage.tk_image(
+            image=distances_img,
+            scale_coef=self.slider_val['scale'].get()
+        )
         self.img_label['dist_trans'].configure(image=self.tkimg['dist_trans'])
 
         # Note: use watershed_gray or watershed_img with skimage watershed,
@@ -451,7 +473,8 @@ class ProcessImage(tk.Tk):
         # watershed_img = np.uint8(watershed_img)
         self.tkimg['watershed'] = manage.tk_image(
             image=watershed_gray,  # better with skimage watershed.
-            colorspace='bgr')
+            scale_coef=self.slider_val['scale'].get()
+        )
         self.img_label['watershed'].configure(image=self.tkimg['watershed'])
 
         # Now draw enclosing circles around watershed segments to get sizes.
@@ -472,13 +495,15 @@ class ProcessImage(tk.Tk):
         """
         # Note that circled_ws_segments is an instance attribute because
         #  it is the result image for utils.save_settings_and_img().
-        self.circled_ws_segments = INPUT_IMG.copy()
+        self.circled_ws_segments = self.input_img.copy()
         self.sorted_size_list.clear()
 
+        color = self.cbox_val['color'].get()
+
         selected_sizes: List[float] = []
-        preferred_color: tuple = arguments['color']
-        font_scale: float = input_metrics['font_scale']
-        line_thickness: int = input_metrics['line_thickness']
+        preferred_color: tuple = const.COLORS_CV[color]
+        font_scale: float = self.metrics['font_scale']
+        line_thickness: int = self.metrics['line_thickness']
 
         # The size range slider values are radii pixels. This is done b/c:
         #  1) Displayed values have fewer digits, so a cleaner slide bar.
@@ -488,8 +513,8 @@ class ProcessImage(tk.Tk):
         c_area_max = self.slider_val['c_max_r'].get() ** 2 * np.pi
 
         # Set coordinate point limits to find contours along a file border.
-        bottom_edge = GRAY_IMG.shape[0] - 1
-        right_edge = GRAY_IMG.shape[1] - 1
+        bottom_edge = self.gray_img.shape[0] - 1
+        right_edge = self.gray_img.shape[1] - 1
 
         # Exclude contours not in the specified size range.
         # Exclude contours that have a coordinate point intersecting the img edge.
@@ -570,8 +595,10 @@ class ProcessImage(tk.Tk):
             utils.no_objects_found_msg()
 
         # Circled sized objects are in their own window.
-        self.tkimg['ws_circled'] = manage.tk_image(image=self.circled_ws_segments,
-                                                   colorspace='bgr')
+        self.tkimg['ws_circled'] = manage.tk_image(
+            image=self.circled_ws_segments,
+            scale_coef=self.slider_val['scale'].get()
+        )
         self.img_label['ws_circled'].configure(image=self.tkimg['ws_circled'])
 
     def custom_sigfig(self, size: float) -> str:
@@ -603,7 +630,10 @@ class ImageViewer(ProcessImage):
     A suite of methods to display cv contours based on chosen settings
     and parameters as applied in ProcessImage().
     Methods:
-    no_exit_on_x
+    manage_main_win
+    get_input
+    setup_start_window
+    start_now
     setup_image_windows
     setup_settings_window
     setup_explanation
@@ -640,12 +670,17 @@ class ImageViewer(ProcessImage):
 
     def __init__(self):
         super().__init__()
+
+        self.manage_main_win()
+        self.input_file = ''
+        self.get_input()
+
         self.contour_report_frame = tk.Frame()
         self.contour_selectors_frame = tk.Frame()
         # self.configure(bg='green')  # for development.
 
         # Note: The matching control variable attributes for the
-        #   following 14 selector widgets are in ProcessImage __init__.
+        #   following selector widgets are in ProcessImage __init__.
         self.slider = {
             'alpha': tk.Scale(master=self.contour_selectors_frame),
             'alpha_lbl': tk.Label(master=self.contour_selectors_frame),
@@ -720,24 +755,174 @@ class ImageViewer(ProcessImage):
                                         text="Enter custom standard's size:",
                                         **const.LABEL_PARAMETERS)
 
-        # NOTE: dict item order affects the order that windows are
-        #  drawn, so here use an inverse order of processing steps to
-        #  arrange windows overlaid from first to last, e.g.,
-        #  input on bottom, sized or shaped layered on top.
-        # NOTE: keys here must match corresponding keys in const.WIN_NAME.
-        self.img_window = {
-            'ws_contours': tk.Toplevel(),
-            'dist_trans': tk.Toplevel(),
-            'filtered': tk.Toplevel(),
-            'contrasted': tk.Toplevel(),
-            'input': tk.Toplevel(),
-        }
+        self.img_window = {}
 
         # Is an instance attribute here only because it is used in call
         #  to utils.save_settings_and_img() from the Save button.
         self.size_settings_txt = ''
 
-        # Put everything in place, establish initial settings and displays.
+    def manage_main_win(self):
+        """
+        For clarity, remove from view the Tk mainloop window created
+        by the inherited ProcessImage() Class. But, to make window
+        transitions smoother, first position it where it needs to go.
+        Set this window toward the top right corner of the screen
+        so that it doesn't cover up the img windows; also so that
+        the bottom of the window is, hopefully, not below the bottom
+        of the screen.
+        """
+
+        # Make geometry offset a function of the screen width.
+        #  This is needed b/c of differences among platforms' window
+        #  managers with how they place windows.
+        w_offset = int(self.winfo_screenwidth() * 0.55)
+        self.geometry(f'+{w_offset}+0')
+        self.wm_withdraw()
+
+    def get_input(self) -> None:
+        """
+        Initial step in startup is to get the input image file path
+        using a filedialog widget.
+        Returns: None
+        """
+
+        self.input_file = filedialog.askopenfilename(
+            parent=self,
+            title='Select input image',
+            filetypes=[('JPG', '*.jpg'),
+                       ('JPG', '*.jpeg'),
+                       ('JPG', '*.JPEG'),
+                       ('PNG', '*.png'),
+                       ('TIFF', '*.tiff'),
+                       ('TIFF', '*.tif')],
+            initialdir='images',
+        )
+
+        if self.input_file:
+            self.input_img = cv2.imread(self.input_file)
+            self.gray_img = cv2.cvtColor(self.input_img, cv2.COLOR_RGBA2GRAY)
+            self.metrics = manage.input_metrics(self.input_img)
+            self.setup_start_window()
+        else:
+            utils.quit_gui(self)
+
+    def setup_start_window(self) -> None:
+        """
+        Once an input file is identified, make a Toplevel and widgets
+        that set the initial parameters of display scale, font color,
+        and threshold type (inverse vs. not). Uses a button to trigger
+        subsequent image processing steps. Window is destroyed once
+        button is used.
+        """
+
+        # Window basics:
+        start_win = tk.Toplevel()
+        start_win.title('Set run settings')
+        start_win.minsize(width=200, height=100)
+        start_win.resizable(width=True, height=False)
+        start_win.config(relief='raised',
+                         bg=const.DARK_BG,
+                         highlightthickness=3,
+                         highlightcolor=const.COLORS_TK['yellow'],
+                         highlightbackground=const.DRAG_GRAY)
+
+        # Need to allow complete tk mainloop shutdown with system's
+        #   window manager 'close' icon.
+        start_win.protocol(name='WM_DELETE_WINDOW',
+                           func=lambda: utils.quit_gui(app))
+        self.bind_all('<Escape>', lambda _: utils.quit_gui(app))
+        self.bind_all('<Control-q>', lambda _: utils.quit_gui(app))
+
+        # Allow widget resizing horizontally; vertical is fixed.
+        start_win.columnconfigure(index=0, weight=1)
+        start_win.columnconfigure(index=1, weight=1)
+
+        # Window widgets:
+        # Provide a window header with file path and pixel dimensions.
+        file_label = tk.Label(
+            master=start_win,
+            text=f'Image: {self.input_file}\n'
+                 f'size:{self.input_img.shape[0]}x{self.input_img.shape[1]}'
+                 ' (Larger files need a smaller scale factor.)',
+            **const.LABEL_PARAMETERS)
+
+        scale_label = tk.Label(master=start_win,
+                               text='Scale image display to:',
+                               **const.LABEL_PARAMETERS)
+        scale_slider = tk.Scale(master=start_win,
+                                from_=0.05, to=2,
+                                resolution=0.05,
+                                tickinterval=0.2,
+                                variable=self.slider_val['scale'],
+                                length=int(self.winfo_screenwidth() * 0.2),
+                                **const.SCALE_PARAMETERS)
+        self.slider_val['scale'].set(0.5)
+
+        color_label = tk.Label(master=start_win,
+                               text='Annotation font color:',
+                               **const.LABEL_PARAMETERS)
+        color_cbox = ttk.Combobox(master=start_win,
+                                  values=list(const.COLORS_CV.keys()),
+                                  textvariable=self.cbox_val['color'],
+                                  width=12,
+                                  height=14,
+                                  **const.COMBO_PARAMETERS)
+        color_cbox.current(0)  # blue
+
+        inverse_label = tk.Label(master=start_win,
+                                 text='Use inverse threshold type for\n'
+                                      'dark objects on light background?',
+                                 **const.LABEL_PARAMETERS)
+        inverse_yes = tk.Radiobutton(master=start_win,
+                                     text='Yes',
+                                     value='yes',
+                                     variable=self.do_inverse_th,
+                                     **const.RADIO_PARAMETERS)
+        inverse_no = tk.Radiobutton(start_win,
+                                    text='No',
+                                    value='no',
+                                    variable=self.do_inverse_th,
+                                    ** const.RADIO_PARAMETERS)
+        inverse_no.select()
+
+        manage.ttk_styles(self)
+        process_now_button = ttk.Button(master=start_win,
+                                        text='Process now',
+                                        style='My.TButton',
+                                        width=0,
+                                        command=lambda: self.start_now(start_win),
+                                        )
+
+        # Window grid settings; sorted by row.
+        padding = dict(padx=6, pady=6)
+
+        file_label.grid(row=0, column=0,
+                        **padding, columnspan=2, sticky=tk.EW)
+
+        scale_label.grid(row=1, column=0, **padding, sticky=tk.E)
+        scale_slider.grid(row=1, column=1, **padding, sticky=tk.W)
+
+        color_label.grid(row=2, column=0, **padding, sticky=tk.E)
+        color_cbox.grid(row=2, column=1, **padding, sticky=tk.W)
+
+        inverse_label.grid(row=3, column=0, **padding, sticky=tk.E)
+        inverse_no.grid(row=3, column=1, **padding, sticky=tk.W)
+        inverse_yes.grid(row=3, column=1, padx=(50, 0), sticky=tk.W)
+
+        process_now_button.grid(row=3, column=1, **padding, sticky=tk.E)
+
+    def start_now(self, calling_window: tk.Toplevel):
+        """
+        Initiate the processing pipeline by setting up and configuring
+        all settings widgets.
+        Called from setup_start_window() "Process now" button.
+
+        Args:
+            calling_window: The calling toplevel that needs removal.
+        """
+        # Remove the start window.
+        calling_window.destroy()
+
         self.setup_image_windows()
         self.setup_settings_window()
         self.setup_explanation()
@@ -747,21 +932,8 @@ class ImageViewer(ProcessImage):
         self.config_entries()
         self.set_defaults()
         self.grid_widgets()
-        self.set_size_std()  # Call here to remove size_cust_label at startup.
         self.grid_img_labels()
         self.display_input_images()
-
-    @staticmethod
-    def no_exit_on_x():
-        """
-        Provide a notice in Terminal.
-        Called from .protocol() in setup_image_windows().
-        """
-        print('This window cannot be closed from its window bar.\n'
-              'It can be minimized to get it out of the way.\n'
-              'You can quit the program from the Count & Size Settings Report'
-              ' window bar or with the Esc or Ctrl-Q keys.'
-              )
 
     def setup_image_windows(self) -> None:
         """
@@ -770,6 +942,26 @@ class ImageViewer(ProcessImage):
 
         Returns: None
         """
+
+        def exit_info():
+            """
+            Provide a notice in Terminal.
+            Called from .protocol() in setup_image_windows().
+            """
+            print('This window cannot be closed from its window bar.\n'
+                  'It can be minimized to get it out of the way.\n'
+                  'You can quit the program from the Count & Size Settings Report'
+                  ' window bar or with the Esc or Ctrl-Q keys.')
+
+        # NOTE: keys here must match corresponding keys in const.WIN_NAME.
+        # Dictionary item order determines stack order of windows.
+        self.img_window = {
+            'input': tk.Toplevel(),
+            'contrasted': tk.Toplevel(),
+            'filtered': tk.Toplevel(),
+            'dist_trans': tk.Toplevel(),
+            'ws_contours': tk.Toplevel(),
+        }
 
         # Prevent user from inadvertently resizing a window too small to use.
         # Need to disable default window Exit in display windows b/c
@@ -780,8 +972,9 @@ class ImageViewer(ProcessImage):
         # Configure windows the same as the settings window, to give a yellow
         #  border when it has focus and light grey when being dragged.
         for _name, toplevel in self.img_window.items():
+            toplevel.wm_withdraw()
             toplevel.minsize(width=200, height=100)
-            toplevel.protocol(name='WM_DELETE_WINDOW', func=self.no_exit_on_x)
+            toplevel.protocol(name='WM_DELETE_WINDOW', func=exit_info)
             toplevel.columnconfigure(index=0, weight=1)
             toplevel.columnconfigure(index=1, weight=1)
             toplevel.rowconfigure(index=0, weight=1)
@@ -789,7 +982,7 @@ class ImageViewer(ProcessImage):
             toplevel.config(
                 bg=const.MASTER_BG,
                 highlightthickness=5,
-                highlightcolor=const.CBLIND_COLOR_TK['yellow'],
+                highlightcolor=const.COLORS_TK['yellow'],
                 highlightbackground=const.DRAG_GRAY,
             )
 
@@ -819,22 +1012,16 @@ class ImageViewer(ProcessImage):
         configurations, and grids for contour settings and reporting frames.
         """
 
-        #  Need to set this window toward the top right corner of the screen
-        #  so that it doesn't cover up the img windows; also so that
-        #  the bottom of the window is, hopefully, not below the bottom
-        #  of the screen. Make geometry offset a function of the screen width.
-        #  This is needed b/c of differences among platforms' window managers
-        #  for how they place windows.
-        w_offset = int(self.winfo_screenwidth() * 0.55)
-        self.geometry(f'+{w_offset}+0')
+        app.title('Count & Size Settings Report')
+        app.resizable(width=True, height=False)
 
         # Color in all the master (app) Frame and use a yellow border;
         #   border highlightcolor changes to grey with loss of focus.
         self.config(
             bg=const.MASTER_BG,
-            # bg=const.CBLIND_COLOR_TK['sky blue'],  # for development
+            # bg=const.COLORS_TK['sky blue'],  # for development
             highlightthickness=5,
-            highlightcolor=const.CBLIND_COLOR_TK['yellow'],
+            highlightcolor=const.COLORS_TK['yellow'],
             highlightbackground=const.DRAG_GRAY,
         )
 
@@ -847,7 +1034,7 @@ class ImageViewer(ProcessImage):
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
         self.contour_report_frame.configure(relief='flat',
-                                            bg=const.CBLIND_COLOR_TK['sky blue'],
+                                            bg=const.COLORS_TK['sky blue'],
                                             )  # bg doesn't show with grid sticky EW.
 
         self.contour_selectors_frame.configure(relief='raised',
@@ -869,6 +1056,19 @@ class ImageViewer(ProcessImage):
                                           padx=5, pady=(0, 5),
                                           ipadx=4, ipady=4,
                                           sticky=tk.EW)
+
+        # Finally, show mainloop window that was withdrawn at program start
+        #  in initialize_main_win(). Deiconifying once everything is
+        #  configured shortens the visual transition time.
+        # Need to make settings window topmost to place it above the
+        #   app window.
+        # In macOS, -topmost places Combobox selections BEHIND the window,
+        #    but focus_force() makes it visible; must be a tkinter bug?
+        self.wm_deiconify()
+        if const.MY_OS in 'lin, win':
+            self.attributes('-topmost', True)
+        else:  # is macOS
+            self.focus_force()
 
     @staticmethod
     def setup_explanation() -> None:
@@ -903,6 +1103,7 @@ class ImageViewer(ProcessImage):
             A Button kw "command" caller to avoid messy lambda statements.
             """
             sizes = ', '.join(str(i) for i in self.sorted_size_list)
+            # ",".join(str(i) for i in self.sorted_size_list)
             utils.save_settings_and_img(img2save=self.circled_ws_segments,
                                         txt2save=self.size_settings_txt + sizes,
                                         caller='sizes')
@@ -953,7 +1154,17 @@ class ImageViewer(ProcessImage):
         # Note: here and throughout, use 'self' to scope the
         #  ImageTk.PhotoImage image in the Class, otherwise it will/may
         #  not display b/c of garbage collection.
-        self.tkimg['input'] = manage.tk_image(INPUT_IMG, colorspace='bgr')
+
+        # All image windows were withdrawn upon their creation in
+        #  setup_image_windows() to keep things tidy. Now is the time to
+        #  show them.
+        for _, toplevel in self.img_window.items():
+            toplevel.wm_deiconify()
+
+        self.tkimg['input'] = manage.tk_image(
+            self.input_img,
+            scale_coef=self.slider_val['scale'].get()
+        )
         self.img_label['input'].configure(image=self.tkimg['input'])
         self.img_label['input'].grid(column=0, row=0, padx=5, pady=5)
 
@@ -1036,8 +1247,8 @@ class ImageViewer(ProcessImage):
 
         # Note: may need to adjust c_lim scaling with image size b/c
         #   large contours cannot be selected if max limit is too small.
-        c_min_r = manage.input_metrics()['max_circle_r'] // 8
-        c_max_r = manage.input_metrics()['max_circle_r']
+        c_min_r = self.metrics['max_circle_r'] // 8
+        c_max_r = self.metrics['max_circle_r']
         self.slider['c_min_r'].configure(from_=1, to=c_min_r,
                                          tickinterval=c_min_r / 10,
                                          variable=self.slider_val['c_min_r'],
@@ -1289,6 +1500,8 @@ class ImageViewer(ProcessImage):
         self.size_cust_label.grid(column=1, row=20,
                                   padx=custom_std_padx,
                                   **east_params_rel)
+        # Remove initially; show only when Custom size is needed.
+        self.size_cust_label.grid_remove()
 
     def grid_img_labels(self) -> None:
         """
@@ -1330,14 +1543,17 @@ class ImageViewer(ProcessImage):
         self.slider_val['c_min_r'].set(8)
         self.slider_val['c_max_r'].set(300)
 
+        if self.do_inverse_th.get() == 'yes':
+            self.cbox['th_type'].current(1)
+            self.cbox_val['th_type'].set('cv2.THRESH_OTSU_INVERSE')
+        else:
+            self.cbox['th_type'].current(0)
+            self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
+
         # Set/Reset Combobox widgets.
         self.cbox['morphop'].current(0)
         self.cbox['morphshape'].current(0)
         self.cbox['filter'].current(0)
-        if arguments['inverse']:
-            self.cbox['th_type'].current(1)  # cv2.THRESH_OTSU_INVERSE
-        else:
-            self.cbox['th_type'].current(0)  # cv2.THRESH_OTSU
 
         self.cbox['dt_type'].current(1)  # cv2.DIST_L2
         self.cbox['dt_mask_size'].current(1)  # cv2.DIST_MASK_3 == 3
@@ -1475,7 +1691,8 @@ class ImageViewer(ProcessImage):
         divider = "═" * 20  # divider's unicode_escape: b'\\u2550\'
 
         self.size_settings_txt = (
-            f'Image: {arguments["input"]} {INPUT_IMG.shape[0]}x{INPUT_IMG.shape[1]}\n\n'
+            f'Image: {self.input_file}'
+            f' {self.input_img.shape[0]}x{self.input_img.shape[1]}\n\n'
             f'{"Contrast:".ljust(space)}convertScaleAbs alpha={alpha}, beta={beta}\n'
             f'{"Noise reduction:".ljust(space)}cv2.getStructuringElement ksize={noise_k},\n'
             f'{tab}cv2.getStructuringElement shape={morph_shape}\n'
@@ -1540,34 +1757,18 @@ class ImageViewer(ProcessImage):
 
         return event
 
-
-def patience_needed():
-    """An informational message to users in a hurry."""
-    if GRAY_IMG.shape[1] > 2000:
-        print('Images over 2000 pixels wide will take longer to process...'
-              ' patience Grasshopper.\n  If the threshold image shows up as'
-              ' black-on-white, then use the --inverse command line option.')
-
-
 if __name__ == "__main__":
-    # Program exits here if any of the module checks fail.
+    # Program exits here if any of the module checks fail or if the
+    #   argument --about is used, which prints info, then exits.
     utils.check_platform()
     vcheck.minversion('3.7')
-    arguments = manage.arguments()
-
-    # All checks are good, so grab as a 'global' the dictionary of
-    #   command line argument values and define often used values...
-    input_metrics = manage.input_metrics()
-    INPUT_IMG = input_metrics['input_img']
-    GRAY_IMG = input_metrics['gray_img']
-
-    patience_needed()
+    manage.arguments()
 
     try:
         print(f'{Path(__file__).name} has launched...')
         app = ImageViewer()
-        app.title('Count & Size Settings Report')
-        app.resizable(width=True, height=False)
+        # app.title('Count & Size Settings Report')
+        # app.resizable(width=True, height=False)
         app.mainloop()
     except KeyboardInterrupt:
         print('*** User quit the program from Terminal command line. ***\n')

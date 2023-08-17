@@ -178,7 +178,7 @@ def display_report(frame: tk.Frame, report: str) -> None:
                         font=txt_font,
                         bg=const.DARK_BG,
                         # fg=const.MASTER_BG,  # gray80 matches master self bg.
-                        fg=const.CBLIND_COLOR_TK['yellow'],  # Matches slider labels.
+                        fg=const.COLORS_TK['yellow'],  # Matches slider labels.
                         width=max_line,
                         height=report.count('\n'),
                         relief='flat',
@@ -198,40 +198,26 @@ def display_report(frame: tk.Frame, report: str) -> None:
                    sticky=tk.EW)
 
 
-def quit_gui(mainloop: tk.Tk,
-             gui=True,
-             keybind=None,
-             ) -> None:
+def quit_gui(mainloop: tk.Tk) -> None:
     """Safe and informative exit from the program.
 
     Args:
         mainloop: The main tk.Tk() window running the mainloop.
-        gui: boolean flag for whether call is from gui or commandline
-             argument.
-        keybind: Need for implicit events from keybindings.
-        plot: Use if called from a module using Matplotlib.
 
     Returns: None
     """
+    print('\n  *** User has quit the program. ***')
 
-    # if plot:
-    #     plt.close('all')
-
-    if gui:
-        print('\n  *** User has quit the program. ***')
-
-        try:
-            mainloop.update_idletasks()
-            mainloop.after(100)
-            mainloop.destroy()
-        # pylint: disable=broad-except
-        except Exception as unk:
-            print('An unknown error occurred:', unk)
-            sys.exit(0)
-    else:  # Expected when call --about cmdline argument.
+    try:
+        mainloop.update_idletasks()
+        mainloop.after(100)
+        mainloop.destroy()
+        # Need explicit exit if for some reason a tk window isn't destroyed.
         sys.exit(0)
-
-    return keybind
+    # pylint: disable=broad-except
+    except Exception as unk:
+        print('An unknown error occurred:', unk)
+        sys.exit(0)
 
 def no_objects_found_msg():
     """

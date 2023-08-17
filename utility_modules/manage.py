@@ -29,37 +29,14 @@ import utility_modules
 from utility_modules import utils, constants as const
 
 
-def arguments() -> dict:
+def arguments():
     """
     Handle command line arguments.
-
-    Returns: Dictionary of argument values.
     """
 
     parser = argparse.ArgumentParser(description='Image Processing to Size Objects.')
     parser.add_argument('--about',
                         help='Provide description, version, GNU license',
-                        action='store_true',
-                        default=False)
-    parser.add_argument('--input', '-i',
-                        help='Path to input image.',
-                        default='images/sample1.jpg',
-                        metavar='PATH/FILE')
-    parser.add_argument('--scale', '-s',
-                        help='Factor, X, to change displayed image size (default: 0.5).',
-                        default=0.5,
-                        type=float,
-                        required=False,
-                        metavar='X')
-    parser.add_argument('--color', '-c',
-                        help='Annotation color, C. (default: red; options: yellow,'
-                             ' orange, green, purple, white, black).',
-                        default='red',
-                        choices=('green', 'yellow', 'orange', 'red', 'purple',
-                                 'white', 'black'),
-                        metavar='C')
-    parser.add_argument('--inverse',
-                        help='Use this option for dark objects on a light background.',
                         action='store_true',
                         default=False)
 
@@ -81,49 +58,29 @@ def arguments() -> dict:
 
         sys.exit(0)
 
-    if not Path.exists(utils.valid_path_to(args.input)):
-        print(f'COULD NOT OPEN the image: {args.input}  <-Check spelling.\n'
-              "If spelled correctly, then try using the file's absolute (full) path.")
-        sys.exit(0)
-
-    if args.scale <= 0:
-        print('--scale X: X must be greater than zero.')
-        sys.exit(0)
-
-    if args.color == 'green':
-        color = (0, 255, 0)
-    else:
-        color = const.CBLIND_COLOR_CV[args.color]
-
-    arg_dict = {
-        'about': args.about,
-        'input': args.input,
-        'scale': args.scale,
-        'inverse': args.inverse,
-        'color': color,
-    }
-
-    return arg_dict
-
-
-def input_metrics() -> dict:
+def input_metrics(img: np.ndarray) -> dict:
     """
     Read the image file specified in the --input command line option,
     then calculate and assign to a dictionary values that can be used
     as constants for image file path, processing, and display.
 
-    Returns: Dictionary of image values and metrics.
+    Returns: Dictionary of image values and metrics; keys:'input_img',
+        'gray_img', 'font_scale', 'line_thickness', 'max_circle_r'.
     """
 
     # Scaling factors for contours, circles, and text; empirically determined.
     size_factor = 5.5e-04
     line_thickness_factor = 1.5e-03
-    # line_thickness_factor = 2e-03
+    # line_thickness_factor = 2e-03.
 
-    # manage.arguments() has verified the image path, so read from it.
-    input_img = cv2.imread(arguments()['input'])
-    gray_img = cv2.cvtColor(input_img, cv2.COLOR_RGBA2GRAY)
+    gray_img = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
     fig_width: int = gray_img.shape[1]
+
+    if fig_width > 2000:
+            print('Images over 2000 pixels wide will take longer to process...'
+                  ' patience Grasshopper.\n  If the threshold image shows up as'
+                  ' black-on-white, then use the --inverse command line option.\n'
+                  'If the displayed image is too large, reduce the scaling factor.')
 
     # Set maximum enclosing circle radius to 1/2 the shortest image dimension.
     max_circle_r: int = round(min(gray_img.shape) / 2)
@@ -135,7 +92,7 @@ def input_metrics() -> dict:
     font_scale: float = max(fig_width * size_factor, 0.2)
 
     metrics = {
-        'input_img': input_img,
+        'input_img': img,
         'gray_img': gray_img,
         'font_scale': font_scale,
         'line_thickness': line_thickness,
@@ -145,35 +102,7 @@ def input_metrics() -> dict:
     return metrics
 
 
-def scale(img: np.ndarray, scalefactor: float) -> np.ndarray:
-    """
-    Change size of displayed images from original (input) size.
-    Intended mainly for when input image is too large to fit on screen.
-
-    Args:
-        img: A numpy.ndarray of image to be scaled.
-        scalefactor: The multiplication factor to grow or shrink the
-                displayed image. Defined from cmd line arg '--scale'.
-                Default from argparse is 1.0.
-
-    Returns: A scaled np.ndarray object; if *scale* is 1, then no change.
-    """
-
-    # Is redundant with check of --scale value in args_handler().
-    scalefactor = 1 if scalefactor == 0 else scalefactor
-
-    # Provide the best interpolation method for slight improvement of
-    #  resized image depending on whether it is down- or up-scaled.
-    interpolate = cv2.INTER_AREA if scalefactor < 0 else cv2.INTER_CUBIC
-
-    scaled_image = cv2.resize(src=img,
-                              dsize=None,
-                              fx=scalefactor, fy=scalefactor,
-                              interpolation=interpolate)
-    return scaled_image
-
-
-def tk_image(image: np.ndarray, colorspace: str) -> PhotoImage:
+def tk_image(image: np.ndarray, scale_coef: float) -> PhotoImage:
     """
     Scales and converts cv2 images to a compatible format for display
     in tk window. Be sure that the returned image is properly scoped in
@@ -182,20 +111,26 @@ def tk_image(image: np.ndarray, colorspace: str) -> PhotoImage:
     Args:
         image: A cv2 numpy array of the image to scale and convert to
                a PIL ImageTk.PhotoImage.
-        colorspace: The image's color-space to convert to RGB for tk.PhotoImage,
-                    e.g., 'bgr', 'hsv' (does no conversion), etc.
+        scale_coef: The user-selected scaling, from start parameters.
 
-    Returns: Scaled PIL ImageTk.PhotoImage to display in tk.Label, etc..
+    Returns: Scaled PIL ImageTk.PhotoImage to display in tk.Label.
     """
 
     # Need to scale images for display; images for processing are left raw.
-    #   Default --scale arg is 1.0, so no scaling when option is not used.
-    scaled_img = scale(image, arguments()['scale'])
+
+    scale_coef = 1 if scale_coef == 0 else scale_coef
+
+    # Provide the best interpolation method for slight improvement of
+    #  resized image depending on whether it is down- or up-scaled.
+    interpolate = cv2.INTER_AREA if scale_coef < 0 else cv2.INTER_CUBIC
+
+    scaled_img = cv2.resize(src=image,
+                            dsize=None,
+                            fx=scale_coef, fy=scale_coef,
+                            interpolation=interpolate)
 
     # based on tutorial: https://pyimagesearch.com/2016/05/23/opencv-with-tkinter/
-    if colorspace == 'bgr':
-        scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
-        # Note that HSV images receive no conversion.
+    scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
 
     scaled_img = Image.fromarray(scaled_img)
     tk_img = ImageTk.PhotoImage(scaled_img)
@@ -203,7 +138,6 @@ def tk_image(image: np.ndarray, colorspace: str) -> PhotoImage:
     tk_img.image = tk_img
 
     return tk_img
-
 
 def ttk_styles(mainloop: tkinter.Tk) -> None:
     """
@@ -236,21 +170,21 @@ def ttk_styles(mainloop: tkinter.Tk) -> None:
 
     if const.MY_OS == 'lin':
         bstyle.map("My.TButton",
-                   foreground=[('active', const.CBLIND_COLOR_TK['yellow'])],
+                   foreground=[('active', const.COLORS_TK['yellow'])],
                    background=[('pressed', 'gray30'),
-                               ('active', const.CBLIND_COLOR_TK['vermilion'])],
+                               ('active', const.COLORS_TK['vermilion'])],
                    )
         combo_style.map('TCombobox',
                         fieldbackground=[('readonly',
-                                          const.CBLIND_COLOR_TK['dark blue'])],
+                                          const.COLORS_TK['dark blue'])],
                         selectbackground=[('readonly',
-                                           const.CBLIND_COLOR_TK['dark blue'])],
+                                           const.COLORS_TK['dark blue'])],
                         selectforeround=[('readonly',
-                                          const.CBLIND_COLOR_TK['yellow'])],
+                                          const.COLORS_TK['yellow'])],
                         )
     elif const.MY_OS == 'win':
         bstyle.map("My.TButton",
-                   foreground=[('active', const.CBLIND_COLOR_TK['yellow'])],
+                   foreground=[('active', const.COLORS_TK['yellow'])],
                    background=[('pressed', 'gray30'),
-                               ('active', const.CBLIND_COLOR_TK['vermilion'])],
+                               ('active', const.COLORS_TK['vermilion'])],
                    )

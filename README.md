@@ -1,14 +1,16 @@
 # Project: count-and-size
 
-The interactive Python program, `size_it.py`, can count and size objects from an image file. The main utility is to obtain mean, range, and individual sizes for a sample population. Object segmentation is performed with a compact watershed algorithm on a distance transform. Diameters of minimum enclosing circles determine object lengths. Sizing units are millimeters when a pre-set size standard is used, pixels when not, or determined by the user for a custom standard. Image processing parameters are selected from slider bars and drop down menus (see screenshots, below). Multiple windows display each processing step with live updates as parameters change.
+The interactive Python program, `size_it.py`, counts and sizes groups of similar objects from an image file. The main purpose is to obtain mean, range, and individual sizes from a sample population. Once invoked from the Terminal command line, a tkinter GUI controls all file and OpenCV-Python imaging parameters.
 
-This Project was developed to count and size samples of oyster populations at various stages of aquaculture production, but can be used for measuring any kind of round or oblong objects on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can usually be segmented. While segmentation of objects in large or poorly contrasted overlapping clusters is unlikely, such clusters can be screened out by limiting the size range to provide fairly accurate metrics for the remaining individual objects.
+Object identification is performed with a compact watershed algorithm while diameters of minimum enclosing circles of the objects determine object sizes. Image processing parameters are selected from slider bars and drop down menus (see screenshots, below). Multiple windows display each processing step with live updates as parameters change.
 
-Sizing standards are chosen from a pull-down menu. Pre-set standards include a hockey puck and various U.S. coins. If "None" is chosen and the pixel diameter entry is kept as 1 (default settings), then displayed sizes are in pixel units. Pre-set standards report sizes as millimeters. Users have an option for a custom size standard that requires entry of the known size in whatever units are needed.
+This Project was developed to sample oyster populations at various stages of aquaculture production, but can be used to measure any group of round or oblong objects on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can usually be segmented. While segmentation of objects in large or poorly contrasted overlapping clusters is unlikely, such clusters can be screened out by limiting the size range to provide fairly accurate metrics for the remaining individual objects.
 
-All modules can be executed on Linux, Windows, and macOS platforms. `size_it.py` is derived from the `contour_it.py` module from the opencv-contour-utils2 GitHub repository.
+Sizing standards are chosen from a pull-down menu. Pre-set standards include a 3-inch hockey puck and various U.S. coins. Sizing units are millimeters when one of the pre-set size standards is used, pixels when not, or determined by the user when using a custom standard. If "None" is chosen as a standard and the pixel diameter entry is kept as 1 (default settings), then displayed sizes are in pixel units. Users have an option for a custom size standard that requires entry of the known size in whatever units are needed.
 
-A text file of object sizes and metrics, settings used, and the resulting annotated image file of sized objects, can be saved. 
+All modules can be executed on Linux, Windows, and macOS platforms. `size_it.py` is derived from the `contour_it.py` module of the opencv-contour-utils2 GitHub repository.
+
+A text file of object sizes and metrics, parameter settings, and the resulting annotated image file of sized objects, can be saved. 
 
 <sub>Project inspired by code from Adrian Rosebrock:
 https://pyimagesearch.com/2016/03/28/measuring-size-of-objects-in-an-image-with-opencv/
@@ -22,44 +24,21 @@ https://github.com/BebeSparkelSparkel/to-precision/releases/tag/0.0.0
 Development environment was Linux Ubuntu 20.04, Windows 11, and macOS 13.2.
 
 ### Usage examples:
-From within the downloaded repository folder, example command line invocations:
+From within the downloaded repository folder, recommended command line invocation of the size_it.py module: `python3 -m size_it`
 
-    python3 -m size_it --help
-    python3 -m size_it --about
-    python3 -m size_it   (uses default input, scale, and color):
-    python3 -m size_it --input images/sample1.jpg --scale 1.0
-    python3 -m size_it -i images/sample2.jpg -s 0.25 --color yellow --inverse
+To view basic information, author, version, license, etc.: `python3 -m size_it --about`
 
-Note that with no input argument, as in the first example, the default sample1.jpg from the `images` folder is used for input. Additional sample input files are provided in the `images` folder.
+As with any Python downloads, running within a virtual environment is recommended.
 
 On Windows systems, you may need to replace 'python3' with 'python' or 'py'.
 
-Be aware that very large image file may require a few seconds to display the program widows, depending on your system performance. Be patient.
+Be aware that very large image file may require a few seconds to display the image widows, depending on your system performance. Be patient.
 
-To list command line options: `python3 -m size_it --help`
-       
-    Image Processing to Size Objects.
+The Esc or Crtl-Q key will quit the program once a file is selected. To quit the initial Open file dialog, just close the window in the usual manner.
 
-    optional arguments:
-      -h, --help            Show this help message and exit.
-      --about               Provide description, version, GNU license.
-      --input PATH/FILE, -i PATH/FILE
-                            Path to input image.
-      --scale X, -s X       Factor, X, to change displayed image size (default: 0.5).
-      --color C, -c C       Annotation color, C. (default: red; options: yellow, orange, green, purple, white, black).
-      --inverse             Use this option for dark objects on a light background.
+Sample image files, listed below, are provided in the `images` folder. This is the default location for selecting an input image file, but you can browse to where ever your favorite file is.
 
-To view basic information, author, version, license, etc.: `python3 -m size_it --about`
- 
-The Esc or Q key will quit any running module.
-
-The displayed image size can be adjusted with the `--scale` command line argument. All image processing, however, is performed at the original image resolution.
-
-Sample image files, listed below, are provided in the `images` folder.
-
-The default `size_it.py` annotation color for sized objects is red (vermilion). Colors can be changed with the `--color` command line argument if needed for better clarity or to accommodate users with deuteranopia.
-
-Image file examples provided in the `images` folder:
+Image file examples provided in the `images` folder, where sample1 was used to establish the default parameters:
 * sample1.jpg (baby oysters on black burlap, 1200x1199 902 kB),
 * sample2.jpg (baby oysters on white, Sacagawea coin edited to black, 2627x2629, 1050 kB),
 * sample3.jpg (sample2 cropped, with some oysters out of frame, 540x967, 268 kB)
@@ -81,23 +60,23 @@ Alternative commands (system dependent):
 As with all repository downloads, it is a good idea to install the requirements in a Python virtual environment to avoid undesired changes in your system's Python library.
 
 ### Screenshots:
-All screenshots are from an Ubuntu Linux platform. For Windows and macOS platforms, window and widget look or layout may be slightly different.
+All screenshots are from an Ubuntu Linux platform. For Windows and macOS platforms, window and widget look or layout may be different.
 
+Below, initial file selection window. (The *_screenshot.jpg files are used for this README.)
+Currently supported image file types are JPG, PNG, and TIFF.
+![opening_screenshot.png](images/opening_screenshot.png)
+
+Once a file is selected, basic run parameters are set in a new pop-up window. The scale slider determines the screen size of the processed image windows. Available annotation colors are: blue, orange, sky blue, blueish green, vermilion, reddish purple, purple, yellow, black, white, red, and green. All but red and green should be suitable for users with deuteranopia. The inverse selections are for the kind of object vs. background contrast the image has: "No" for light are dark, "Yes" for dark on light. This determines the initial cv2.threshold type, but can be changed later, if needed, in the main settings.
+![initial_settings_screenshot.png](images/initial_settings_screenshot.png)
+
+When the "Process now" is clicked, the main settings and report window appears (below), along with multiple processed image windows. In this analysis, the Sacagawea dollar size standard was selected and its observed pixel diameter of 128 was entered. It was subsequently excluded from the reported object size metrics by reducing the 'Circled radius size maximum' until the coin no longer was annotated with its size (27 mm). The standard's pixel diameter of 128 was obtained from the initial result window when initial default settings were in effect. Here it is reported that 31 object were found, with a mean of 13.2 mm, a median of 13 mm, covering a range of 7.5 to 18.7 mm.
 ![report&settings_screenshot](images/report&settings_screenshot.png)
 
-Above, the report and settings window, using default settings with the following exceptions to report accurate sample count and size metrics: the Sacagawea dollar size standard was selected, its observed pixel diameter of 128 was entered, and it was excluded from the reported object size metrics by reducing the 'Circled radius size maximum' until the coin no longer was annotated with its size (27 mm). The standard's pixel diameter of 128 was obtained from the initial result window when initial default settings were in effect.
-
-Command used, for default image, scale, and color: `python3 -m size_it`, which is equivalent to `python3 -m size_it --input images/sample1.jpg --scale 0.5 --color red`
-
-Below, the resulting annotated image. Clicking the "Save settings & sized image" button exports the annotated image file (at its original resolution), and the report text, which includes a list of the 31 individual mm sizes.
+Below, the resulting annotated image (with vermilion color). Clicking the "Save settings & sized image" button exports the annotated image file (at its original resolution), and the report text, which includes a list of the 31 individual estimated sizes.
 
 ![sample1_result_screenshot](images/sample1_result_screenshot.jpg)
 
-Below, resulting image for an input with objects that extend out of frame, which are excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was edited to fill in the shiny gold coin size standard with black for better contrast.
-
-Command used: ` python3 -m size_it -i images/sample3.jpg -s 0.7 -c yellow --inverse`
-
-Below, text output from the saved settings file for the above image, includes parameter settings, size metrics in millimeters, and a list of individual object sizes. 
+Below, resulting image for the input `sample3.jpg` and the text output from the saved settings. Note that objects that extend out of frame are excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was previously edited to fill in the shiny gold coin size standard with black for better contrast. The white circle is another coin that was edited to exclude it from analysis. The following report text includes parameter settings used, size metrics in millimeters, and a list of individual object sizes.
 ![sample3_result_screenshot.png](images/sample3_result_screenshot.jpg)
 
 <pre>
