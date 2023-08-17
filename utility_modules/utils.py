@@ -79,7 +79,8 @@ def valid_path_to(input_path: str) -> Path:
     return valid_path
 
 
-def save_settings_and_img(img2save,
+def save_settings_and_img(inputpath: str,
+                          img2save,
                           txt2save: str,
                           caller: str) -> None:
     """
@@ -87,6 +88,7 @@ def save_settings_and_img(img2save,
     calculated image processing values. Save current result image.
 
     Args:
+        inputpath: The input image file path, as string.
         img2save: The current resulting image array; can be a np.ndarray
             from cv2 or an ImageTk.PhotoImage from tkinter/PIL
         txt2save: The current image processing settings.
@@ -108,8 +110,8 @@ def save_settings_and_img(img2save,
     # the default being 3. The higher value does high compression of the
     # image resulting in a smaller file size but a longer compression time.
 
-    img_ext = Path(Path(manage.arguments()['input']).suffix)
-    img_stem = Path(Path(manage.arguments()['input']).stem)
+    img_ext = Path(Path(inputpath).suffix)
+    img_stem = Path(Path(inputpath).stem)
 
     data2save = (f'\n\nTime saved: {time2print}\n'
                  f'Saved image file: {img_stem}_{caller}_{curr_time}{img_ext}\n'

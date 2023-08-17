@@ -1104,9 +1104,11 @@ class ImageViewer(ProcessImage):
             """
             sizes = ', '.join(str(i) for i in self.sorted_size_list)
             # ",".join(str(i) for i in self.sorted_size_list)
-            utils.save_settings_and_img(img2save=self.circled_ws_segments,
-                                        txt2save=self.size_settings_txt + sizes,
-                                        caller='sizes')
+            utils.save_settings_and_img(
+                inputpath=self.input_file,
+                img2save=self.circled_ws_segments,
+                txt2save=self.size_settings_txt + sizes,
+                caller='sizes')
 
         def do_reset():
             """
