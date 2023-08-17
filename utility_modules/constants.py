@@ -146,7 +146,6 @@ COLORS_CV = {
     'blueish green': (115, 158, 0),
     'vermilion': (0, 94, 213),
     'reddish purple': (167, 121, 204),
-    'purple': (167, 121, 204),
     'yellow': (66, 228, 240),
     'black': (0, 0, 0),
     'white': (255, 255, 255),
