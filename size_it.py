@@ -1445,7 +1445,7 @@ class ImageViewer(ProcessImage):
                                            pady=(4, 0),
                                            sticky=tk.W)
         self.cbox['dt_mask_size'].grid(column=1, row=10,
-                                       padx=(200, 0),
+                                       padx=(215, 0),
                                        pady=(4, 0),
                                        sticky=tk.W)
 
