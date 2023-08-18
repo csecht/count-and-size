@@ -671,9 +671,10 @@ class ImageViewer(ProcessImage):
     def __init__(self):
         super().__init__()
 
-        self.manage_main_win()
-        self.input_file = ''
-        self.get_input()
+        # self.manage_main_win()
+        # self.input_file = ''
+        # # self.get_input()
+        # self.setup_start_window()
 
         self.contour_report_frame = tk.Frame()
         self.contour_selectors_frame = tk.Frame()
@@ -761,6 +762,13 @@ class ImageViewer(ProcessImage):
         #  to utils.save_settings_and_img() from the Save button.
         self.size_settings_txt = ''
 
+        # Manage the starting windows, grab the input and run settings,
+        #  then proceed with image processing and sizing.
+        # This order of events allows macOS implementation to flow well.
+        self.manage_main_win()
+        self.input_file = ''
+        self.setup_start_window()
+
     def manage_main_win(self):
         """
         For clarity, remove from view the Tk mainloop window created
@@ -779,40 +787,13 @@ class ImageViewer(ProcessImage):
         self.geometry(f'+{w_offset}+0')
         self.wm_withdraw()
 
-    def get_input(self) -> None:
-        """
-        Initial step in startup is to get the input image file path
-        using a filedialog widget.
-        Returns: None
-        """
-
-        self.input_file = filedialog.askopenfilename(
-            parent=self,
-            title='Select input image',
-            filetypes=[('JPG', '*.jpg'),
-                       ('JPG', '*.jpeg'),
-                       ('JPG', '*.JPEG'),
-                       ('PNG', '*.png'),
-                       ('TIFF', '*.tiff'),
-                       ('TIFF', '*.tif')],
-            initialdir='images',
-        )
-
-        if self.input_file:
-            self.input_img = cv2.imread(self.input_file)
-            self.gray_img = cv2.cvtColor(self.input_img, cv2.COLOR_RGBA2GRAY)
-            self.metrics = manage.input_metrics(self.input_img)
-            self.setup_start_window()
-        else:
-            utils.quit_gui(self)
-
     def setup_start_window(self) -> None:
         """
-        Once an input file is identified, make a Toplevel and widgets
-        that set the initial parameters of display scale, font color,
-        and threshold type (inverse vs. not). Uses a button to trigger
-        subsequent image processing steps. Window is destroyed once
-        button is used.
+        Set up a basic Toplevel, then prompt for an input file, then
+        proceed with configuring the window's widgets and set initial
+        parameters of display scale, font color, and threshold type
+        (inverse vs. not). A button will then trigger image processing
+        steps. Window is destroyed once button is used.
         """
 
         # Need style of the ttk.Button to match main window button style.
@@ -831,8 +812,9 @@ class ImageViewer(ProcessImage):
             return event
 
         # Window basics:
+        # Open with a temporary, instructional title.
         start_win = tk.Toplevel()
-        start_win.title('Set run settings')
+        start_win.title('First, select an image file')
         start_win.minsize(width=200, height=100)
         start_win.resizable(width=True, height=False)
         start_win.config(relief='raised',
@@ -841,7 +823,7 @@ class ImageViewer(ProcessImage):
                          highlightcolor=const.COLORS_TK['yellow'],
                          highlightbackground=const.DRAG_GRAY)
 
-        # Need to allow complete tk mainloop shutdown with system's
+        # Need to allow complete tk mainloop shutdown with the system's
         #   window manager 'close' icon in the window bar.
         start_win.protocol(name='WM_DELETE_WINDOW',
                            func=lambda: utils.quit_gui(app))
@@ -851,12 +833,38 @@ class ImageViewer(ProcessImage):
         start_win.bind('<Return>', func=call_start)
         start_win.bind('<KP_Enter>', func=call_start)
 
+        # Take a break in configuring the window to grab the input.
+        self.update()
+        self.input_file = filedialog.askopenfilename(
+            parent=start_win,
+            title='Select input image',
+            filetypes=[('JPG', '*.jpg'),
+                       ('JPG', '*.jpeg'),
+                       ('JPG', '*.JPEG'),
+                       ('PNG', '*.png'),
+                       ('TIFF', '*.tiff'),
+                       ('TIFF', '*.tif')],
+            initialdir='images',
+        )
+
+        if self.input_file:
+            self.input_img = cv2.imread(self.input_file)
+            self.gray_img = cv2.cvtColor(self.input_img, cv2.COLOR_RGBA2GRAY)
+            self.metrics = manage.input_metrics(self.input_img)
+        else:
+            utils.quit_gui(self)
+
+        # Once a file is selected, the dialog is removed, and the
+        #  start window setup can proceed, now with its active title.
+        start_win.title('Set run settings')
+        self.update_idletasks()
+
         # Allow widget resizing horizontally; vertical is fixed.
         start_win.columnconfigure(index=0, weight=1)
         start_win.columnconfigure(index=1, weight=1)
 
         # Window widgets:
-        # Provide a window header with file path and pixel dimensions.
+        # Provide a header with file path and pixel dimensions.
         file_label = tk.Label(
             master=start_win,
             text=f'Image: {self.input_file}\n'
