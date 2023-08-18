@@ -815,6 +815,21 @@ class ImageViewer(ProcessImage):
         button is used.
         """
 
+        # Need style of the ttk.Button to match main window button style.
+        manage.ttk_styles(self)
+
+        def call_start(event=None) -> None:
+            """Remove this start window, then call the suite of methods
+            to get things going.
+            Called from process_now_button and Return/Enter keys.
+            Args:
+                event: The implicit key action event, when used.
+            Returns: *event* as a formality; is functionally None.
+            """
+            start_win.destroy()
+            self.start_now()
+            return event
+
         # Window basics:
         start_win = tk.Toplevel()
         start_win.title('Set run settings')
@@ -827,11 +842,14 @@ class ImageViewer(ProcessImage):
                          highlightbackground=const.DRAG_GRAY)
 
         # Need to allow complete tk mainloop shutdown with system's
-        #   window manager 'close' icon.
+        #   window manager 'close' icon in the window bar.
         start_win.protocol(name='WM_DELETE_WINDOW',
                            func=lambda: utils.quit_gui(app))
-        self.bind_all('<Escape>', lambda _: utils.quit_gui(app))
-        self.bind_all('<Control-q>', lambda _: utils.quit_gui(app))
+
+        start_win.bind('<Escape>', lambda _: utils.quit_gui(app))
+        start_win.bind('<Control-q>', lambda _: utils.quit_gui(app))
+        start_win.bind('<Return>', func=call_start)
+        start_win.bind('<KP_Enter>', func=call_start)
 
         # Allow widget resizing horizontally; vertical is fixed.
         start_win.columnconfigure(index=0, weight=1)
@@ -885,28 +903,11 @@ class ImageViewer(ProcessImage):
                                     ** const.RADIO_PARAMETERS)
         inverse_no.select()
 
-        manage.ttk_styles(self)
-
-        def call_start(event=None) -> None:
-            """Remove this start window, then call the suite of methods
-            to get things going.
-            Called from process_now_button and Return/Enter keys.
-            Args:
-                event: The implicit key action event, when used.
-            Returns: *event* as a formality; is functionally None.
-            """
-            start_win.destroy()
-            self.start_now()
-            return event
-
         process_now_button = ttk.Button(master=start_win,
                                         text='Process now',
                                         style='My.TButton',
                                         width=0,
                                         command=call_start)
-        # Allow return/enter keys to mimic the process_now button.
-        start_win.bind('<Return>', func=call_start)
-        start_win.bind('<KP_Enter>', func=call_start)
 
         # Window grid settings; sorted by row.
         padding = dict(padx=6, pady=6)
