@@ -21,9 +21,7 @@ https://pyimagesearch.com/2015/11/02/watershed-opencv/
 https://github.com/BebeSparkelSparkel/to-precision/releases/tag/0.0.0
 </sub>
 
-Development environment was Linux Ubuntu 20.04, Windows 11, and macOS 13.2.
-
-### NOTE: Currently, there is a minor bug with macOS: The "Set run settings"  window is minimized after an input image file is selected. It can be restored by clicking the Python app 'rocket' icon in the Dock.
+Development environment was Linux Ubuntu 20.04, Windows 11, and macOS 13.2, with Python 3.8.
 
 ### Usage examples:
 From within the downloaded repository folder, recommended command line invocation of the size_it.py module: `python3 -m size_it`
