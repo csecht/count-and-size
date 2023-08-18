@@ -815,8 +815,7 @@ class ImageViewer(ProcessImage):
         # Open with a temporary, instructional title.
         start_win = tk.Toplevel()
         start_win.title('First, select an image file')
-        start_win.minsize(width=200, height=100)
-        start_win.resizable(width=True, height=False)
+        start_win.minsize(width=500, height=175)
         start_win.config(relief='raised',
                          bg=const.DARK_BG,
                          highlightthickness=3,
@@ -854,8 +853,10 @@ class ImageViewer(ProcessImage):
         else:
             utils.quit_gui(self)
 
-        # Once a file is selected, the dialog is removed, and the
-        #  start window setup can proceed, now with its active title.
+        # Once a file is selected, the file dialog is removed, and the
+        #  start window setup can proceed, now with its active title and
+        #  at its full width.
+        start_win.resizable(width=True, height=False)
         start_win.title('Set run settings')
         self.update_idletasks()
 
