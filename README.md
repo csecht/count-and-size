@@ -23,6 +23,8 @@ https://github.com/BebeSparkelSparkel/to-precision/releases/tag/0.0.0
 
 Development environment was Linux Ubuntu 20.04, Windows 11, and macOS 13.2.
 
+### NOTE: Currently not running well with macOS. Image file selection may be restricted to jpeg types. The run settings selection window is hidden after a file is selected, but can be restored by clicking on the Python app 'rocket' icon. 
+
 ### Usage examples:
 From within the downloaded repository folder, recommended command line invocation of the size_it.py module: `python3 -m size_it`
 
