@@ -92,17 +92,12 @@ class ProcessImage(tk.Tk):
 
     __slots__ = (
         'cbox_val',
-        'circled_ws_segments',
-        'contrasted_img',
         'custom_size_entry',
-        'filtered_img',
-        'gray_img',
+        'cvimg',
         'img_label',
-        'input_img',
         'mean_px_size',
         'metrics',
         'num_dt_segments',
-        'reduced_noise_img',
         'size_std',
         'size_std_px',
         'size_std_size',
@@ -110,7 +105,7 @@ class ProcessImage(tk.Tk):
         'sorted_size_list',
         'tkimg',
         'unit_per_px',
-        'ws_max_cntrs',
+        'ws_max_contours',
         'tk',
     )
 
@@ -144,13 +139,12 @@ class ProcessImage(tk.Tk):
             'color': tk.StringVar(),
         }
 
-        self.do_inverse_th = tk.StringVar()
-
         # Arrays of images to be processed. When used within a method,
         #  the purpose of self.tkimg[*] as an instance attribute is to
         #  retain the attribute reference and thus prevent garbage collection.
         #  Dict values will be defined for panels of PIL ImageTk.PhotoImage
         #  with Label images displayed in their respective img_window Toplevel.
+        # The cvimg images are numpy arrays.
         self.tkimg = {
             'input': tk.PhotoImage(),
             'gray': tk.PhotoImage(),
@@ -162,6 +156,15 @@ class ProcessImage(tk.Tk):
             'thresh': tk.PhotoImage(),
         }
 
+        self.cvimg = {
+            'input': const.STUB_ARRAY,
+            'gray': const.STUB_ARRAY,
+            'contrasted': const.STUB_ARRAY,
+            'reduxed': const.STUB_ARRAY,
+            'filtered': const.STUB_ARRAY,
+            'ws_circled': const.STUB_ARRAY,
+        }
+
         # metrics dict is populated in ImageViewer.setup_start_window()
         self.metrics = {}
 
@@ -169,15 +172,8 @@ class ProcessImage(tk.Tk):
         #  but is used in all Class methods here.
         self.img_label = {}
 
-        self.input_img = const.STUB_ARRAY
-        self.gray_img = const.STUB_ARRAY
-        self.contrasted_img = const.STUB_ARRAY
-        self.reduced_noise_img = const.STUB_ARRAY
-        self.filtered_img = const.STUB_ARRAY
-        self.circled_ws_segments = const.STUB_ARRAY
-
         self.num_dt_segments = 0
-        self.ws_max_cntrs = []
+        self.ws_max_contours = []
         self.sorted_size_list = []
         self.mean_px_size = 0
         self.size_std = ''
@@ -189,7 +185,7 @@ class ProcessImage(tk.Tk):
 
     def adjust_contrast(self) -> None:
         """
-        Adjust contrast of the input self.gray_img image.
+        Adjust contrast of the input self.cvimg['gray'] image.
         Updates contrast and brightness via alpha and beta sliders.
         Displays contrasted and redux noise images.
         Called by process_all(). Calls manage.tk_image().
@@ -201,9 +197,9 @@ class ProcessImage(tk.Tk):
         # https://stackoverflow.com/questions/39308030/
         #   how-do-i-increase-the-contrast-of-an-image-in-python-opencv
 
-        self.contrasted_img = (
+        self.cvimg['contrasted'] = (
             cv2.convertScaleAbs(
-                src=self.gray_img,
+                src=self.cvimg['gray'],
                 alpha=self.slider_val['alpha'].get(),
                 beta=self.slider_val['beta'].get(),
             )
@@ -212,7 +208,7 @@ class ProcessImage(tk.Tk):
         # Using .configure to update image avoids the white flash each time an
         #  image is updated were a Label() to be re-made here each call.
         self.tkimg['contrast'] = manage.tk_image(
-            image=self.contrasted_img,
+            image=self.cvimg['contrasted'],
             scale_coef=self.slider_val['scale'].get()
         )
         self.img_label['contrast'].configure(image=self.tkimg['contrast'])
@@ -250,8 +246,8 @@ class ProcessImage(tk.Tk):
         # Read https://docs.opencv2.org/3.4/db/df6/tutorial_erosion_dilatation.html
         # https://theailearner.com/tag/cv-morphologyex/
         # Note that the self attribution here is to prevent garbage collection.
-        self.reduced_noise_img = cv2.morphologyEx(
-            src=self.contrasted_img,
+        self.cvimg['reduxed'] = cv2.morphologyEx(
+            src=self.cvimg['contrasted'],
             op=morph_op,
             kernel=element,
             iterations=iteration,
@@ -259,7 +255,7 @@ class ProcessImage(tk.Tk):
         )
 
         self.tkimg['redux'] = manage.tk_image(
-            image=self.reduced_noise_img,
+            image=self.cvimg['reduxed'],
             scale_coef=self.slider_val['scale'].get()
         )
         self.img_label['redux'].configure(image=self.tkimg['redux'])
@@ -294,7 +290,7 @@ class ProcessImage(tk.Tk):
         # NOTE: The larger the sigma the greater the effect of kernel size d.
 
         if filter_selected == 'cv2.bilateralFilter':
-            filtered_img = cv2.bilateralFilter(src=self.reduced_noise_img,
+            filtered_img = cv2.bilateralFilter(src=self.cvimg['reduxed'],
                                                # d=-1 or 0, is very CPU intensive.
                                                d=filter_k,
                                                sigmaColor=19,
@@ -306,20 +302,20 @@ class ProcessImage(tk.Tk):
         # see: https://dsp.stackexchange.com/questions/32273/
         #  how-to-get-rid-of-ripples-from-a-gradient-image-of-a-smoothed-image
         elif filter_selected == 'cv2.GaussianBlur':
-            filtered_img = cv2.GaussianBlur(src=self.reduced_noise_img,
+            filtered_img = cv2.GaussianBlur(src=self.cvimg['reduxed'],
                                             ksize=(filter_k, filter_k),
                                             sigmaX=0,
                                             sigmaY=0,
                                             borderType=border_type)
         elif filter_selected == 'cv2.medianBlur':
-            filtered_img = cv2.medianBlur(src=self.reduced_noise_img,
+            filtered_img = cv2.medianBlur(src=self.cvimg['reduxed'],
                                           ksize=filter_k)
         elif filter_selected == 'cv2.blur':
-            filtered_img = cv2.blur(src=self.reduced_noise_img,
+            filtered_img = cv2.blur(src=self.cvimg['reduxed'],
                                     ksize=(filter_k, filter_k),
                                     borderType=border_type)
         else:  # there are no other choices, but include for future.
-            filtered_img = cv2.blur(src=self.reduced_noise_img,
+            filtered_img = cv2.blur(src=self.cvimg['reduxed'],
                                     ksize=(filter_k, filter_k),
                                     borderType=border_type)
 
@@ -330,7 +326,7 @@ class ProcessImage(tk.Tk):
         )
         self.img_label['filter'].configure(image=self.tkimg['filter'])
 
-        self.filtered_img = filtered_img
+        self.cvimg['filtered'] = filtered_img
 
     def watershed_segmentation(self) -> None:
         """
@@ -358,7 +354,7 @@ class ProcessImage(tk.Tk):
         #   are implemented only for 8-bit single-channel images.
         #   For other cv2.THRESH_*, thresh needs to be manually provided.
         # Convert values above thresh to a maxval of 255, white.
-        _, thresh_img = cv2.threshold(src=self.filtered_img,
+        _, thresh_img = cv2.threshold(src=self.cvimg['filtered'],
                                       thresh=0,
                                       maxval=255,
                                       type=th_type)  # need *_INVERSE for black on white image.
@@ -414,7 +410,7 @@ class ProcessImage(tk.Tk):
         # watershed_img = cv2.watershed(image=-dist3d,
         #                               markers=markers)
 
-        self.ws_max_cntrs.clear()
+        self.ws_max_contours.clear()
         for label in np.unique(ar=watershed_img):
 
             # If the label is zero, we are examining the 'background',
@@ -433,7 +429,7 @@ class ProcessImage(tk.Tk):
                                            method=cv2.CHAIN_APPROX_SIMPLE)
 
             # Grow the list used to draw circles around WS contours.
-            self.ws_max_cntrs.append(max(contours, key=cv2.contourArea))
+            self.ws_max_contours.append(max(contours, key=cv2.contourArea))
 
         # Convert from float32 to uint8 data type to make a PIL Imagetk
         #  Photoimage or find contours.
@@ -493,9 +489,9 @@ class ProcessImage(tk.Tk):
 
         Returns: None
         """
-        # Note that circled_ws_segments is an instance attribute because
+        # Note that cvimg['ws_circled'] is an instance attribute because
         #  it is the result image for utils.save_settings_and_img().
-        self.circled_ws_segments = self.input_img.copy()
+        self.cvimg['ws_circled'] = self.cvimg['input'].copy()
         self.sorted_size_list.clear()
 
         color = self.cbox_val['color'].get()
@@ -513,8 +509,8 @@ class ProcessImage(tk.Tk):
         c_area_max = self.slider_val['c_max_r'].get() ** 2 * np.pi
 
         # Set coordinate point limits to find contours along a file border.
-        bottom_edge = self.gray_img.shape[0] - 1
-        right_edge = self.gray_img.shape[1] - 1
+        bottom_edge = self.cvimg['gray'].shape[0] - 1
+        right_edge = self.cvimg['gray'].shape[1] - 1
 
         # Exclude contours not in the specified size range.
         # Exclude contours that have a coordinate point intersecting the img edge.
@@ -568,14 +564,14 @@ class ProcessImage(tk.Tk):
                     thickness=line_thickness)
                 offset_x = txt_width / 2
 
-                cv2.circle(img=self.circled_ws_segments,
+                cv2.circle(img=self.cvimg['ws_circled'],
                            center=(int(_x), int(_y)),
                            radius=int(_r),
                            color=preferred_color,
                            thickness=line_thickness,
                            lineType=cv2.LINE_AA,
                            )
-                cv2.putText(img=self.circled_ws_segments,
+                cv2.putText(img=self.cvimg['ws_circled'],
                             text=str(size2display),
                             org=(round(_x - offset_x), round(_y + baseline)),
                             fontFace=const.FONT_TYPE,
@@ -596,7 +592,7 @@ class ProcessImage(tk.Tk):
 
         # Circled sized objects are in their own window.
         self.tkimg['ws_circled'] = manage.tk_image(
-            image=self.circled_ws_segments,
+            image=self.cvimg['ws_circled'],
             scale_coef=self.slider_val['scale'].get()
         )
         self.img_label['ws_circled'].configure(image=self.tkimg['ws_circled'])
@@ -654,6 +650,7 @@ class ImageViewer(ProcessImage):
         'cbox',
         'contour_report_frame',
         'contour_selectors_frame',
+        'do_inverse_th',
         'img_window',
         'input_file',
         'size_cust_entry',
@@ -671,6 +668,8 @@ class ImageViewer(ProcessImage):
         self.contour_report_frame = tk.Frame()
         self.contour_selectors_frame = tk.Frame()
         # self.configure(bg='green')  # for development.
+
+        self.do_inverse_th = tk.StringVar()
 
         # Note: The matching control variable attributes for the
         #   following selector widgets are in ProcessImage __init__.
@@ -843,9 +842,9 @@ class ImageViewer(ProcessImage):
         )
 
         if self.input_file:
-            self.input_img = cv2.imread(self.input_file)
-            self.gray_img = cv2.cvtColor(self.input_img, cv2.COLOR_RGBA2GRAY)
-            self.metrics = manage.input_metrics(self.input_img)
+            self.cvimg['input'] = cv2.imread(self.input_file)
+            self.cvimg['gray'] = cv2.cvtColor(self.cvimg['input'], cv2.COLOR_RGBA2GRAY)
+            self.metrics = manage.input_metrics(self.cvimg['input'])
         else:
             utils.quit_gui(self)
 
@@ -861,7 +860,7 @@ class ImageViewer(ProcessImage):
         file_label = tk.Label(
             master=start_win,
             text=f'Image: {self.input_file}\n'
-                 f'size:{self.input_img.shape[0]}x{self.input_img.shape[1]}'
+                 f'size:{self.cvimg["gray"].shape[0]}x{self.cvimg["gray"].shape[1]}'
                  ' (Larger files need a smaller scale factor.)',
             **const.LABEL_PARAMETERS)
 
@@ -1110,7 +1109,7 @@ class ImageViewer(ProcessImage):
             # ",".join(str(i) for i in self.sorted_size_list)
             utils.save_settings_and_img(
                 inputpath=self.input_file,
-                img2save=self.circled_ws_segments,
+                img2save=self.cvimg['ws_circled'],
                 txt2save=self.size_settings_txt + sizes,
                 caller='sizes')
 
@@ -1525,7 +1524,7 @@ class ImageViewer(ProcessImage):
             toplevel.wm_deiconify()
 
         self.tkimg['input'] = manage.tk_image(
-            self.input_img,
+            self.cvimg['input'],
             scale_coef=self.slider_val['scale'].get()
         )
         self.img_label['input'].configure(image=self.tkimg['input'])
@@ -1636,6 +1635,8 @@ class ImageViewer(ProcessImage):
         """
 
         # Note: recall that *_val dict are inherited from ProcessImage().
+        px_w = self.cvimg['gray'].shape[0]
+        px_h = self.cvimg['gray'].shape[1]
         alpha = self.slider_val['alpha'].get()
         beta = self.slider_val['beta'].get()
         noise_iter = self.slider_val['noise_iter'].get()
@@ -1691,8 +1692,7 @@ class ImageViewer(ProcessImage):
         divider = "═" * 20  # divider's unicode_escape: b'\\u2550\'
 
         self.size_settings_txt = (
-            f'Image: {self.input_file}'
-            f' {self.input_img.shape[0]}x{self.input_img.shape[1]}\n\n'
+            f'Image: {self.input_file} {px_h}x{px_w}\n\n'
             f'{"Contrast:".ljust(space)}convertScaleAbs alpha={alpha}, beta={beta}\n'
             f'{"Noise reduction:".ljust(space)}cv2.getStructuringElement ksize={noise_k},\n'
             f'{tab}cv2.getStructuringElement shape={morph_shape}\n'
@@ -1737,7 +1737,7 @@ class ImageViewer(ProcessImage):
         self.set_size_std()
         self.update_idletasks()
         self.watershed_segmentation()
-        self.select_and_size(contour_pointset=self.ws_max_cntrs)
+        self.select_and_size(contour_pointset=self.ws_max_contours)
         self.report_results()
 
         return event
@@ -1753,7 +1753,7 @@ class ImageViewer(ProcessImage):
         Returns: *event* as a formality; is functionally None.
         """
         self.set_size_std()
-        self.select_and_size(contour_pointset=self.ws_max_cntrs)
+        self.select_and_size(contour_pointset=self.ws_max_contours)
         self.report_results()
 
         return event
