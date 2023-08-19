@@ -651,24 +651,18 @@ class ImageViewer(ProcessImage):
     """
 
     __slots__ = (
-        'cbox'
-        'contour_report_frame'
-        'contour_selectors_frame'
-        'gray_img'
-        'img_label'
-        'img_window'
-        'input_file'
-        'input_img'
-        'mean_px_size'
-        'metrics'
-        'size_cust_entry'
-        'size_cust_label'
-        'size_settings_txt'
-        'size_std'
-        'size_std_px_entry'
-        'size_std_px_label'
-        'size_std_size'
-        'slider'
+        'cbox',
+        'contour_report_frame',
+        'contour_selectors_frame',
+        'img_window',
+        'input_file',
+        'size_cust_entry',
+        'size_cust_label',
+        'size_settings_txt',
+        'size_std_px_entry',
+        'size_std_px_label',
+        'size_std_size',
+        'slider',
     )
 
     def __init__(self):
