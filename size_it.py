@@ -631,19 +631,18 @@ class ImageViewer(ProcessImage):
     and parameters as applied in ProcessImage().
     Methods:
     manage_main_win
-    get_input
     setup_start_window
     start_now
     setup_image_windows
     setup_settings_window
     setup_explanation
     setup_buttons
-    display_input_images
     config_sliders
     config_comboboxes
     config_entries
     grid_widgets
     grid_img_labels
+    display_image_windows
     set_defaults
     set_size_std
     report_results
@@ -652,29 +651,28 @@ class ImageViewer(ProcessImage):
     """
 
     __slots__ = (
-        'cbox',
-        'contour_report_frame',
-        'contour_selectors_frame',
-        'img_label',
-        'img_window',
-        'mean_px_size',
-        'size_cust_entry',
-        'size_cust_label',
-        'size_settings_txt',
-        'size_std',
-        'size_std_px_entry',
-        'size_std_px_label',
-        'size_std_size',
-        'slider',
+        'cbox'
+        'contour_report_frame'
+        'contour_selectors_frame'
+        'gray_img'
+        'img_label'
+        'img_window'
+        'input_file'
+        'input_img'
+        'mean_px_size'
+        'metrics'
+        'size_cust_entry'
+        'size_cust_label'
+        'size_settings_txt'
+        'size_std'
+        'size_std_px_entry'
+        'size_std_px_label'
+        'size_std_size'
+        'slider'
     )
 
     def __init__(self):
         super().__init__()
-
-        # self.manage_main_win()
-        # self.input_file = ''
-        # # self.get_input()
-        # self.setup_start_window()
 
         self.contour_report_frame = tk.Frame()
         self.contour_selectors_frame = tk.Frame()
@@ -821,6 +819,8 @@ class ImageViewer(ProcessImage):
                          highlightthickness=3,
                          highlightcolor=const.COLORS_TK['yellow'],
                          highlightbackground=const.DRAG_GRAY)
+        start_win.columnconfigure(index=0, weight=1)
+        start_win.columnconfigure(index=1, weight=1)
 
         # Need to allow complete tk mainloop shutdown with the system's
         #   window manager 'close' icon in the window bar.
@@ -833,6 +833,7 @@ class ImageViewer(ProcessImage):
         start_win.bind('<KP_Enter>', func=call_start)
 
         # Take a break in configuring the window to grab the input.
+        # For macOS, need to have the filedialog be a child of start_win.
         self.update()
         self.input_file = filedialog.askopenfilename(
             parent=start_win,
@@ -842,7 +843,8 @@ class ImageViewer(ProcessImage):
                        ('JPG', '*.JPEG'),
                        ('PNG', '*.png'),
                        ('TIFF', '*.tiff'),
-                       ('TIFF', '*.tif')],
+                       ('TIFF', '*.tif'),
+                       ('All', '*.*')],
             initialdir='images',
         )
 
@@ -859,10 +861,6 @@ class ImageViewer(ProcessImage):
         start_win.resizable(width=True, height=False)
         start_win.title('Set run settings')
         self.update_idletasks()
-
-        # Allow widget resizing horizontally; vertical is fixed.
-        start_win.columnconfigure(index=0, weight=1)
-        start_win.columnconfigure(index=1, weight=1)
 
         # Window widgets:
         # Provide a header with file path and pixel dimensions.
@@ -953,7 +951,7 @@ class ImageViewer(ProcessImage):
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
-        self.display_input_images()
+        self.display_image_windows()
 
     def setup_image_windows(self) -> None:
         """
@@ -1032,7 +1030,7 @@ class ImageViewer(ProcessImage):
         configurations, and grids for contour settings and reporting frames.
         """
 
-        app.title('Count & Size Settings Report')
+        # app.title('Count & Size Settings Report')
         app.resizable(width=True, height=False)
 
         # Color in all the master (app) Frame and use a yellow border;
@@ -1078,7 +1076,7 @@ class ImageViewer(ProcessImage):
                                           sticky=tk.EW)
 
         # Finally, show mainloop window that was withdrawn at program start
-        #  in initialize_main_win(). Deiconifying once everything is
+        #  in initialize_main_win(). Deiconifying after everything is
         #  configured shortens the visual transition time.
         app.wm_deiconify()
 
@@ -1151,36 +1149,6 @@ class ImageViewer(ProcessImage):
                       padx=10,
                       pady=(0, 5),
                       sticky=tk.EW)
-
-    def display_input_images(self) -> None:
-        """
-        Converts input image to tk image formate and displays it as a
-        panel gridded in its toplevel window.
-        Called from __init__.
-        Calls manage.tkimage(), which applies scaling, cv -> tk array
-        conversion, and updates the panel Label's image parameter.
-        """
-
-        # Display the input image and its grayscale; both are static, so
-        #  they do not need updating, but for consistency's sake they
-        #  retain the image display statement structure used for processed
-        #  images, which do need updating.
-        # Note: here and throughout, use 'self' to scope the
-        #  ImageTk.PhotoImage image in the Class, otherwise it will/may
-        #  not display b/c of garbage collection.
-
-        # All image windows were withdrawn upon their creation in
-        #  setup_image_windows() to keep things tidy. Now is the time to
-        #  show them.
-        for _, toplevel in self.img_window.items():
-            toplevel.wm_deiconify()
-
-        self.tkimg['input'] = manage.tk_image(
-            self.input_img,
-            scale_coef=self.slider_val['scale'].get()
-        )
-        self.img_label['input'].configure(image=self.tkimg['input'])
-        self.img_label['input'].grid(column=0, row=0, padx=5, pady=5)
 
     def config_sliders(self) -> None:
         """
@@ -1539,6 +1507,36 @@ class ImageViewer(ProcessImage):
 
         self.img_label['ws_circled'].grid(**const.PANEL_RIGHT)
 
+    def display_image_windows(self) -> None:
+        """
+        Converts input image to tk image formate and displays it as a
+        panel gridded in its toplevel window.
+        Called from __init__.
+        Calls manage.tkimage(), which applies scaling, cv -> tk array
+        conversion, and updates the panel Label's image parameter.
+        """
+
+        # Display the input image. It is static, so does not need
+        #  updating, but for consistency's sake the
+        #  statement structure used to display and update processed
+        #  images is used here.
+        # Note: here and throughout, use 'self' to scope the
+        #  ImageTk.PhotoImage image in the Class, otherwise it will/may
+        #  not display because of garbage collection.
+
+        # All image windows were withdrawn upon their creation in
+        #  setup_image_windows() to keep things tidy. Now is the time to
+        #  show them.
+        for _, toplevel in self.img_window.items():
+            toplevel.wm_deiconify()
+
+        self.tkimg['input'] = manage.tk_image(
+            self.input_img,
+            scale_coef=self.slider_val['scale'].get()
+        )
+        self.img_label['input'].configure(image=self.tkimg['input'])
+        self.img_label['input'].grid(column=0, row=0, padx=5, pady=5)
+
     def set_defaults(self) -> None:
         """
         Sets and resets selector widgets.
@@ -1592,12 +1590,6 @@ class ImageViewer(ProcessImage):
         custom_size: str = self.custom_size_entry.get()
         size_std_px: str = self.size_std_px.get()
         self.size_std: str = self.cbox_val['size_std'].get()
-
-        # source: https://stackoverflow.com/questions/6189956/
-        #   easy-way-of-finding-decimal-places
-        # Numbers w/o a decimal will return -1; 1 is used for round() so
-        #  that all custom sizes are interpreted as floats.
-        # num_custom_dig = custom_size[::-1].find('.')
 
         # Need to verify the pixel diameter entry:
         try:
@@ -1749,6 +1741,7 @@ class ImageViewer(ProcessImage):
         self.reduce_noise()
         self.filter_image()
         self.set_size_std()
+        self.update_idletasks()
         self.watershed_segmentation()
         self.select_and_size(contour_pointset=self.ws_max_cntrs)
         self.report_results()
@@ -1782,8 +1775,7 @@ if __name__ == "__main__":
     try:
         print(f'{Path(__file__).name} has launched...')
         app = ImageViewer()
-        # app.title('Count & Size Settings Report')
-        # app.resizable(width=True, height=False)
+        app.title('Count & Size Settings Report')
         app.mainloop()
     except KeyboardInterrupt:
         print('*** User quit the program from Terminal command line. ***\n')
