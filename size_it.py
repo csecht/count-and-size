@@ -99,7 +99,6 @@ class ProcessImage(tk.Tk):
         'num_sigfig',
         'metrics',
         'size_std',
-        'size_std_px',
         'slider_val',
         'sorted_size_list',
         'tkimg',
@@ -134,7 +133,6 @@ class ProcessImage(tk.Tk):
             'dt_mask_size': tk.StringVar(),
             'ws_connect': tk.StringVar(),
             'size_std': tk.StringVar(),
-            'size_custom': tk.StringVar(),
             'color': tk.StringVar(),
         }
 
@@ -152,7 +150,6 @@ class ProcessImage(tk.Tk):
             'filter': tk.PhotoImage(),
             'watershed': tk.PhotoImage(),
             'dist_trans': tk.PhotoImage(),
-            'thresh': tk.PhotoImage(),
         }
 
         self.cvimg = {
@@ -176,7 +173,6 @@ class ProcessImage(tk.Tk):
         self.sorted_size_list = []
         self.size_std = ''
         self.unit_per_px = tk.DoubleVar()
-        self.size_std_px = tk.StringVar()
         self.custom_size_entry = tk.StringVar()
         self.num_sigfig = 0
 
@@ -644,6 +640,7 @@ class ImageViewer(ProcessImage):
         'size_cust_label',
         'size_settings_txt',
         'size_std_size',
+        'size_std_px',
         'size_std_px_entry',
         'size_std_px_label',
         'slider',
@@ -723,20 +720,23 @@ class ImageViewer(ProcessImage):
         }
 
         # User entered pixel diameter of size standard object
-        #  px_dia textvariable is in ProcessImage __init__
+        #  px_dia textvariable is in ProcessImage __init__.
         self.size_std_px_entry = tk.Entry(self.contour_selectors_frame)
-        self.size_std_px_label = tk.Label(self.contour_selectors_frame,
-                                          text='Enter px diameter of size standard:',
-                                          **const.LABEL_PARAMETERS)
+        self.size_std_px_label = tk.Label(self.contour_selectors_frame)
 
         self.size_cust_entry = tk.Entry(self.contour_selectors_frame)
-        self.size_cust_label = tk.Label(self.contour_selectors_frame,
-                                        text="Enter custom standard's size:",
-                                        **const.LABEL_PARAMETERS)
+        self.size_cust_label = tk.Label(self.contour_selectors_frame)
 
         # Dictionary items are populated in setup_image_windows() with
         #   tk.Toplevel as values; don't want tk windows made here.
         self.img_window = {}
+
+        self.size_std_size = 0.0
+        self.size_std_px = tk.StringVar()
+
+        # Is an instance attribute here only because it is used in call
+        #  to utils.save_settings_and_img() from the Save button.
+        self.size_settings_txt = ''
 
         # Manage the starting windows, grab the input and run settings,
         #  then proceed with image processing and sizing.
@@ -744,12 +744,6 @@ class ImageViewer(ProcessImage):
         self.manage_main_win()
         self.input_file = ''
         self.setup_start_window()
-
-        self.size_std_size = 0.0
-
-        # Is an instance attribute here only because it is used in call
-        #  to utils.save_settings_and_img() from the Save button.
-        self.size_settings_txt = ''
 
     def manage_main_win(self):
         """
@@ -1327,15 +1321,15 @@ class ImageViewer(ProcessImage):
         Returns: None
         """
 
-        self.size_std_px_entry.config(
-            textvariable=self.size_std_px,
-            width=6,
-        )
+        self.size_std_px_entry.config(textvariable=self.size_std_px,
+                                      width=6)
+        self.size_std_px_label.config(text='Enter px diameter of size standard:',
+                                      **const.LABEL_PARAMETERS)
 
-        self.size_cust_entry.config(
-            textvariable=self.custom_size_entry,
-            width=6,
-        )
+        self.size_cust_entry.config(textvariable=self.custom_size_entry,
+                                    width=6)
+        self.size_cust_label.config(text="Enter custom standard's size:",
+                                    **const.LABEL_PARAMETERS)
 
         self.size_std_px_entry.bind('<Return>', func=self.process_sizes)
         self.size_std_px_entry.bind('<KP_Enter>', func=self.process_sizes)
