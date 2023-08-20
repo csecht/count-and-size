@@ -95,12 +95,11 @@ class ProcessImage(tk.Tk):
         'custom_size_entry',
         'cvimg',
         'img_label',
-        'mean_px_size',
-        'metrics',
         'num_dt_segments',
+        'num_sigfig',
+        'metrics',
         'size_std',
         'size_std_px',
-        'size_std_size',
         'slider_val',
         'sorted_size_list',
         'tkimg',
@@ -159,25 +158,23 @@ class ProcessImage(tk.Tk):
         self.cvimg = {
             'input': const.STUB_ARRAY,
             'gray': const.STUB_ARRAY,
-            'contrasted': const.STUB_ARRAY,
-            'reduxed': const.STUB_ARRAY,
-            'filtered': const.STUB_ARRAY,
+            'contrast': const.STUB_ARRAY,
+            'redux': const.STUB_ARRAY,
+            'filter': const.STUB_ARRAY,
             'ws_circled': const.STUB_ARRAY,
         }
-
-        # metrics dict is populated in ImageViewer.setup_start_window()
-        self.metrics = {}
 
         # img_label dictionary is set up in ImageViewer.setup_image_windows(),
         #  but is used in all Class methods here.
         self.img_label = {}
 
+        # metrics dict is populated in ImageViewer.setup_start_window()
+        self.metrics = {}
+
         self.num_dt_segments = 0
         self.ws_max_contours = []
         self.sorted_size_list = []
-        self.mean_px_size = 0
         self.size_std = ''
-        self.size_std_size = 0
         self.unit_per_px = tk.DoubleVar()
         self.size_std_px = tk.StringVar()
         self.custom_size_entry = tk.StringVar()
@@ -197,7 +194,7 @@ class ProcessImage(tk.Tk):
         # https://stackoverflow.com/questions/39308030/
         #   how-do-i-increase-the-contrast-of-an-image-in-python-opencv
 
-        self.cvimg['contrasted'] = (
+        self.cvimg['contrast'] = (
             cv2.convertScaleAbs(
                 src=self.cvimg['gray'],
                 alpha=self.slider_val['alpha'].get(),
@@ -205,13 +202,8 @@ class ProcessImage(tk.Tk):
             )
         )
 
-        # Using .configure to update image avoids the white flash each time an
-        #  image is updated were a Label() to be re-made here each call.
-        self.tkimg['contrast'] = manage.tk_image(
-            image=self.cvimg['contrasted'],
-            scale_coef=self.slider_val['scale'].get()
-        )
-        self.img_label['contrast'].configure(image=self.tkimg['contrast'])
+        self.update_image(img_name='contrast',
+                          img_array=self.cvimg['contrast'])
 
     def reduce_noise(self) -> None:
         """
@@ -246,19 +238,17 @@ class ProcessImage(tk.Tk):
         # Read https://docs.opencv2.org/3.4/db/df6/tutorial_erosion_dilatation.html
         # https://theailearner.com/tag/cv-morphologyex/
         # Note that the self attribution here is to prevent garbage collection.
-        self.cvimg['reduxed'] = cv2.morphologyEx(
-            src=self.cvimg['contrasted'],
+        self.cvimg['redux'] = cv2.morphologyEx(
+            src=self.cvimg['contrast'],
             op=morph_op,
             kernel=element,
             iterations=iteration,
             borderType=border_type
         )
 
-        self.tkimg['redux'] = manage.tk_image(
-            image=self.cvimg['reduxed'],
-            scale_coef=self.slider_val['scale'].get()
-        )
-        self.img_label['redux'].configure(image=self.tkimg['redux'])
+        self.update_image(img_name='redux',
+                          img_array=self.cvimg['redux'])
+
 
     def filter_image(self) -> None:
         """
@@ -288,9 +278,10 @@ class ProcessImage(tk.Tk):
         #  will not have much effect, whereas if they are large (> 150),
         #  they will have a very strong effect, making the image look "cartoonish".
         # NOTE: The larger the sigma the greater the effect of kernel size d.
+        # NOTE: filtered image dtype is uint8
 
         if filter_selected == 'cv2.bilateralFilter':
-            filtered_img = cv2.bilateralFilter(src=self.cvimg['reduxed'],
+            self.cvimg['filter'] = cv2.bilateralFilter(src=self.cvimg['redux'],
                                                # d=-1 or 0, is very CPU intensive.
                                                d=filter_k,
                                                sigmaColor=19,
@@ -302,31 +293,25 @@ class ProcessImage(tk.Tk):
         # see: https://dsp.stackexchange.com/questions/32273/
         #  how-to-get-rid-of-ripples-from-a-gradient-image-of-a-smoothed-image
         elif filter_selected == 'cv2.GaussianBlur':
-            filtered_img = cv2.GaussianBlur(src=self.cvimg['reduxed'],
+            self.cvimg['filter'] = cv2.GaussianBlur(src=self.cvimg['redux'],
                                             ksize=(filter_k, filter_k),
                                             sigmaX=0,
                                             sigmaY=0,
                                             borderType=border_type)
         elif filter_selected == 'cv2.medianBlur':
-            filtered_img = cv2.medianBlur(src=self.cvimg['reduxed'],
+            self.cvimg['filter'] = cv2.medianBlur(src=self.cvimg['redux'],
                                           ksize=filter_k)
         elif filter_selected == 'cv2.blur':
-            filtered_img = cv2.blur(src=self.cvimg['reduxed'],
+            self.cvimg['filter'] = cv2.blur(src=self.cvimg['redux'],
                                     ksize=(filter_k, filter_k),
                                     borderType=border_type)
         else:  # there are no other choices, but include for future.
-            filtered_img = cv2.blur(src=self.cvimg['reduxed'],
+            self.cvimg['filter'] = cv2.blur(src=self.cvimg['redux'],
                                     ksize=(filter_k, filter_k),
                                     borderType=border_type)
 
-        # NOTE: filtered_img dtype is uint8
-        self.tkimg['filter'] = manage.tk_image(
-            image=filtered_img,
-            scale_coef=self.slider_val['scale'].get()
-        )
-        self.img_label['filter'].configure(image=self.tkimg['filter'])
-
-        self.cvimg['filtered'] = filtered_img
+        self.update_image(img_name='filter',
+                          img_array=self.cvimg['filter'])
 
     def watershed_segmentation(self) -> None:
         """
@@ -354,7 +339,7 @@ class ProcessImage(tk.Tk):
         #   are implemented only for 8-bit single-channel images.
         #   For other cv2.THRESH_*, thresh needs to be manually provided.
         # Convert values above thresh to a maxval of 255, white.
-        _, thresh_img = cv2.threshold(src=self.cvimg['filtered'],
+        _, thresh_img = cv2.threshold(src=self.cvimg['filter'],
                                       thresh=0,
                                       maxval=255,
                                       type=th_type)  # need *_INVERSE for black on white image.
@@ -450,28 +435,12 @@ class ProcessImage(tk.Tk):
                          thickness=-1,  # filled
                          lineType=cv2.LINE_AA)
 
-        # Put thresh image panel next to filtered panel in the same window.
-        self.tkimg['thresh'] = manage.tk_image(
-            image=thresh_img,
-            scale_coef=self.slider_val['scale'].get()
-        )
-        self.img_label['thresh'].configure(image=self.tkimg['thresh'])
-
-        # Dist trans and watershed images are in same window
-        self.tkimg['dist_trans'] = manage.tk_image(
-            image=distances_img,
-            scale_coef=self.slider_val['scale'].get()
-        )
-        self.img_label['dist_trans'].configure(image=self.tkimg['dist_trans'])
-
-        # Note: use watershed_gray or watershed_img with skimage watershed,
-        #  but use watershed_img with cv2.watershed.
-        # watershed_img = np.uint8(watershed_img)
-        self.tkimg['watershed'] = manage.tk_image(
-            image=watershed_gray,  # better with skimage watershed.
-            scale_coef=self.slider_val['scale'].get()
-        )
-        self.img_label['watershed'].configure(image=self.tkimg['watershed'])
+        self.update_image(img_name='thresh',
+                          img_array=thresh_img)
+        self.update_image(img_name='dist_trans',
+                          img_array=distances_img)
+        self.update_image(img_name='watershed',
+                          img_array=watershed_gray)
 
         # Now draw enclosing circles around watershed segments to get sizes.
 
@@ -591,11 +560,9 @@ class ProcessImage(tk.Tk):
             utils.no_objects_found_msg()
 
         # Circled sized objects are in their own window.
-        self.tkimg['ws_circled'] = manage.tk_image(
-            image=self.cvimg['ws_circled'],
-            scale_coef=self.slider_val['scale'].get()
-        )
-        self.img_label['ws_circled'].configure(image=self.tkimg['ws_circled'])
+        self.update_image(img_name='ws_circled',
+                          img_array=self.cvimg['ws_circled'])
+
 
     def custom_sigfig(self, size: float) -> str:
         """
@@ -620,6 +587,26 @@ class ProcessImage(tk.Tk):
 
         return to_p.to_precision(value=size, precision=self.num_sigfig)
 
+    def update_image(self, img_name: str, img_array: np.ndarray) -> None:
+        """
+        Process a cv2 image array to use as a tk PhotoImage and update
+        (configure) its window label for immediate display.
+        Calls module manage.tk_image().
+
+        Args:
+            img_name: The key name used in the tkimg and img_label
+                      dictionaries.
+            img_array: The new cv2 processed numpy image array.
+
+        Returns: None
+        """
+        # Use .configure to update images.
+        self.tkimg[img_name] = manage.tk_image(
+            image=img_array,
+            scale_coef=self.slider_val['scale'].get()
+        )
+        self.img_label[img_name].configure(image=self.tkimg[img_name])
+
 
 class ImageViewer(ProcessImage):
     """
@@ -638,7 +625,7 @@ class ImageViewer(ProcessImage):
     config_entries
     grid_widgets
     grid_img_labels
-    display_image_windows
+    display_input_and_others
     set_defaults
     set_size_std
     report_results
@@ -656,9 +643,9 @@ class ImageViewer(ProcessImage):
         'size_cust_entry',
         'size_cust_label',
         'size_settings_txt',
+        'size_std_size',
         'size_std_px_entry',
         'size_std_px_label',
-        'size_std_size',
         'slider',
     )
 
@@ -747,11 +734,9 @@ class ImageViewer(ProcessImage):
                                         text="Enter custom standard's size:",
                                         **const.LABEL_PARAMETERS)
 
+        # Dictionary items are populated in setup_image_windows() with
+        #   tk.Toplevel as values; don't want tk windows made here.
         self.img_window = {}
-
-        # Is an instance attribute here only because it is used in call
-        #  to utils.save_settings_and_img() from the Save button.
-        self.size_settings_txt = ''
 
         # Manage the starting windows, grab the input and run settings,
         #  then proceed with image processing and sizing.
@@ -759,6 +744,12 @@ class ImageViewer(ProcessImage):
         self.manage_main_win()
         self.input_file = ''
         self.setup_start_window()
+
+        self.size_std_size = 0.0
+
+        # Is an instance attribute here only because it is used in call
+        #  to utils.save_settings_and_img() from the Save button.
+        self.size_settings_txt = ''
 
     def manage_main_win(self):
         """
@@ -968,8 +959,8 @@ class ImageViewer(ProcessImage):
         # Dictionary item order determines stack order of windows.
         self.img_window = {
             'input': tk.Toplevel(),
-            'contrasted': tk.Toplevel(),
-            'filtered': tk.Toplevel(),
+            'contrast': tk.Toplevel(),
+            'filter': tk.Toplevel(),
             'dist_trans': tk.Toplevel(),
             'ws_contours': tk.Toplevel(),
         }
@@ -1005,11 +996,11 @@ class ImageViewer(ProcessImage):
             'input': tk.Label(self.img_window['input']),
             'gray': tk.Label(self.img_window['input']),
 
-            'contrast': tk.Label(self.img_window['contrasted']),
-            'redux': tk.Label(self.img_window['contrasted']),
+            'contrast': tk.Label(self.img_window['contrast']),
+            'redux': tk.Label(self.img_window['contrast']),
 
-            'filter': tk.Label(self.img_window['filtered']),
-            'thresh': tk.Label(self.img_window['filtered']),
+            'filter': tk.Label(self.img_window['filter']),
+            'thresh': tk.Label(self.img_window['filter']),
 
             'dist_trans': tk.Label(self.img_window['dist_trans']),
             'watershed': tk.Label(self.img_window['dist_trans']),
@@ -1489,6 +1480,8 @@ class ImageViewer(ProcessImage):
         Returns: None
         """
 
+        self.img_label['input'].grid(**const.PANEL_LEFT)
+
         self.img_label['contrast'].grid(**const.PANEL_LEFT)
         self.img_label['redux'].grid(**const.PANEL_RIGHT)
 
@@ -1502,12 +1495,16 @@ class ImageViewer(ProcessImage):
 
     def display_image_windows(self) -> None:
         """
-        Converts input image to tk image formate and displays it as a
-        panel gridded in its toplevel window.
+        Show the input image in its window.
+        Ready all image window for display.
         Called from __init__.
-        Calls manage.tkimage(), which applies scaling, cv -> tk array
-        conversion, and updates the panel Label's image parameter.
         """
+
+        # All image windows were withdrawn upon their creation in
+        #  setup_image_windows() to keep things tidy.
+        #  Now is the time to show them.
+        for _, toplevel in self.img_window.items():
+            toplevel.wm_deiconify()
 
         # Display the input image. It is static, so does not need
         #  updating, but for consistency's sake the
@@ -1516,19 +1513,8 @@ class ImageViewer(ProcessImage):
         # Note: here and throughout, use 'self' to scope the
         #  ImageTk.PhotoImage image in the Class, otherwise it will/may
         #  not display because of garbage collection.
-
-        # All image windows were withdrawn upon their creation in
-        #  setup_image_windows() to keep things tidy. Now is the time to
-        #  show them.
-        for _, toplevel in self.img_window.items():
-            toplevel.wm_deiconify()
-
-        self.tkimg['input'] = manage.tk_image(
-            self.cvimg['input'],
-            scale_coef=self.slider_val['scale'].get()
-        )
-        self.img_label['input'].configure(image=self.tkimg['input'])
-        self.img_label['input'].grid(column=0, row=0, padx=5, pady=5)
+        self.update_image(img_name='input',
+                          img_array=self.cvimg['input'])
 
     def set_defaults(self) -> None:
         """
@@ -1567,7 +1553,6 @@ class ImageViewer(ProcessImage):
 
         # Set to 1 to avoid division by 0.
         self.size_std_px.set('1')
-        self.mean_px_size = 1
 
         self.custom_size_entry.set('0')
 
@@ -1735,7 +1720,6 @@ class ImageViewer(ProcessImage):
         self.reduce_noise()
         self.filter_image()
         self.set_size_std()
-        self.update_idletasks()
         self.watershed_segmentation()
         self.select_and_size(contour_pointset=self.ws_max_contours)
         self.report_results()

@@ -41,15 +41,11 @@ MY_OS = sys.platform[:3]
 
 STUB_ARRAY = np.ones((5, 5), 'uint8')
 
-# NOTE: keys here must match corresponding keys in size_it_OLD.py
-#   img_window dict.
 WIN_NAME = {
     'input': 'Input image',
-    'contrasted': 'Adjusted contrast <- | -> Reduced noise',
-    'filtered': 'Filtered <- | -> Thresholded',
-    'contoured': 'Threshold <- | -> Selected Threshold contours',
+    'contrast': 'Adjusted contrast <- | -> Reduced noise',
+    'filter': 'Filtered <- | -> Thresholded',
     'dist_trans': 'Distances transformed <- | -> Watershed segments',
-    'threshold': 'Threshold <- | -> Distances transformed',
     'ws_contours': 'Size-selected objects, circled with diameters.',
 }
 
