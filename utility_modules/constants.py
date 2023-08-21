@@ -39,7 +39,7 @@ import cv2
 
 MY_OS = sys.platform[:3]
 
-STUB_ARRAY = np.ones((5, 5), 'uint8')
+STUB_ARRAY = np.ones(shape=(5, 5), dtype='uint8')
 
 WIN_NAME = {
     'input': 'Input image',
@@ -246,12 +246,12 @@ if MY_OS == 'lin':
         state='readonly')
 elif MY_OS == 'win':  # is Windows
     COMBO_PARAMETERS = dict(
-        font=('TkTooltipFont', 7),
+        font=('TkTooltipFont', 7), # not size 8
         takefocus=False,
         state='readonly')
 else:  # is macOS
     COMBO_PARAMETERS = dict(
-        font=('TkTooltipFont', 9),
+        font=WIDGET_FONT,
         takefocus=False,
         state='readonly')
 

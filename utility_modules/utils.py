@@ -93,7 +93,7 @@ def save_settings_and_img(inputpath: str,
             from cv2 or an ImageTk.PhotoImage from tkinter/PIL
         txt2save: The current image processing settings.
         caller: Descriptive name of the calling app to insert in the
-                file names, e.g. 'clahe', 'threshold'.
+                file names, e.g. 'sizeit'.
 
     Returns: None
     """

@@ -415,11 +415,10 @@ class ProcessImage(tk.Tk):
         # Convert from float32 to uint8 data type to make a PIL Imagetk
         #  Photoimage or find contours.
         distances_img = np.uint8(distances_img)
+        watershed_gray = np.uint8(watershed_img)
 
         # Draw all watershed objects in 1 gray shade instead of each object
         #  decremented by 1 gray value in series; ws boundaries will be black.
-        watershed_gray = np.uint8(watershed_img)
-
         ws_contours, _ = cv2.findContours(watershed_gray,
                                           mode=cv2.RETR_EXTERNAL,
                                           method=cv2.CHAIN_APPROX_SIMPLE)
@@ -771,7 +770,7 @@ class ImageViewer(ProcessImage):
         """
 
         # Need style of the ttk.Button to match main window button style.
-        manage.ttk_styles(self)
+        manage.ttk_styles(mainloop=self)
 
         def call_start(event=None) -> None:
             """Remove this start window, then call the suite of methods
@@ -792,6 +791,7 @@ class ImageViewer(ProcessImage):
         start_win.minsize(width=500, height=175)
         start_win.config(relief='raised',
                          bg=const.DARK_BG,
+                         # bg=const.COLORS_TK['sky blue'],  # for development
                          highlightthickness=3,
                          highlightcolor=const.COLORS_TK['yellow'],
                          highlightbackground=const.DRAG_GRAY)
@@ -937,13 +937,13 @@ class ImageViewer(ProcessImage):
         Returns: None
         """
 
-        def exit_info():
+        def window_info():
             """
             Provide a notice in Terminal.
             Called from .protocol() in setup_image_windows().
             """
-            print('This window cannot be closed from its window bar.\n'
-                  'It can be minimized to get it out of the way.\n'
+            print('Image windows cannot be closed from the window bar.\n'
+                  'They can be minimized if they are in the way.\n'
                   'You can quit the program from the Count & Size Settings Report'
                   ' window bar or with the Esc or Ctrl-Q keys.')
 
@@ -968,7 +968,7 @@ class ImageViewer(ProcessImage):
         for _name, toplevel in self.img_window.items():
             toplevel.wm_withdraw()
             toplevel.minsize(width=200, height=100)
-            toplevel.protocol(name='WM_DELETE_WINDOW', func=exit_info)
+            toplevel.protocol(name='WM_DELETE_WINDOW', func=window_info)
             toplevel.columnconfigure(index=0, weight=1)
             toplevel.columnconfigure(index=1, weight=1)
             toplevel.rowconfigure(index=0, weight=1)
@@ -1006,7 +1006,6 @@ class ImageViewer(ProcessImage):
         configurations, and grids for contour settings and reporting frames.
         """
 
-        # app.title('Count & Size Settings Report')
         app.resizable(width=True, height=False)
 
         # Color in all the master (app) Frame and use a yellow border;
@@ -1027,12 +1026,13 @@ class ImageViewer(ProcessImage):
         self.bind_all('<Control-q>', lambda _: utils.quit_gui(app))
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
-        self.contour_report_frame.configure(relief='flat',
-                                            bg=const.COLORS_TK['sky blue'],
-                                            )  # bg doesn't show with grid sticky EW.
+        # Default Frame() arguments work fine to display report text.
+        # bg won't show when grid sticky EW for tk.Text; see utils.display_report().
+        # self.contour_report_frame.configure(relief='flat')  # 'flat' is default.
 
         self.contour_selectors_frame.configure(relief='raised',
                                                bg=const.DARK_BG,
+                                               # bg=const.COLORS_TK['sky blue'],  # for development
                                                borderwidth=5)
 
         # Config columns to allow only sliders to expand with window.
@@ -1052,7 +1052,7 @@ class ImageViewer(ProcessImage):
                                           sticky=tk.EW)
 
         # Finally, show mainloop window that was withdrawn at program start
-        #  in initialize_main_win(). Deiconifying after everything is
+        #  in manage_main_win(). Deiconifying after everything is
         #  configured shortens the visual transition time.
         app.wm_deiconify()
 
@@ -1082,19 +1082,18 @@ class ImageViewer(ProcessImage):
 
         Returns: None
         """
-        manage.ttk_styles(self)
+        manage.ttk_styles(mainloop=self)
 
         def save_results():
             """
             A Button kw "command" caller to avoid messy lambda statements.
             """
             sizes = ', '.join(str(i) for i in self.sorted_size_list)
-            # ",".join(str(i) for i in self.sorted_size_list)
             utils.save_settings_and_img(
                 inputpath=self.input_file,
                 img2save=self.cvimg['ws_circled'],
                 txt2save=self.size_settings_txt + sizes,
-                caller='sizes')
+                caller='sizeit')
 
         def do_reset():
             """
