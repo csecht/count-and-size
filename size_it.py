@@ -527,8 +527,8 @@ class ProcessImage(tk.Tk):
                 offset_x = txt_width / 2
 
                 cv2.circle(img=self.cvimg['ws_circled'],
-                           center=(int(_x), int(_y)),
-                           radius=int(_r),
+                           center=(round(_x), round(_y)),
+                           radius=round(_r),
                            color=preferred_color,
                            thickness=line_thickness,
                            lineType=cv2.LINE_AA,
