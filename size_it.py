@@ -7,11 +7,8 @@ pull-down menus. Adjusting contributing factors like contrast,
 brightness, noise, and filter blurring is also interactive.
 
 USAGE Example command lines, from within the count-and-size-main folder:
-python3 -m size_it --help
 python3 -m size_it --about
-python3 -m size_it   -> default settings, is the same as:
-python3 -m size_it --input images/sample1.jpg --scale 0.5 --color red
-python3 -m size_it -i images/sample2.jpg -s 0.25 -c green --inverse
+python3 -m size_it
 
 Windows systems may need to substitute 'python3' with 'py' or 'python'.
 
@@ -88,6 +85,7 @@ class ProcessImage(tk.Tk):
     watershed_segmentation
     select_and_size
     custom_sigfig
+    update_image
     """
 
     __slots__ = (
@@ -98,7 +96,6 @@ class ProcessImage(tk.Tk):
         'num_dt_segments',
         'num_sigfig',
         'metrics',
-        'size_std',
         'slider_val',
         'sorted_size_list',
         'tkimg',
@@ -113,6 +110,7 @@ class ProcessImage(tk.Tk):
         # Note: The matching selector widgets for the following
         #  control variables are in ContourViewer __init__.
         self.slider_val = {
+            # For variables in config_sliders()...
             'alpha': tk.DoubleVar(),
             'beta': tk.IntVar(),
             'noise_k': tk.IntVar(),
@@ -122,9 +120,11 @@ class ProcessImage(tk.Tk):
             'plm_footprint': tk.IntVar(),
             'c_min_r': tk.IntVar(),
             'c_max_r': tk.IntVar(),
+            # For scale_slider variable in setup_start_window()...
             'scale': tk.DoubleVar(),
         }
         self.cbox_val = {
+            # For textvariables in config_comboboxes()...
             'morphop': tk.StringVar(),
             'morphshape': tk.StringVar(),
             'filter': tk.StringVar(),
@@ -133,6 +133,7 @@ class ProcessImage(tk.Tk):
             'dt_mask_size': tk.StringVar(),
             'ws_connect': tk.StringVar(),
             'size_std': tk.StringVar(),
+            # For color_cbox textvariable in setup_start_window()...
             'color': tk.StringVar(),
         }
 
@@ -171,7 +172,6 @@ class ProcessImage(tk.Tk):
         self.num_dt_segments = 0
         self.ws_max_contours = []
         self.sorted_size_list = []
-        self.size_std = ''
         self.unit_per_px = tk.DoubleVar()
         self.custom_size_entry = tk.StringVar()
         self.num_sigfig = 0
@@ -459,10 +459,8 @@ class ProcessImage(tk.Tk):
         self.cvimg['ws_circled'] = self.cvimg['input'].copy()
         self.sorted_size_list.clear()
 
-        color = self.cbox_val['color'].get()
-
         selected_sizes: List[float] = []
-        preferred_color: tuple = const.COLORS_CV[color]
+        preferred_color: tuple = const.COLORS_CV[self.cbox_val['color'].get()]
         font_scale: float = self.metrics['font_scale']
         line_thickness: int = self.metrics['line_thickness']
 
@@ -510,7 +508,7 @@ class ProcessImage(tk.Tk):
                 object_size = _r * 2 * self.unit_per_px.get()
 
                 # Need to set precision for display of annotated image.
-                if self.size_std == 'Custom':
+                if self.cbox_val['size_std'].get() == 'Custom':
                     size2display = self.custom_sigfig(size=object_size)
                     selected_sizes.append(float(size2display))
                 else:  # is one of the preset stds, or None
@@ -1561,7 +1559,7 @@ class ImageViewer(ProcessImage):
 
         custom_size: str = self.custom_size_entry.get()
         size_std_px: str = self.size_std_px.get()
-        self.size_std: str = self.cbox_val['size_std'].get()
+        size_std: str = self.cbox_val['size_std'].get()
 
         # Need to verify the pixel diameter entry:
         try:
@@ -1579,8 +1577,8 @@ class ImageViewer(ProcessImage):
         #  'Custom' is not selected, but show them when it is.
         # Verify that entries are positive numbers.
         #  Custom sizes can be entered as integer, float, or power operator.
-        if self.size_std != 'Custom':  # is one of the preset standards
-            self.size_std_size = const.SIZE_STANDARDS[self.size_std]
+        if size_std != 'Custom':  # is one of the preset standards
+            self.size_std_size = const.SIZE_STANDARDS[size_std]
             self.custom_size_entry.set('0')
             self.size_cust_entry.grid_remove()
             self.size_cust_label.grid_remove()
@@ -1631,6 +1629,7 @@ class ImageViewer(ProcessImage):
         mask_size = int(self.cbox_val['dt_mask_size'].get())
         p_kernel = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
+        size_std = self.cbox_val['size_std'].get()
 
         # Only odd kernel integers are used for processing.
         _nk = self.slider_val['noise_k'].get()
@@ -1642,7 +1641,7 @@ class ImageViewer(ProcessImage):
         else:
             filter_k = _fk + 1 if _fk % 2 == 0 else _fk
 
-        if self.size_std in 'None, Custom':
+        if size_std in 'None, Custom':
             unit = 'unk unit'
         else:  # is a pre-set standard with diameter in millimeters.
             unit = 'mm'
@@ -1689,7 +1688,7 @@ class ImageViewer(ProcessImage):
             f'{divider}\n'
             f'{"# distTrans segments:".ljust(space)}{self.num_dt_segments}\n'
             f'{"Selected size range:".ljust(space)}{c_min_r}--{c_max_r} pixels, diameter\n'
-            f'{"Selected size std.:".ljust(space)}{self.size_std},'
+            f'{"Selected size std.:".ljust(space)}{size_std},'
             f' {self.size_std_size} {unit} diameter\n'
             f'{tab}Pixel diameter entered: {self.size_std_px.get()},'
             f' unit/px factor: {unit_per_px}\n'
