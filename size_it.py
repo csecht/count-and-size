@@ -636,7 +636,6 @@ class ImageViewer(ProcessImage):
         'size_cust_entry',
         'size_cust_label',
         'size_settings_txt',
-        'size_std_size',
         'size_std_px',
         'size_std_px_entry',
         'size_std_px_label',
@@ -728,7 +727,6 @@ class ImageViewer(ProcessImage):
         #   tk.Toplevel as values; don't want tk windows made here.
         self.img_window = {}
 
-        self.size_std_size = 0.0
         self.size_std_px = tk.StringVar()
 
         # Is an instance attribute here only because it is used in call
@@ -1578,30 +1576,30 @@ class ImageViewer(ProcessImage):
         # Verify that entries are positive numbers.
         #  Custom sizes can be entered as integer, float, or power operator.
         if size_std != 'Custom':  # is one of the preset standards
-            self.size_std_size = const.SIZE_STANDARDS[size_std]
+            size_std_size = const.SIZE_STANDARDS[size_std]
             self.custom_size_entry.set('0')
             self.size_cust_entry.grid_remove()
             self.size_cust_label.grid_remove()
-            self.unit_per_px.set(self.size_std_size / int(size_std_px))
+            self.unit_per_px.set(size_std_size / int(size_std_px))
 
         else:  # is Custom
             self.size_cust_entry.grid()
             self.size_cust_label.grid()
             try:
                 float(custom_size)
-                self.size_std_size = float(custom_size)
+                size_std_size = float(custom_size)
 
-                if self.size_std_size <= 0:
+                if size_std_size <= 0:
                     raise ValueError
 
-                self.unit_per_px.set(self.size_std_size / int(size_std_px))
+                self.unit_per_px.set(size_std_size / int(size_std_px))
 
             except ValueError:
                 _m = "Enter a custom size > 0."
                 messagebox.showerror(title='Invalid entry',
                                      detail=_m)
                 self.custom_size_entry.set('0')
-                self.size_std_size = 0
+                size_std_size = 0
 
     def report_results(self) -> None:
         """
@@ -1630,6 +1628,7 @@ class ImageViewer(ProcessImage):
         p_kernel = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
         size_std = self.cbox_val['size_std'].get()
+        size_std_size = const.SIZE_STANDARDS[size_std]
 
         # Only odd kernel integers are used for processing.
         _nk = self.slider_val['noise_k'].get()
@@ -1642,7 +1641,7 @@ class ImageViewer(ProcessImage):
             filter_k = _fk + 1 if _fk % 2 == 0 else _fk
 
         if size_std in 'None, Custom':
-            unit = 'unk unit'
+            unit = 'unknown unit'
         else:  # is a pre-set standard with diameter in millimeters.
             unit = 'mm'
 
@@ -1684,12 +1683,12 @@ class ImageViewer(ProcessImage):
             f'{"   peak_local_max:".ljust(space)}min_distance={min_dist}\n'
             f'{tab}footprint=np.ones({p_kernel}, np.uint8\n'
             f'{"   watershed:".ljust(space)}connectivity={connections}\n'
-            f'{tab}compactness=0.03\n'  # NOTE: change if changes in watershed method.
+            f'{tab}compactness=0.03\n'  # NOTE: change if changed in watershed method.
             f'{divider}\n'
             f'{"# distTrans segments:".ljust(space)}{self.num_dt_segments}\n'
             f'{"Selected size range:".ljust(space)}{c_min_r}--{c_max_r} pixels, diameter\n'
             f'{"Selected size std.:".ljust(space)}{size_std},'
-            f' {self.size_std_size} {unit} diameter\n'
+            f' {size_std_size} {unit} diameter\n'
             f'{tab}Pixel diameter entered: {self.size_std_px.get()},'
             f' unit/px factor: {unit_per_px}\n'
             f'{"# Selected objects:".ljust(space)}{num_selected}\n'
