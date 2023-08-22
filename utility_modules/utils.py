@@ -149,6 +149,7 @@ def save_settings_and_img(inputpath: str,
     print(f'Result image and its settings were saved to files.'
           f'{data2save}')
 
+
 def display_report(frame: tk.Frame, report: str) -> None:
     """
     Places a formatted text string into the specified Frame; allows for
@@ -221,6 +222,7 @@ def quit_gui(mainloop: tk.Tk) -> None:
         print('An unknown error occurred:', unk)
         sys.exit(0)
 
+
 def no_objects_found_msg():
     """
     Pop-up info when segments not found or their sizes out of range.
@@ -230,3 +232,15 @@ def no_objects_found_msg():
           ' dark-on-light contrasts.\n'
           'Also, "Contour radius size" sliders may need adjusting.')
     messagebox.showinfo(detail=_m)
+
+
+def wait4it(img):
+    """Pop up info for larger input image files."""
+    if img.shape[1] > 2000:
+        msg = ('Larger images will take longer to process.\n'
+               'Patience Grasshopper.\n'
+               'Resist the urge to start clicking about after a parameter change.\n'
+               'If the threshold image shows up as black-on-white, then use\n'
+               'the inverse option at start or in the Threshold type pull-down.')
+        messagebox.showinfo(title='Wait for it...',
+                            detail=msg)

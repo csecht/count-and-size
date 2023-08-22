@@ -16,7 +16,7 @@ import tkinter
 # noinspection PyCompatibility
 from __main__ import __doc__
 from pathlib import Path
-from tkinter import ttk
+from tkinter import ttk, messagebox
 
 # Third party imports.
 import cv2
@@ -58,6 +58,7 @@ def arguments():
 
         sys.exit(0)
 
+
 def input_metrics(img: np.ndarray) -> dict:
     """
     Read the image file specified in the --input command line option,
@@ -77,10 +78,10 @@ def input_metrics(img: np.ndarray) -> dict:
     fig_width: int = gray_img.shape[1]
 
     if fig_width > 2000:
-            print('Images over 2000 pixels wide will take longer to process...'
-                  ' patience Grasshopper.\n  If the threshold image shows up as'
-                  ' black-on-white, then use the --inverse command line option.\n'
-                  'If the displayed image is too large, reduce the scaling factor.')
+        print('Images over 2000 pixels wide will take longer to process...'
+              ' patience Grasshopper.\n  If the threshold image shows up as'
+              ' black-on-white, then use the inverse option.\n'
+              'If the displayed image is too large, reduce the scaling factor.')
 
     # Set maximum enclosing circle radius to 1/2 the shortest image dimension.
     max_circle_r: int = round(min(gray_img.shape) / 2)
@@ -138,6 +139,7 @@ def tk_image(image: np.ndarray, scale_coef: float) -> PhotoImage:
     tk_img.image = tk_img
 
     return tk_img
+
 
 def ttk_styles(mainloop: tkinter.Tk) -> None:
     """

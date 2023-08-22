@@ -919,6 +919,7 @@ class ImageViewer(ProcessImage):
 
         self.setup_image_windows()
         self.setup_settings_window()
+        utils.wait4it(img=self.cvimg['gray'])
         self.setup_explanation()
         self.setup_buttons()
         self.config_sliders()
