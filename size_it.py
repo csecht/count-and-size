@@ -84,7 +84,6 @@ class ProcessImage(tk.Tk):
     filter_image
     watershed_segmentation
     select_and_size
-    custom_sigfig
     update_image
     """
 
@@ -508,7 +507,8 @@ class ProcessImage(tk.Tk):
 
                 # Need to set precision for display of annotated image.
                 if self.cbox_val['size_std'].get() == 'Custom':
-                    size2display = self.custom_sigfig(size=object_size)
+                    size2display = to_p.to_precision(value=object_size,
+                                                     precision=self.num_sigfig)
                     selected_sizes.append(float(size2display))
                 else:  # is one of the preset stds, or None
                     # Round ndigits=1 here b/c that is the precision of
@@ -555,30 +555,6 @@ class ProcessImage(tk.Tk):
         # Circled sized objects are in their own window.
         self.update_image(img_name='ws_circled',
                           img_array=self.cvimg['ws_circled'])
-
-
-    def custom_sigfig(self, size: float) -> str:
-        """
-        Count number of significant figures in the custom size standard
-        and report the object size with that number of sig. fig.
-        Remove any decimal points and leading zeros, then count
-        remaining digits to determine number of sig. fig. Trim the
-        size to that specification.
-        Calls: to_p.to_precision()
-
-        Args:
-            size: The object size, as float.
-        Returns: The object size string with corrected number of
-                significant figures.
-        """
-
-        # See: https://en.wikipedia.org/wiki/Significant_figures#
-        #  Significant_figures_rules_explained
-
-        num_size_digits = self.custom_size_entry.get().replace('.', '')
-        self.num_sigfig = len(str(num_size_digits).lstrip('0'))
-
-        return to_p.to_precision(value=size, precision=self.num_sigfig)
 
     def update_image(self, img_name: str, img_array: np.ndarray) -> None:
         """
@@ -1559,7 +1535,7 @@ class ImageViewer(ProcessImage):
         size_std_px: str = self.size_std_px.get()
         size_std: str = self.cbox_val['size_std'].get()
 
-        # Need to verify the pixel diameter entry:
+        # Need to verify that the pixel diameter entry is a number:
         try:
             int(size_std_px)
             if int(size_std_px) <= 0:
@@ -1573,7 +1549,7 @@ class ImageViewer(ProcessImage):
 
         # For clarity, need to not show the custom size Entry widgets when
         #  'Custom' is not selected, but show them when it is.
-        # Verify that entries are positive numbers.
+        # Verify that entries are numbers and calculate self.num_sigfig.
         #  Custom sizes can be entered as integer, float, or power operator.
         if size_std != 'Custom':  # is one of the preset standards
             size_std_size = const.SIZE_STANDARDS[size_std]
@@ -1581,25 +1557,38 @@ class ImageViewer(ProcessImage):
             self.size_cust_entry.grid_remove()
             self.size_cust_label.grid_remove()
             self.unit_per_px.set(size_std_size / int(size_std_px))
-
-        else:  # is Custom
+        else:  # is Custom, allow any numerical entry.
             self.size_cust_entry.grid()
             self.size_cust_label.grid()
             try:
-                float(custom_size)
-                size_std_size = float(custom_size)
+                float(custom_size)  # will raise ValueError if false.
+                self.unit_per_px.set(float(custom_size) / int(size_std_px))
 
-                if size_std_size <= 0:
-                    raise ValueError
+                # See: https://en.wikipedia.org/wiki/Significant_figures#
+                #  Significant_figures_rules_explained
+                # The num_sigfig value calculated here is used as parameter
+                #   in to_p.to_precision statements.
+                if 'e' in custom_size or 'E' in custom_size:
+                    # Remove non-numeric characters and the ten-power notation,
+                    #   assuming it is only a single digit.
+                    cust_size = (custom_size.replace('e', '')
+                                 .replace('E', '')
+                                 .replace('.', '')
+                                 .replace('-', ''))
+                    cust_size = cust_size[:-1]
+                else:
+                    cust_size = custom_size.replace('.', '')
 
-                self.unit_per_px.set(size_std_size / int(size_std_px))
+                # Finally, determine number of custom sigfig, and account for
+                #   cases where user left a leading zero in entry box:
+                self.num_sigfig = len(cust_size.lstrip('0'))
 
             except ValueError:
-                _m = "Enter a custom size > 0."
-                messagebox.showerror(title='Invalid entry',
-                                     detail=_m)
+                messagebox.showinfo(
+                    title='Custom size',
+                    detail="Enter a number.")
                 self.custom_size_entry.set('0')
-                size_std_size = 0
+
 
     def report_results(self) -> None:
         """
@@ -1627,8 +1616,6 @@ class ImageViewer(ProcessImage):
         mask_size = int(self.cbox_val['dt_mask_size'].get())
         p_kernel = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
-        size_std = self.cbox_val['size_std'].get()
-        size_std_size = const.SIZE_STANDARDS[size_std]
 
         # Only odd kernel integers are used for processing.
         _nk = self.slider_val['noise_k'].get()
@@ -1639,6 +1626,12 @@ class ImageViewer(ProcessImage):
             filter_k = _fk
         else:
             filter_k = _fk + 1 if _fk % 2 == 0 else _fk
+
+        size_std = self.cbox_val['size_std'].get()
+        if self.cbox_val['size_std'].get() == 'Custom':
+            size_std_size = self.custom_size_entry.get()
+        else:
+            size_std_size = const.SIZE_STANDARDS[size_std]
 
         if size_std in 'None, Custom':
             unit = 'unknown unit'
