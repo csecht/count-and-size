@@ -29,6 +29,7 @@ from PIL import ImageTk
 # Local application imports.
 from utility_modules import (constants as const)
 
+
 def check_platform() -> None:
     """
     Run check for various platforms to optimize displays.
@@ -47,6 +48,7 @@ def check_platform() -> None:
             windll.shcore.SetProcessDpiAwareness(2)
 
     print('To quit, use Esc or Ctrl-Q. From the Terminal, use Ctrl-C.')
+
 
 def valid_path_to(input_path: str) -> Path:
     """
@@ -76,6 +78,7 @@ def valid_path_to(input_path: str) -> Path:
             valid_path = Path(Path(f'{input_path}')).resolve()
 
     return valid_path
+
 
 def save_settings_and_img(inputpath: str,
                           img2save,
@@ -147,6 +150,7 @@ def save_settings_and_img(inputpath: str,
     print(f'Result image and its settings were saved to files.'
           f'{data2save}')
 
+
 def display_report(frame: tk.Frame, report: str) -> None:
     """
     Places a formatted text string into the specified Frame; allows for
@@ -197,6 +201,7 @@ def display_report(frame: tk.Frame, report: str) -> None:
                    columnspan=2,
                    sticky=tk.EW)
 
+
 def count_sig_fig(entry_number: Union[int, float, str]) -> int:
     """
     Determine the number of significant figures in a number.
@@ -214,17 +219,18 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
     entry_number = str(entry_number)
 
     # Remove non-numeric characters
-    trim_num = ''
-    trim_num = ''.join([trim_num + _c for _c in entry_number if _c.isnumeric()])
+    trimmed_number = ''
+    trimmed_number = ''.join([trimmed_number + _c for _c in entry_number if _c.isnumeric()])
 
-    # If scientific notation, remove the ten-power value, assuming
+    # If scientific notation, remove the exponent value, assuming
     #  that it is only a single digit.
-    if {'e','E'}.intersection(set(entry_number)):
-        trim_num = trim_num[:-1]
+    if {'e', 'E'}.intersection(set(entry_number)):
+        trimmed_number = trimmed_number[:-1]
 
     # Finally, remove leading zeros, which are not significant, and
     #  determine number of significant figures.
-    return len(trim_num.lstrip('0'))
+    return len(trimmed_number.lstrip('0'))
+
 
 def quit_gui(mainloop: tk.Tk) -> None:
     """Safe and informative exit from the program.
@@ -263,8 +269,9 @@ def wait4it(img):
     """Pop up info for larger input image files."""
     if img.shape[1] > 2000:
         msg = ('Larger images will take longer to process.\n'
-               'Patience Grasshopper.\n'
-               'Resist the urge to start clicking about after a parameter change.\n'
+               'A large number of objects will take longer to process.\n'
+               'So, patience Grasshopper.\n'
+               'Resist the urge to start clicking away if things seem stalled.\n'
                'If the threshold image shows up as black-on-white, then use\n'
                'the inverse option at start or in the Threshold type pull-down.')
         messagebox.showinfo(title='Wait for it...',
