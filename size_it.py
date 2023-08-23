@@ -508,7 +508,8 @@ class ProcessImage(tk.Tk):
                 # Need to set precision for display of annotated image.
                 if self.cbox_val['size_std'].get() == 'Custom':
                     size2display = to_p.to_precision(value=object_size,
-                                                     precision=self.num_sigfig)
+                                                     precision=self.num_sigfig,
+                                                     preserve_integer=True)
                     selected_sizes.append(float(size2display))
                 else:  # is one of the preset stds, or None
                     # Round ndigits=1 here b/c that is the precision of
@@ -1566,8 +1567,8 @@ class ImageViewer(ProcessImage):
 
                 # See: https://en.wikipedia.org/wiki/Significant_figures#
                 #  Significant_figures_rules_explained
-                # The num_sigfig value calculated here is used as parameter
-                #   in to_p.to_precision statements.
+                # The num_sigfig value calculated here is used as the
+                #  precision parameter in to_p.to_precision statements.
                 if 'e' in custom_size or 'E' in custom_size:
                     # Remove non-numeric characters and the ten-power notation,
                     #   assuming it is only a single digit.
@@ -1640,20 +1641,29 @@ class ImageViewer(ProcessImage):
 
         # Work up some summary metrics.
         if self.sorted_size_list:
-            num_selected = len(self.sorted_size_list)
+            num_selected: int = len(self.sorted_size_list)
             unit_per_px: str = to_p.to_precision(value=self.unit_per_px.get(),
-                                                 precision=self.num_sigfig)
+                                                 precision=self.num_sigfig,
+                                                 preserve_integer=True)
             mean_unit_dia: str = to_p.to_precision(value=mean(self.sorted_size_list),
-                                                   precision=self.num_sigfig)
+                                                   precision=self.num_sigfig,
+                                                   preserve_integer=True)
             median_unit_dia: str = to_p.to_precision(value=median(self.sorted_size_list),
-                                                     precision=self.num_sigfig)
-            mm_range = f'{min(self.sorted_size_list)}--{max(self.sorted_size_list)}'
+                                                     precision=self.num_sigfig,
+                                                     preserve_integer=True)
+            smallest = to_p.to_precision(value=min(self.sorted_size_list),
+                                                     precision=self.num_sigfig,
+                                                     preserve_integer=True)
+            biggest = to_p.to_precision(value=max(self.sorted_size_list),
+                                                     precision=self.num_sigfig,
+                                                     preserve_integer=True)
+            size_range: str = f'{smallest}--{biggest}'
         else:
-            num_selected = 'n/a'
+            num_selected = 0
             unit_per_px = 'n/a'
             mean_unit_dia = 'n/a'
             median_unit_dia = 'n/a'
-            mm_range = 'n/a'
+            size_range = 'n/a'
 
         # Text is formatted for clarity in window, terminal, and saved file.
         space = 23
@@ -1686,7 +1696,7 @@ class ImageViewer(ProcessImage):
             f' unit/px factor: {unit_per_px}\n'
             f'{"# Selected objects:".ljust(space)}{num_selected}\n'
             f'{"Object size metrics,".ljust(space)}mean: {mean_unit_dia}, median:'
-            f' {median_unit_dia}, range: {mm_range}\n'
+            f' {median_unit_dia}, range: {size_range}\n'
         )
 
         utils.display_report(frame=self.contour_report_frame,

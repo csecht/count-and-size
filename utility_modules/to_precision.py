@@ -95,7 +95,7 @@ def to_precision(
   precision,
   notation='auto',
   delimiter='e',
-  auto_limit=3,
+  auto_limit=4,
   strip_zeros=False,
   preserve_integer=False):
   '''
