@@ -200,6 +200,7 @@ def display_report(frame: tk.Frame, report: str) -> None:
 def count_sig_fig(entry_number: Union[int, float, str]) -> int:
     """
     Determine the number of significant figures in a number.
+    Be sure to verify that *entry_number* is a real number prior to calling.
     Args:
         entry_number: Any numerical representation, as string or digits.
 
@@ -210,21 +211,16 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
     # See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained
     # The num_sigfig value calculated here is generally used as the
     #  'precision' parameter in to_p.to_precision() statements.
-
     entry_number = str(entry_number)
-    if 'e' in entry_number or 'E' in entry_number:
-        # Remove non-numeric characters and the ten-power notation,
-        #   assuming it is only a single digit.
-        trim_num = (entry_number
-                     .replace('e', '')
-                     .replace('E', '')
-                     .replace('.', '')
-                     .replace('-', ''))
+
+    # Remove non-numeric characters
+    trim_num = ''
+    trim_num = ''.join([trim_num + _c for _c in entry_number if _c.isnumeric()])
+
+    # If scientific notation, remove the ten-power value, assuming
+    #  that it is only a single digit.
+    if {'e','E'}.intersection(set(entry_number)):
         trim_num = trim_num[:-1]
-    else:  # is not in scientific notation; account for negatives
-        trim_num = (entry_number
-                     .replace('.', '')
-                     .replace('-', ''))
 
     # Finally, remove leading zeros, which are not significant, and
     #  determine number of significant figures.

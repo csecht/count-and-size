@@ -508,8 +508,7 @@ class ProcessImage(tk.Tk):
                 # Need to set precision for display of annotated image.
                 if self.cbox_val['size_std'].get() == 'Custom':
                     size2display = to_p.to_precision(value=object_size,
-                                                     precision=self.num_sigfig,
-                                                     preserve_integer=True)
+                                                     precision=self.num_sigfig)
                     selected_sizes.append(float(size2display))
                 else:  # is one of the preset stds, or None
                     # Round ndigits=1 here b/c that is the precision of
@@ -1625,20 +1624,15 @@ class ImageViewer(ProcessImage):
         if self.sorted_size_list:
             num_selected: int = len(self.sorted_size_list)
             unit_per_px: str = to_p.to_precision(value=self.unit_per_px.get(),
-                                                 precision=self.num_sigfig,
-                                                 preserve_integer=True)
+                                                 precision=self.num_sigfig)
             mean_unit_dia: str = to_p.to_precision(value=mean(self.sorted_size_list),
-                                                   precision=self.num_sigfig,
-                                                   preserve_integer=True)
+                                                   precision=self.num_sigfig)
             median_unit_dia: str = to_p.to_precision(value=median(self.sorted_size_list),
-                                                     precision=self.num_sigfig,
-                                                     preserve_integer=True)
+                                                     precision=self.num_sigfig)
             smallest = to_p.to_precision(value=min(self.sorted_size_list),
-                                                     precision=self.num_sigfig,
-                                                     preserve_integer=True)
+                                         precision=self.num_sigfig)
             biggest = to_p.to_precision(value=max(self.sorted_size_list),
-                                                     precision=self.num_sigfig,
-                                                     preserve_integer=True)
+                                        precision=self.num_sigfig)
             size_range: str = f'{smallest}--{biggest}'
         else:
             num_selected = 0
