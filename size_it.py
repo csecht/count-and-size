@@ -1574,15 +1574,15 @@ class ImageViewer(ProcessImage):
                     # Remove non-numeric characters and the ten-power notation,
                     #   assuming it is only a single digit.
                     cust_size = (custom_size
-                                 .replace(__old='e', __new='')
-                                 .replace(__old='E', __new='')
-                                 .replace(__old='.', __new='')
-                                 .replace(__old='-', __new=''))
+                                 .replace('e', '')
+                                 .replace('E', '')
+                                 .replace('.', '')
+                                 .replace('-', ''))
                     cust_size = cust_size[:-1]
                 else:  # is not in scientific notation; account for negatives
                     cust_size = (custom_size
-                                 .replace(__old='.', __new='')
-                                 .replace(__old='-', __new=''))
+                                 .replace('.', '')
+                                 .replace('-', ''))
 
                 # Finally, determine number of custom sigfig, and remove
                 #   leading zeros, which are not significant.
