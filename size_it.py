@@ -1526,7 +1526,8 @@ class ImageViewer(ProcessImage):
     def set_size_std(self) -> None:
         """
         Assign a unit conversion factor to the observed pixel diameter
-        of the chosen size standard.
+        of the chosen size standard and calculate the number of significant
+        figure in any custom size entry.
         Called from process_all(), process_sizes(), __init__.
 
         Returns: None
@@ -1562,7 +1563,7 @@ class ImageViewer(ProcessImage):
             self.size_cust_entry.grid()
             self.size_cust_label.grid()
             try:
-                float(custom_size)  # will raise ValueError if false.
+                float(custom_size)  # will raise ValueError if not a number.
                 self.unit_per_px.set(float(custom_size) / int(size_std_px))
 
                 # See: https://en.wikipedia.org/wiki/Significant_figures#
@@ -1572,16 +1573,19 @@ class ImageViewer(ProcessImage):
                 if 'e' in custom_size or 'E' in custom_size:
                     # Remove non-numeric characters and the ten-power notation,
                     #   assuming it is only a single digit.
-                    cust_size = (custom_size.replace('e', '')
-                                 .replace('E', '')
-                                 .replace('.', '')
-                                 .replace('-', ''))
+                    cust_size = (custom_size
+                                 .replace(__old='e', __new='')
+                                 .replace(__old='E', __new='')
+                                 .replace(__old='.', __new='')
+                                 .replace(__old='-', __new=''))
                     cust_size = cust_size[:-1]
-                else:
-                    cust_size = custom_size.replace('.', '')
+                else:  # is not in scientific notation; account for negatives
+                    cust_size = (custom_size
+                                 .replace(__old='.', __new='')
+                                 .replace(__old='-', __new=''))
 
-                # Finally, determine number of custom sigfig, and account for
-                #   cases where user left a leading zero in entry box:
+                # Finally, determine number of custom sigfig, and remove
+                #   leading zeros, which are not significant.
                 self.num_sigfig = len(cust_size.lstrip('0'))
 
             except ValueError:
