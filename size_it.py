@@ -1553,47 +1553,25 @@ class ImageViewer(ProcessImage):
         #  'Custom' is not selected, but show them when it is.
         # Verify that entries are numbers and calculate self.num_sigfig.
         #  Custom sizes can be entered as integer, float, or power operator.
-        if size_std != 'Custom':  # is one of the preset standards
-            size_std_size = const.SIZE_STANDARDS[size_std]
-            self.custom_size_entry.set('0')
-            self.size_cust_entry.grid_remove()
-            self.size_cust_label.grid_remove()
-            self.unit_per_px.set(size_std_size / int(size_std_px))
-        else:  # is Custom, allow any numerical entry.
+        if size_std == 'Custom':
             self.size_cust_entry.grid()
             self.size_cust_label.grid()
             try:
                 float(custom_size)  # will raise ValueError if not a number.
+                self.num_sigfig = utils.count_sig_fig(custom_size)
                 self.unit_per_px.set(float(custom_size) / int(size_std_px))
-
-                # See: https://en.wikipedia.org/wiki/Significant_figures#
-                #  Significant_figures_rules_explained
-                # The num_sigfig value calculated here is used as the
-                #  precision parameter in to_p.to_precision statements.
-                if 'e' in custom_size or 'E' in custom_size:
-                    # Remove non-numeric characters and the ten-power notation,
-                    #   assuming it is only a single digit.
-                    cust_size = (custom_size
-                                 .replace('e', '')
-                                 .replace('E', '')
-                                 .replace('.', '')
-                                 .replace('-', ''))
-                    cust_size = cust_size[:-1]
-                else:  # is not in scientific notation; account for negatives
-                    cust_size = (custom_size
-                                 .replace('.', '')
-                                 .replace('-', ''))
-
-                # Finally, determine number of custom sigfig, and remove
-                #   leading zeros, which are not significant.
-                self.num_sigfig = len(cust_size.lstrip('0'))
-
             except ValueError:
                 messagebox.showinfo(
                     title='Custom size',
                     detail="Enter a number.")
                 self.custom_size_entry.set('0')
 
+        else:  # is one of the preset size standards
+            size_std_size = const.SIZE_STANDARDS[size_std]
+            self.custom_size_entry.set('0')
+            self.size_cust_entry.grid_remove()
+            self.size_cust_label.grid_remove()
+            self.unit_per_px.set(size_std_size / int(size_std_px))
 
     def report_results(self) -> None:
         """
@@ -1727,12 +1705,10 @@ class ImageViewer(ProcessImage):
 
     def process_sizes(self, event=None) -> None:
         """
-        Improve performance by running only select_and_size
-        from ProcessImage and report_results() from ImageViewer.
+        Call only sizing and reporting methods to improve performance.
         Called from the c_min_r and c_max_r sliders.
         Args:
             event: The implicit mouse button event.
-
         Returns: *event* as a formality; is functionally None.
         """
         self.set_size_std()

@@ -5,6 +5,7 @@ check_platform - Exit if not Linux, Windows, or macOS.
 valid_path_to - Get correct path to program's files.
 save_settings_and_img- Save files of result image and its settings.
 display_report - Place a formatted text string into a specified Frame.
+count_sig_fig - Count number of significant figures in a number.
 text_array - Generate an image array of text.
 quit_keys -  Error-free and informative exit from the program.
 no_objects_found - A simple message box when a contour pointset is empty.
@@ -18,6 +19,7 @@ import tkinter as tk
 from datetime import datetime
 from pathlib import Path
 from tkinter import messagebox
+from typing import Union
 
 # Third party imports.
 import cv2
@@ -25,9 +27,7 @@ import numpy as np
 from PIL import ImageTk
 
 # Local application imports.
-from utility_modules import (manage,
-                             constants as const)
-
+from utility_modules import (constants as const)
 
 def check_platform() -> None:
     """
@@ -47,7 +47,6 @@ def check_platform() -> None:
             windll.shcore.SetProcessDpiAwareness(2)
 
     print('To quit, use Esc or Ctrl-Q. From the Terminal, use Ctrl-C.')
-
 
 def valid_path_to(input_path: str) -> Path:
     """
@@ -77,7 +76,6 @@ def valid_path_to(input_path: str) -> Path:
             valid_path = Path(Path(f'{input_path}')).resolve()
 
     return valid_path
-
 
 def save_settings_and_img(inputpath: str,
                           img2save,
@@ -149,7 +147,6 @@ def save_settings_and_img(inputpath: str,
     print(f'Result image and its settings were saved to files.'
           f'{data2save}')
 
-
 def display_report(frame: tk.Frame, report: str) -> None:
     """
     Places a formatted text string into the specified Frame; allows for
@@ -200,6 +197,38 @@ def display_report(frame: tk.Frame, report: str) -> None:
                    columnspan=2,
                    sticky=tk.EW)
 
+def count_sig_fig(entry_number: Union[int, float, str]) -> int:
+    """
+    Determine the number of significant figures in a number.
+    Args:
+        entry_number: Any numerical representation, as string or digits.
+
+    Returns: Integer count of significant figures in *entry_number*.
+
+    """
+
+    # See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained
+    # The num_sigfig value calculated here is generally used as the
+    #  'precision' parameter in to_p.to_precision() statements.
+
+    entry_number = str(entry_number)
+    if 'e' in entry_number or 'E' in entry_number:
+        # Remove non-numeric characters and the ten-power notation,
+        #   assuming it is only a single digit.
+        trim_num = (entry_number
+                     .replace('e', '')
+                     .replace('E', '')
+                     .replace('.', '')
+                     .replace('-', ''))
+        trim_num = trim_num[:-1]
+    else:  # is not in scientific notation; account for negatives
+        trim_num = (entry_number
+                     .replace('.', '')
+                     .replace('-', ''))
+
+    # Finally, remove leading zeros, which are not significant, and
+    #  determine number of significant figures.
+    return len(trim_num.lstrip('0'))
 
 def quit_gui(mainloop: tk.Tk) -> None:
     """Safe and informative exit from the program.
