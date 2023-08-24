@@ -83,7 +83,6 @@ class ProcessImage(tk.Tk):
     reduce_noise
     filter_image
     watershed_segmentation
-    select_and_size
     update_image
     """
 
@@ -438,120 +437,6 @@ class ProcessImage(tk.Tk):
 
         # Now draw enclosing circles around watershed segments to get sizes.
 
-    def select_and_size(self, contour_pointset: list) -> None:
-        """
-        Select object contours based on area size and position,
-        draw an enclosing circle around contours, then display them
-        on the input image. Objects are expected to be oblong so circle
-        diameter can represent the object's length.
-        Called by watershed_segmentation(), process_all(), process_sizes().
-        Calls manage.tk_image().
-
-        Args:
-            contour_pointset: List of selected contours from cv2.findContours.
-
-        Returns: None
-        """
-        # Note that cvimg['ws_circled'] is an instance attribute because
-        #  it is the result image for utils.save_settings_and_img().
-        self.cvimg['ws_circled'] = self.cvimg['input'].copy()
-        self.sorted_size_list.clear()
-
-        selected_sizes: List[float] = []
-        preferred_color: tuple = const.COLORS_CV[self.cbox_val['color'].get()]
-        font_scale: float = self.metrics['font_scale']
-        line_thickness: int = self.metrics['line_thickness']
-
-        # The size range slider values are radii pixels. This is done b/c:
-        #  1) Displayed values have fewer digits, so a cleaner slide bar.
-        #  2) Sizes are diameters, so radii are conceptually easier than areas.
-        #  So, need to convert to area for the cv2.contourArea function.
-        c_area_min = self.slider_val['c_min_r'].get() ** 2 * np.pi
-        c_area_max = self.slider_val['c_max_r'].get() ** 2 * np.pi
-
-        # Set coordinate point limits to find contours along a file border.
-        bottom_edge = self.cvimg['gray'].shape[0] - 1
-        right_edge = self.cvimg['gray'].shape[1] - 1
-
-        # Exclude contours not in the specified size range.
-        # Exclude contours that have a coordinate point intersecting the img edge.
-        if contour_pointset:
-            flag = False
-            for _c in contour_pointset:
-                if not c_area_max > cv2.contourArea(_c) >= c_area_min:
-                    continue
-
-                # Skip contours that touch top or left edge.
-                if {0, 1}.intersection(set(_c.ravel())):
-                    continue
-
-                # Skip contours that touch bottom or right edge.
-                # Break from inner loop when any touch is found.
-                for _p in _c:
-                    for coord in _p:
-                        _x, _y = tuple(coord)
-                        if _x == right_edge or _y == bottom_edge:
-                            flag = True
-                    if flag:
-                        break
-                if flag:
-                    flag = False
-                    continue
-
-                # Draw a circle enclosing the contour, measure its diameter,
-                #  and save each object_size measurement to a list for reporting.
-                ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
-
-                # Note: sizes are full-length floats.
-                object_size = _r * 2 * self.unit_per_px.get()
-
-                # Need to set sig. fig. for display in annotated image.
-                # num_sigfig is calculated for custom sizes, but the
-                #  pre-set size standards use three sig.fig.
-                if self.cbox_val['size_std'].get() != 'Custom':
-                    self.num_sigfig = 3
-
-                size2display: str = to_p.to_precision(value=object_size,
-                                                      precision=self.num_sigfig)
-                selected_sizes.append(float(size2display))
-
-                ((txt_width, _), baseline) = cv2.getTextSize(
-                    text=str(size2display),
-                    fontFace=const.FONT_TYPE,
-                    fontScale=font_scale,
-                    thickness=line_thickness)
-                offset_x = txt_width / 2
-
-                cv2.circle(img=self.cvimg['ws_circled'],
-                           center=(round(_x), round(_y)),
-                           radius=round(_r),
-                           color=preferred_color,
-                           thickness=line_thickness,
-                           lineType=cv2.LINE_AA,
-                           )
-                cv2.putText(img=self.cvimg['ws_circled'],
-                            text=str(size2display),
-                            org=(round(_x - offset_x), round(_y + baseline)),
-                            fontFace=const.FONT_TYPE,
-                            fontScale=font_scale,
-                            color=preferred_color,
-                            thickness=line_thickness,
-                            lineType=cv2.LINE_AA,
-                            )
-
-            # The sorted size list is used for reporting individual sizes
-            #   and size summary metrics.
-            if selected_sizes:
-                self.sorted_size_list = sorted(selected_sizes)
-            else:
-                utils.no_objects_found_msg()
-        else:
-            utils.no_objects_found_msg()
-
-        # Circled sized objects are in their own window.
-        self.update_image(img_name='ws_circled',
-                          img_array=self.cvimg['ws_circled'])
-
     def update_image(self,
                      img_name: str,
                      img_array: np.ndarray) -> None:
@@ -595,6 +480,7 @@ class ImageViewer(ProcessImage):
     display_input_and_others
     set_defaults
     set_size_std
+    select_and_size
     report_results
     process_all
     process_sizes
@@ -1555,8 +1441,8 @@ class ImageViewer(ProcessImage):
             self.size_cust_label.grid()
             try:
                 float(custom_size)  # will raise ValueError if not a number.
-                self.num_sigfig = utils.count_sig_fig(custom_size)
                 self.unit_per_px.set(float(custom_size) / int(size_std_px))
+                self.num_sigfig = utils.count_sig_fig(custom_size)
             except ValueError:
                 messagebox.showinfo(
                     title='Custom size',
@@ -1569,6 +1455,123 @@ class ImageViewer(ProcessImage):
             self.size_cust_entry.grid_remove()
             self.size_cust_label.grid_remove()
             self.unit_per_px.set(size_std_size / int(size_std_px))
+            self.num_sigfig = utils.count_sig_fig(size_std_size)
+
+    def select_and_size(self, contour_pointset: list) -> None:
+        """
+        Select object contours based on area size and position,
+        draw an enclosing circle around contours, then display them
+        on the input image. Objects are expected to be oblong so that
+        circle diameter can represent the object's length.
+        Called by process_all(), process_sizes().
+        Calls manage.tk_image().
+
+        Args:
+            contour_pointset: List of selected contours from
+             cv2.findContours in ProcessImage.watershed_segmentation().
+
+        Returns: None
+        """
+        # Note that cvimg['ws_circled'] is an instance attribute because
+        #  it is the result image for utils.save_settings_and_img().
+        self.cvimg['ws_circled'] = self.cvimg['input'].copy()
+        self.sorted_size_list.clear()
+
+        selected_sizes: List[float] = []
+        preferred_color: tuple = const.COLORS_CV[self.cbox_val['color'].get()]
+        font_scale: float = self.metrics['font_scale']
+        line_thickness: int = self.metrics['line_thickness']
+
+        # The size range slider values are radii pixels. This is done b/c:
+        #  1) Displayed values have fewer digits, so a cleaner slide bar.
+        #  2) Sizes are diameters, so radii are conceptually easier than areas.
+        #  So, need to convert to area for the cv2.contourArea function.
+        c_area_min = self.slider_val['c_min_r'].get() ** 2 * np.pi
+        c_area_max = self.slider_val['c_max_r'].get() ** 2 * np.pi
+
+        # Set coordinate point limits to find contours along a file border.
+        bottom_edge = self.cvimg['gray'].shape[0] - 1
+        right_edge = self.cvimg['gray'].shape[1] - 1
+
+        # Exclude contours not in the specified size range.
+        # Exclude contours that have a coordinate point intersecting the img edge.
+        if contour_pointset:
+            flag = False
+            for _c in contour_pointset:
+                if not c_area_max > cv2.contourArea(_c) >= c_area_min:
+                    continue
+
+                # Skip contours that touch top or left edge.
+                if {0, 1}.intersection(set(_c.ravel())):
+                    continue
+
+                # Skip contours that touch bottom or right edge.
+                # Break from inner loop when any touch is found.
+                for _p in _c:
+                    for coord in _p:
+                        _x, _y = tuple(coord)
+                        if _x == right_edge or _y == bottom_edge:
+                            flag = True
+                    if flag:
+                        break
+                if flag:
+                    flag = False
+                    continue
+
+                # Draw a circle enclosing the contour, measure its diameter,
+                #  and save each object_size measurement to a list for reporting.
+                ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
+
+                # Note: sizes are full-length floats.
+                object_size = _r * 2 * self.unit_per_px.get()
+
+                # Need to set sig. fig. to display sizes in annotated image.
+                #  num_sigfig value is determined in set_size_std().
+                size2display: str = to_p.to_precision(value=object_size,
+                                                      precision=self.num_sigfig)
+
+                # Convert sizes to float on assumption that individual
+                #  sizes listed in the report will be used in a spreadsheet
+                #  or other statistical analysis.
+                selected_sizes.append(float(size2display))
+
+                ((txt_width, _), baseline) = cv2.getTextSize(
+                    text=str(size2display),
+                    fontFace=const.FONT_TYPE,
+                    fontScale=font_scale,
+                    thickness=line_thickness)
+                offset_x = txt_width / 2
+
+                cv2.circle(img=self.cvimg['ws_circled'],
+                           center=(round(_x), round(_y)),
+                           radius=round(_r),
+                           color=preferred_color,
+                           thickness=line_thickness,
+                           lineType=cv2.LINE_AA,
+                           )
+                cv2.putText(img=self.cvimg['ws_circled'],
+                            text=str(size2display),
+                            org=(round(_x - offset_x), round(_y + baseline)),
+                            fontFace=const.FONT_TYPE,
+                            fontScale=font_scale,
+                            color=preferred_color,
+                            thickness=line_thickness,
+                            lineType=cv2.LINE_AA,
+                            )
+
+            # The sorted size list is used for reporting individual sizes
+            #   and size summary metrics.
+            if selected_sizes:
+                self.sorted_size_list = sorted(selected_sizes)
+            else:
+                utils.no_objects_found_msg()
+        else:
+            utils.no_objects_found_msg()
+
+        # Circled sized objects are in their own window.
+        self.update_image(img_name='ws_circled',
+                          img_array=self.cvimg['ws_circled'])
+
 
     def report_results(self) -> None:
         """
