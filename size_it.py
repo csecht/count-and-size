@@ -1404,7 +1404,7 @@ class ImageViewer(ProcessImage):
         # Set to 1 to avoid division by 0.
         self.size_std_px.set('1')
 
-        self.custom_size_entry.set('0')
+        self.custom_size_entry.set('0.0')
 
     def set_size_std(self) -> None:
         """
@@ -1432,13 +1432,14 @@ class ImageViewer(ProcessImage):
             self.size_std_px.set('1')
             size_std_px = '1'
 
-        # For clarity, need to not show the custom size Entry widgets when
-        #  'Custom' is not selected, but show them when it is.
-        # Verify that entries are numbers and calculate self.num_sigfig.
+        # For clarity, need to not show the custom size Entry widgets
+        #  only when 'Custom' is selected.
+        # Verify that entries are numbers and define self.num_sigfig.
         #  Custom sizes can be entered as integer, float, or power operator.
         if size_std == 'Custom':
             self.size_cust_entry.grid()
             self.size_cust_label.grid()
+
             try:
                 float(custom_size)  # will raise ValueError if not a number.
                 self.unit_per_px.set(float(custom_size) / int(size_std_px))
@@ -1447,15 +1448,16 @@ class ImageViewer(ProcessImage):
                 messagebox.showinfo(
                     title='Custom size',
                     detail="Enter a number.")
-                self.custom_size_entry.set('0')
+                self.custom_size_entry.set('0.0')
 
         else:  # is one of the preset size standards
-            size_std_size = const.SIZE_STANDARDS[size_std]
-            self.custom_size_entry.set('0')
             self.size_cust_entry.grid_remove()
             self.size_cust_label.grid_remove()
-            self.unit_per_px.set(size_std_size / int(size_std_px))
-            self.num_sigfig = utils.count_sig_fig(size_std_size)
+            self.custom_size_entry.set('0.0')
+
+            preset_std_size = const.SIZE_STANDARDS[size_std]
+            self.unit_per_px.set(preset_std_size / int(size_std_px))
+            self.num_sigfig = utils.count_sig_fig(preset_std_size)
 
     def select_and_size(self, contour_pointset: list) -> None:
         """
@@ -1473,7 +1475,7 @@ class ImageViewer(ProcessImage):
         Returns: None
         """
         # Note that cvimg['ws_circled'] is an instance attribute because
-        #  it is the result image for utils.save_settings_and_img().
+        #  it is the image also used for utils.save_settings_and_img().
         self.cvimg['ws_circled'] = self.cvimg['input'].copy()
         self.sorted_size_list.clear()
 
