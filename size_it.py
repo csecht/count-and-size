@@ -505,19 +505,15 @@ class ProcessImage(tk.Tk):
                 # Note: sizes are full-length floats.
                 object_size = _r * 2 * self.unit_per_px.get()
 
-                # Need to set precision for display of annotated image.
-                if self.cbox_val['size_std'].get() == 'Custom':
-                    size2display = to_p.to_precision(value=object_size,
-                                                     precision=self.num_sigfig)
-                    selected_sizes.append(float(size2display))
-                else:  # is one of the preset stds, or None
-                    # Round ndigits=1 here b/c that is the precision of
-                    #  preset mm sizes in const.SIZE_STANDARDS.
-                    # num_sigfig is used for reporting summary metrics;
-                    #   3 is based on the mm values in const.SIZE_STANDARDS.
+                # Need to set sig. fig. for display in annotated image.
+                # num_sigfig is calculated for custom sizes, but the
+                #  pre-set size standards use three sig.fig.
+                if self.cbox_val['size_std'].get() != 'Custom':
                     self.num_sigfig = 3
-                    selected_sizes.append(round(number=object_size, ndigits=1))
-                    size2display = round(number=object_size)
+
+                size2display: str = to_p.to_precision(value=object_size,
+                                                      precision=self.num_sigfig)
+                selected_sizes.append(float(size2display))
 
                 ((txt_width, _), baseline) = cv2.getTextSize(
                     text=str(size2display),
@@ -556,7 +552,9 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='ws_circled',
                           img_array=self.cvimg['ws_circled'])
 
-    def update_image(self, img_name: str, img_array: np.ndarray) -> None:
+    def update_image(self,
+                     img_name: str,
+                     img_array: np.ndarray) -> None:
         """
         Process a cv2 image array to use as a tk PhotoImage and update
         (configure) its window label for immediate display.
@@ -1299,7 +1297,7 @@ class ImageViewer(ProcessImage):
                                       **const.LABEL_PARAMETERS)
 
         self.size_cust_entry.config(textvariable=self.custom_size_entry,
-                                    width=6)
+                                    width=8)
         self.size_cust_label.config(text="Enter custom standard's size:",
                                     **const.LABEL_PARAMETERS)
 

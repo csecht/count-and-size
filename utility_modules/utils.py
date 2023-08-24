@@ -17,6 +17,7 @@ import platform
 import sys
 import tkinter as tk
 from datetime import datetime
+from math import floor, log10
 from pathlib import Path
 from tkinter import messagebox
 from typing import Union
@@ -190,10 +191,10 @@ def display_report(frame: tk.Frame, report: str) -> None:
                         )
     # Replace prior Text with current text;
     #   hide cursor in Text; (re-)grid in-place.
-    reporttxt.delete('1.0', tk.END)
+    reporttxt.delete(index1='1.0', index2=tk.END)
     reporttxt.insert(tk.INSERT, report)
     # Indent helps center text in the Frame.
-    reporttxt.tag_config('leftmargin', lmargin1=20)
+    reporttxt.tag_configure(tagName='leftmargin', lmargin1=20)
     reporttxt.tag_add('leftmargin', '1.0', tk.END)
     reporttxt.configure(state=tk.DISABLED)
 
@@ -213,23 +214,26 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
 
     """
 
+
     # See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained
     # The num_sigfig value calculated here is generally used as the
     #  'precision' parameter in to_p.to_precision() statements.
-    entry_number = str(entry_number)
+    number_str = str(entry_number).lower()
 
     # Remove non-numeric characters
-    trimmed_number = ''
-    trimmed_number = ''.join([trimmed_number + _c for _c in entry_number if _c.isnumeric()])
+    sigfig_str = ''
+    sigfig_str = ''.join([sigfig_str + _c for _c in number_str if _c.isnumeric()])
 
-    # If scientific notation, remove the exponent value, assuming
-    #  that it is only a single digit.
-    if {'e', 'E'}.intersection(set(entry_number)):
-        trimmed_number = trimmed_number[:-1]
+    # If scientific notation, remove the trailing exponent value.
+    #  The exponent and exp_len statements allow any size of e power.
+    if 'e' in number_str:
+        exponent = (floor(log10(float(entry_number))))
+        exp_len = len(str(exponent))
+        sigfig_str = sigfig_str[:-exp_len]
 
     # Finally, remove leading zeros, which are not significant, and
     #  determine number of significant figures.
-    return len(trimmed_number.lstrip('0'))
+    return len(sigfig_str.lstrip('0'))
 
 
 def quit_gui(mainloop: tk.Tk) -> None:
