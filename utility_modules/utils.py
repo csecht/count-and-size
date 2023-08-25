@@ -227,7 +227,7 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
     # If scientific notation, remove the trailing exponent value.
     #  The exponent and exp_len statements allow any size of e power.
     if 'e' in number_str:
-        exponent = (floor(log10(float(entry_number))))
+        exponent = floor(log10(float(entry_number)))
         exp_len = len(str(exponent))
         sigfig_str = sigfig_str[:-exp_len]
 

@@ -674,7 +674,7 @@ class ImageViewer(ProcessImage):
             title='Select input image',
             filetypes=[('JPG', '*.jpg'),
                        ('JPG', '*.jpeg'),
-                       ('JPG', '*.JPEG'),
+                       ('JPG', '*.JPG'),  # used for iPhone images
                        ('PNG', '*.png'),
                        ('TIFF', '*.tiff'),
                        ('TIFF', '*.tif'),
@@ -1252,16 +1252,12 @@ class ImageViewer(ProcessImage):
         self.cbox['dt_type_lbl'].grid(column=0, row=10, **east_grid_params)
         self.cbox['dt_type'].grid(column=1, row=10, **west_grid_params)
 
-        # May not be optimized placement for non-Linux platforms, but
-        #  is easy to understand.
+        # May not be optimized placement for non-Linux platforms.
+        # If change the padx here, match it below for the mask_lbl_padx offset.
         self.cbox['dt_mask_size_lbl'].grid(column=1, row=10,
-                                           padx=(125, 0),
+                                           padx=(120, 0),
                                            pady=(4, 0),
                                            sticky=tk.W)
-        self.cbox['dt_mask_size'].grid(column=1, row=10,
-                                       padx=(215, 0),
-                                       pady=(4, 0),
-                                       sticky=tk.W)
 
         # The label widget is gridded to the left, based on this widget's width.
         self.cbox['ws_connect'].grid(column=1, row=10, **east_grid_params)
@@ -1301,6 +1297,12 @@ class ImageViewer(ProcessImage):
         self.cbox['th_type_lbl'].grid(column=1, row=6,
                                       padx=thtype_padx,
                                       **east_params_rel)
+
+        mask_lbl_padx = (self.cbox['dt_mask_size_lbl'].winfo_width() + 120, 0)
+        self.cbox['dt_mask_size'].grid(column=1, row=10,
+                                       padx=mask_lbl_padx,
+                                       pady=(4, 0),
+                                       sticky=tk.W)
 
         ws_connect_padx = (0, self.cbox['ws_connect'].winfo_width() + 10)
         self.cbox['ws_connect_lbl'].grid(column=1, row=10,
@@ -1618,10 +1620,8 @@ class ImageViewer(ProcessImage):
         else:
             size_std_size = const.SIZE_STANDARDS[size_std]
 
-        if size_std in 'None, Custom':
-            unit = 'unknown unit'
-        else:  # is a pre-set standard with diameter in millimeters.
-            unit = 'mm'
+        # Size units are mm for the preset size standards.
+        unit = 'unknown unit' if size_std in 'None, Custom' else 'mm'
 
         # Work up some summary metrics.
         if self.sorted_size_list:
