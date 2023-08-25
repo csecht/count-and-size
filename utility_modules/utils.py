@@ -226,9 +226,15 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
 
     # If scientific notation, remove the trailing exponent value.
     #  The exponent and exp_len statements allow any size of e power.
+    #  The 'e0' statement is for folks who use a leading zero for the exponent.
     if 'e' in number_str:
-        exponent = floor(log10(float(entry_number)))
-        exp_len = len(str(exponent))
+        exponent = floor(log10(float(number_str)))
+        if 'e0' in number_str:
+            exp_len = len(str(exponent)) + 1
+        elif 'e-0' in number_str:
+            exp_len = len(str(exponent)) + 2
+        else:
+            exp_len = len(str(exponent))
         sigfig_str = sigfig_str[:-exp_len]
 
     # Finally, remove leading zeros, which are not significant, and
