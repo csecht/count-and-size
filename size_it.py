@@ -1449,7 +1449,11 @@ class ImageViewer(ProcessImage):
             except ValueError:
                 messagebox.showinfo(
                     title='Custom size',
-                    detail="Enter a number.")
+                    detail='Enter a number.\n'
+                           'Accepted types:\n'
+                           '  integer: 26, 2651\n'
+                           '  decimal: 26.5, 0.265, .2\n'
+                           '  exponent: 2.6e10, 2.6e-2')
                 self.custom_size_entry.set('0.0')
 
         else:  # is one of the preset size standards
