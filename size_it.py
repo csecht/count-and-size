@@ -1394,14 +1394,13 @@ class ImageViewer(ProcessImage):
             self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
 
         # Set/Reset Combobox widgets.
-        self.cbox['morphop'].current(0)
-        self.cbox['morphshape'].current(0)
-        self.cbox['filter'].current(0)
-
-        self.cbox['dt_type'].current(1)  # cv2.DIST_L2
-        self.cbox['dt_mask_size'].current(1)  # cv2.DIST_MASK_3 == 3
-        self.cbox['ws_connect'].current(1)
-        self.cbox['size_std'].current(0)
+        self.cbox['morphop'].current(0)  # 'cv2.MORPH_OPEN' == 2
+        self.cbox['morphshape'].current(0)  # 'cv2.MORPH_RECT' == 0, cv2 default
+        self.cbox['filter'].current(0)  # 'cv2.blur' == 0, cv2 default
+        self.cbox['dt_type'].current(1)  # 'cv2.DIST_L2' == 2
+        self.cbox['dt_mask_size'].current(1)  # '3' == cv2.DIST_MASK_3
+        self.cbox['ws_connect'].current(1)  # '4'
+        self.cbox['size_std'].current(0)  # 'None'
 
         # Set to 1 to avoid division by 0.
         self.size_std_px.set('1')
@@ -1451,7 +1450,7 @@ class ImageViewer(ProcessImage):
                     title='Custom size',
                     detail='Enter a number.\n'
                            'Accepted types:\n'
-                           '  integer: 26, 2651\n'
+                           '  integer: 26, 2651, 2_651\n'
                            '  decimal: 26.5, 0.265, .2\n'
                            '  exponent: 2.6e10, 2.6e-2')
                 self.custom_size_entry.set('0.0')
