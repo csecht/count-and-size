@@ -207,17 +207,16 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
     """
     Determine the number of significant figures in a number.
     Be sure to verify that *entry_number* is a real number prior to calling.
+    The sigfig length value returned here is generally for use as the
+    'precision' parameter in to_p.to_precision() statements.
+
     Args:
         entry_number: Any numerical representation, as string or digits.
 
     Returns: Integer count of significant figures in *entry_number*.
-
     """
 
-
     # See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained
-    # The num_sigfig value calculated here is generally used as the
-    #  'precision' parameter in to_p.to_precision() statements.
     number_str = str(entry_number).lower()
 
     # Remove non-numeric characters
@@ -226,15 +225,14 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
 
     # If scientific notation, remove the trailing exponent value.
     #  The exponent and exp_len statements allow any size of e power.
-    #  The 'e0' statement is for folks who use a leading zero for the exponent.
+    #  The 'e0' statements account for use of a leading zero in the exponent.
     if 'e' in number_str:
         exponent = floor(log10(float(number_str)))
-        if 'e0' in number_str:
+        if 'e0' in number_str or 'e-0' in number_str:
             exp_len = len(str(exponent)) + 1
-        elif 'e-0' in number_str:
-            exp_len = len(str(exponent)) + 2
         else:
             exp_len = len(str(exponent))
+
         sigfig_str = sigfig_str[:-exp_len]
 
     # Finally, remove leading zeros, which are not significant, and
@@ -253,8 +251,8 @@ def quit_gui(mainloop: tk.Tk) -> None:
     print('\n  *** User has quit the program. ***')
 
     try:
-        mainloop.update_idletasks()
-        mainloop.after(100)
+        mainloop.update()
+        mainloop.after(200)
         mainloop.destroy()
         # Need explicit exit if for some reason a tk window isn't destroyed.
         sys.exit(0)
