@@ -1543,7 +1543,7 @@ class ImageViewer(ProcessImage):
                 selected_sizes.append(float(size2display))
 
                 ((txt_width, _), baseline) = cv2.getTextSize(
-                    text=str(size2display),
+                    text=size2display,
                     fontFace=const.FONT_TYPE,
                     fontScale=font_scale,
                     thickness=line_thickness)
@@ -1557,7 +1557,7 @@ class ImageViewer(ProcessImage):
                            lineType=cv2.LINE_AA,
                            )
                 cv2.putText(img=self.cvimg['ws_circled'],
-                            text=str(size2display),
+                            text=size2display,
                             org=(round(_x - offset_x), round(_y + baseline)),
                             fontFace=const.FONT_TYPE,
                             fontScale=font_scale,
@@ -1618,7 +1618,7 @@ class ImageViewer(ProcessImage):
             filter_k = _fk + 1 if _fk % 2 == 0 else _fk
 
         size_std = self.cbox_val['size_std'].get()
-        if self.cbox_val['size_std'].get() == 'Custom':
+        if size_std == 'Custom':
             size_std_size = self.custom_size_entry.get()
         else:
             size_std_size = const.SIZE_STANDARDS[size_std]
@@ -1649,7 +1649,8 @@ class ImageViewer(ProcessImage):
 
         # Text is formatted for clarity in window, terminal, and saved file.
         space = 23
-        tab = " ".ljust(space)
+        tab = " " * space
+
         # Divider symbol is Box Drawings Double Horizontal from https://coolsymbol.com/
         divider = "═" * 20  # divider's unicode_escape: b'\\u2550\'
 
