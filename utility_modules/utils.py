@@ -225,11 +225,15 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
 
     # If scientific notation, remove the trailing exponent value.
     #  The exponent and exp_len statements allow any size of e power.
-    #  The 'e0' statements account for use of a leading zero in the exponent.
+    #  The 'e0' and 'e-0' statements account for use of a leading zero in the exponent.
     if 'e' in number_str:
         exponent = floor(log10(float(number_str)))
-        if 'e0' in number_str or 'e-0' in number_str:
+        if 'e-0' in number_str:
+            exp_len = len(str(exponent))
+        elif 'e0' in number_str:
             exp_len = len(str(exponent)) + 1
+        elif 'e-' in number_str:
+            exp_len = len(str(exponent)) - 1
         else:
             exp_len = len(str(exponent))
 
@@ -248,7 +252,7 @@ def quit_gui(mainloop: tk.Tk) -> None:
 
     Returns: None
     """
-    print('\n  *** User has quit the program. ***')
+    print('\n*** User has quit the program ***')
 
     try:
         mainloop.update()
