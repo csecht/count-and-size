@@ -88,7 +88,6 @@ class ProcessImage(tk.Tk):
 
     __slots__ = (
         'cbox_val',
-        'custom_size_entry',
         'cvimg',
         'img_label',
         'num_dt_segments',
@@ -171,7 +170,6 @@ class ProcessImage(tk.Tk):
         self.ws_max_contours = []
         self.sorted_size_list = []
         self.unit_per_px = tk.DoubleVar()
-        self.custom_size_entry = tk.StringVar()
         self.num_sigfig = 0
 
     def adjust_contrast(self) -> None:
@@ -490,6 +488,7 @@ class ImageViewer(ProcessImage):
         'cbox',
         'contour_report_frame',
         'contour_selectors_frame',
+        'custom_size_entry',
         'do_inverse_th',
         'img_window',
         'input_file',
@@ -575,19 +574,19 @@ class ImageViewer(ProcessImage):
             'size_std': ttk.Combobox(master=self.contour_selectors_frame),
         }
 
-        # User entered pixel diameter of size standard object
-        #  px_dia textvariable is in ProcessImage __init__.
+        # User-entered pixel diameters of selected size standards.
+        # There are only two, so no need to use dictionaries. (?)
         self.size_std_px_entry = tk.Entry(self.contour_selectors_frame)
+        self.size_std_px = tk.StringVar()
         self.size_std_px_label = tk.Label(self.contour_selectors_frame)
 
         self.size_cust_entry = tk.Entry(self.contour_selectors_frame)
+        self.custom_size_entry = tk.StringVar()
         self.size_cust_label = tk.Label(self.contour_selectors_frame)
 
-        # Dictionary items are populated in setup_image_windows() with
-        #   tk.Toplevel as values; don't want tk windows made here.
+        # Dictionary items are populated in setup_image_windows(), with
+        #   tk.Toplevel as values; don't want tk windows created here.
         self.img_window = {}
-
-        self.size_std_px = tk.StringVar()
 
         # Is an instance attribute here only because it is used in call
         #  to utils.save_settings_and_img() from the Save button.
