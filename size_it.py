@@ -172,6 +172,28 @@ class ProcessImage(tk.Tk):
         self.unit_per_px = tk.DoubleVar()
         self.num_sigfig = 0
 
+    def update_image(self,
+                     img_name: str,
+                     img_array: np.ndarray) -> None:
+        """
+        Process a cv2 image array to use as a tk PhotoImage and update
+        (configure) its window label for immediate display.
+        Calls module manage.tk_image().
+
+        Args:
+            img_name: The key name used in the tkimg and img_label
+                      dictionaries.
+            img_array: The new cv2 processed numpy image array.
+
+        Returns: None
+        """
+        # Use .configure to update images.
+        self.tkimg[img_name] = manage.tk_image(
+            image=img_array,
+            scale_coef=self.slider_val['scale'].get()
+        )
+        self.img_label[img_name].configure(image=self.tkimg[img_name])
+
     def adjust_contrast(self) -> None:
         """
         Adjust contrast of the input self.cvimg['gray'] image.
@@ -347,6 +369,7 @@ class ProcessImage(tk.Tk):
         distances_img = cv2.distanceTransform(src=thresh_img,
                                               distanceType=dt_type,
                                               maskSize=mask_size)
+        print('Completed distance transform; looking for peaks...')
 
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         local_max = peak_local_max(distances_img,
@@ -359,6 +382,7 @@ class ProcessImage(tk.Tk):
                                    p_norm=np.inf,  # Chebyshev distance
                                    # p_norm=2,  # Euclidean distance
                                    )
+        print('Found peaks; running skimage.segmentation watershed algorithm...')
 
         mask = np.zeros(distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
@@ -377,6 +401,7 @@ class ProcessImage(tk.Tk):
                                   mask=thresh_img,
                                   compactness=0.03,
                                   watershed_line=True)
+        print('Completed watershed; now finding contours...')
 
         # NOTE: this cv2.watershed substitutes for the skimage implementation.
         #  The negative -image provides full-sized enclosing circles,
@@ -433,29 +458,9 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='watershed',
                           img_array=watershed_gray)
 
+        print('Found contours. Segmentation completed.\n')
+
         # Now draw enclosing circles around watershed segments to get sizes.
-
-    def update_image(self,
-                     img_name: str,
-                     img_array: np.ndarray) -> None:
-        """
-        Process a cv2 image array to use as a tk PhotoImage and update
-        (configure) its window label for immediate display.
-        Calls module manage.tk_image().
-
-        Args:
-            img_name: The key name used in the tkimg and img_label
-                      dictionaries.
-            img_array: The new cv2 processed numpy image array.
-
-        Returns: None
-        """
-        # Use .configure to update images.
-        self.tkimg[img_name] = manage.tk_image(
-            image=img_array,
-            scale_coef=self.slider_val['scale'].get()
-        )
-        self.img_label[img_name].configure(image=self.tkimg[img_name])
 
 
 class ImageViewer(ProcessImage):
@@ -1161,10 +1166,14 @@ class ImageViewer(ProcessImage):
                                      **const.COMBO_PARAMETERS)
 
         # Now bind functions to all Comboboxes.
-        # Note that the if condition doesn't seem to be needed to improve
-        # performance or affect bindings; it just clarifies the intention.
+        # Note that the  <if '_lbl'> condition doesn't seem to be needed for
+        # performance; it just clarifies the bind intention.
         for name, widget in self.cbox.items():
-            if '_lbl' not in name:
+            if '_lbl' in name:
+                continue
+            if 'size_' in name:
+                widget.bind('<<ComboboxSelected>>', func=self.process_sizes)
+            else:
                 widget.bind('<<ComboboxSelected>>', func=self.process_all)
 
     def config_entries(self) -> None:
@@ -1577,7 +1586,6 @@ class ImageViewer(ProcessImage):
         # Circled sized objects are in their own window.
         self.update_image(img_name='ws_circled',
                           img_array=self.cvimg['ws_circled'])
-
 
     def report_results(self) -> None:
         """
