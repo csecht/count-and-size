@@ -138,6 +138,7 @@ See also: https://matplotlib.org/stable/tutorials/colors/colormaps.html
 COLORS_CV = {
     'blue': (178, 114, 0),
     'orange': (0, 159, 230),
+    'dark blue': (112, 25, 25),
     'sky blue': (233, 180, 86),
     'blueish green': (115, 158, 0),
     'vermilion': (0, 94, 213),
@@ -170,7 +171,7 @@ if MY_OS == 'dar':  # macOS
     COLORS_TK['tk_white'] = 'white'
 elif MY_OS == 'lin':  # Linux (Ubuntu)
     COLORS_TK['tk_white'] = 'grey85'
-else:  # platform is 'win'  # Windows (10)
+else:  # platform is 'win' Windows (10)
     COLORS_TK['tk_white'] = 'grey95'
 
 STD_CONTOUR_COLOR = {'green': (0, 255, 0)}
