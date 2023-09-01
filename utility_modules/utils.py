@@ -226,6 +226,9 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
     # If scientific notation, remove the trailing exponent value.
     #  The exponent and exp_len statements allow any size of e power.
     #  The 'e0' and 'e-0' statements account for use of a leading zero in the exponent.
+    #  Note: if, for some odd reason, an exponent of zero is entered, then the sig. fig.
+    #   count will be 1 less than expected. Oh, well. It's not worth importing
+    #   regular expressions to fix this bug for a very rare occurrence.
     if 'e' in number_str:
         exponent = floor(log10(float(number_str)))
         if 'e-0' in number_str:
@@ -277,7 +280,7 @@ def no_objects_found_msg():
     messagebox.showinfo(detail=_m)
 
 
-def wait4it(img):
+def wait4it_msg(img):
     """Pop up info for larger input image files."""
     if img.shape[1] > 2000:
         msg = ('Larger images will take longer to process.\n'

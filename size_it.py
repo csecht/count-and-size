@@ -369,7 +369,7 @@ class ProcessImage(tk.Tk):
         distances_img = cv2.distanceTransform(src=thresh_img,
                                               distanceType=dt_type,
                                               maskSize=mask_size)
-        print('Completed distance transform; looking for peaks...')
+        print('Have completed distance transform; looking for peaks...')
 
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         local_max = peak_local_max(distances_img,
@@ -458,7 +458,7 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='watershed',
                           img_array=watershed_gray)
 
-        print('Found contours. Segmentation completed.\n')
+        print('Found contours. Segmentation completed. Report ready.\n')
 
         # Now draw enclosing circles around watershed segments to get sizes.
 
@@ -473,7 +473,7 @@ class ImageViewer(ProcessImage):
     start_now
     setup_image_windows
     setup_settings_window
-    setup_explanation
+    setup_sizing_info
     setup_buttons
     config_sliders
     config_comboboxes
@@ -616,8 +616,8 @@ class ImageViewer(ProcessImage):
         """
 
         # Make geometry offset a function of the screen width.
-        #  This is needed b/c of differences among platforms' window
-        #  managers with how they place windows.
+        #  This is needed b/c of the way different platforms' window
+        #  managers position windows.
         w_offset = int(self.winfo_screenwidth() * 0.55)
         self.geometry(f'+{w_offset}+0')
         self.wm_withdraw()
@@ -660,8 +660,8 @@ class ImageViewer(ProcessImage):
         start_win.columnconfigure(index=0, weight=1)
         start_win.columnconfigure(index=1, weight=1)
 
-        # Need to allow complete tk mainloop shutdown with the system's
-        #   window manager 'close' icon in the window bar.
+        # Need to allow complete tk mainloop shutdown from the system's
+        #   window manager 'close' icon in the start window bar.
         start_win.protocol(name='WM_DELETE_WINDOW',
                            func=lambda: utils.quit_gui(app))
 
@@ -781,8 +781,8 @@ class ImageViewer(ProcessImage):
 
         self.setup_image_windows()
         self.setup_settings_window()
-        utils.wait4it(img=self.cvimg['gray'])
-        self.setup_explanation()
+        utils.wait4it_msg(img=self.cvimg['gray'])
+        self.setup_sizing_info()
         self.setup_buttons()
         self.config_sliders()
         self.config_comboboxes()
@@ -846,7 +846,7 @@ class ImageViewer(ProcessImage):
         # The Labels to display scaled images, which are updated using
         #  .configure() for 'image=' in their respective processing methods.
         #  Labels are gridded in their respective img_window in
-        #  ImageViewer.grid_img_labels().
+        #  grid_img_labels().
         self.img_label = {
             'input': tk.Label(self.img_window['input']),
             'gray': tk.Label(self.img_window['input']),
@@ -885,8 +885,8 @@ class ImageViewer(ProcessImage):
         self.protocol(name='WM_DELETE_WINDOW',
                       func=lambda: utils.quit_gui(app))
 
-        self.bind_all('<Escape>', lambda _: utils.quit_gui(app))
-        self.bind_all('<Control-q>', lambda _: utils.quit_gui(app))
+        self.bind_all('<Escape>', func=lambda _: utils.quit_gui(app))
+        self.bind_all('<Control-q>', func=lambda _: utils.quit_gui(app))
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
         # Default Frame() arguments work fine to display report text.
@@ -920,7 +920,7 @@ class ImageViewer(ProcessImage):
         app.wm_deiconify()
 
     @staticmethod
-    def setup_explanation() -> None:
+    def setup_sizing_info() -> None:
         """
         Informative note at bottom of settings (mainloop) window about
         the displayed size units.
@@ -1215,7 +1215,7 @@ class ImageViewer(ProcessImage):
             padx=5,
             pady=(4, 0),
             sticky=tk.E)
-        east_params_rel = dict(
+        east_params_relative = dict(
             pady=(4, 0),
             sticky=tk.E)
         slider_grid_params = dict(
@@ -1299,12 +1299,12 @@ class ImageViewer(ProcessImage):
         morphshape_padx = (0, self.cbox['morphshape'].winfo_width() + 10)
         self.cbox['morphshape_lbl'].grid(column=1, row=2,
                                          padx=morphshape_padx,
-                                         **east_params_rel)
+                                         **east_params_relative)
 
         thtype_padx = (0, self.cbox['th_type'].winfo_width() + 10)
         self.cbox['th_type_lbl'].grid(column=1, row=6,
                                       padx=thtype_padx,
-                                      **east_params_rel)
+                                      **east_params_relative)
 
         mask_lbl_padx = (self.cbox['dt_mask_size_lbl'].winfo_width() + 120, 0)
         self.cbox['dt_mask_size'].grid(column=1, row=10,
@@ -1315,17 +1315,17 @@ class ImageViewer(ProcessImage):
         ws_connect_padx = (0, self.cbox['ws_connect'].winfo_width() + 10)
         self.cbox['ws_connect_lbl'].grid(column=1, row=10,
                                          padx=ws_connect_padx,
-                                         **east_params_rel)
+                                         **east_params_relative)
 
         size_std_padx = (0, self.cbox['size_std'].winfo_width() + 10)
         self.cbox['size_std_lbl'].grid(column=1, row=19,
                                        padx=size_std_padx,
-                                       **east_params_rel)
+                                       **east_params_relative)
 
         custom_std_padx = (0, self.size_cust_entry.winfo_width() + 10)
         self.size_cust_label.grid(column=1, row=20,
                                   padx=custom_std_padx,
-                                  **east_params_rel)
+                                  **east_params_relative)
         # Remove initially; show only when Custom size is needed.
         self.size_cust_label.grid_remove()
 
@@ -1351,7 +1351,7 @@ class ImageViewer(ProcessImage):
         self.img_label['dist_trans'].grid(**const.PANEL_LEFT)
         self.img_label['watershed'].grid(**const.PANEL_RIGHT)
 
-        self.img_label['ws_circled'].grid(**const.PANEL_RIGHT)
+        self.img_label['ws_circled'].grid(**const.PANEL_LEFT)
 
     def display_image_windows(self) -> None:
         """
