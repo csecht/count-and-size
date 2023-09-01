@@ -1,4 +1,7 @@
 # Project: count-and-size
+![sizeit_icon_512.png](images/sizeit_icon_512.png)
+
+<sub>Image of the program's desktop icon</sub>
 
 The interactive Python program, `size_it.py`, counts and sizes groups of similar objects from an image file. The main purpose is to obtain mean, range, and individual sizes from a sample population. Once invoked from the Terminal command line, a tkinter GUI controls all file and OpenCV-Python imaging parameters.
 
@@ -109,7 +112,7 @@ Object size metrics,   mean: 12.1, median: 12, range: 6.9--17.7
 `6.9, 7.9, 7.9, 8.6, 8.9, 9.1, 9.2, 9.3, 9.5, 9.5, 9.6, 9.7, 9.7, 9.8, 9.8, 9.8, 9.9, 9.9, 10.0, 10.1, 10.2, 10.2, 10.2, 10.4, 10.4, 10.4, 10.5, 10.6, 10.6, 10.7, 10.7, 10.8, 10.8, 10.9, 10.9, 10.9, 11.0, 11.0, 11.0, 11.1, 11.1, 11.2, 11.2, 11.2, 11.2, 11.2, 11.3, 11.3, 11.4, 11.4, 11.4, 11.5, 11.5, 11.5, 11.6, 11.6, 11.7, 11.7, 11.8, 11.8, 11.8, 11.8, 11.8, 11.8, 11.9, 12.0, 12.1, 12.1, 12.1, 12.1, 12.1, 12.2, 12.3, 12.3, 12.3, 12.5, 12.5, 12.5, 12.5, 12.5, 12.6, 12.6, 12.7, 12.7, 12.7, 12.7, 12.8, 12.9, 12.9, 13.0, 13.0, 13.1, 13.1, 13.2, 13.2, 13.3, 13.3, 13.4, 13.7, 13.7, 13.9, 13.9, 14.0, 14.1, 14.1, 14.2, 14.2, 14.2, 14.3, 14.3, 14.4, 14.4, 14.4, 14.6, 14.6, 14.6, 14.7, 14.8, 15.0, 15.0, 15.1, 15.2, 15.5, 15.7, 16.2, 16.5, 16.9, 17.1, 17.7`
 
 ### Tips:
-1. For best results, use a well-contrasted objects that are not in large overlapping clusters.
+1. For best results, use a well-contrasted objects that are not in large overlapping clusters. If possible, use a lightbox and minimal top lighting for objects' photo.
 2. Backgrounds that are of a fine grain are good to use instead of striving for a uniform featureless background because the de-noise and filtering steps will remove small-grained features. See the use of black burlap in the sample1.jpg figure as an example.
 3. Before setting the size standard, adjust parameters to achieve the best separation and counts, then enter the resulting pixel diameter for your selected size standard to convert pixels to units measure. Units are millimeters for the pre-set standards, and whatever you want for custom standards.
 4. Once you select "Custom" for a size standard, an entry field pops up for you to fill in the known size.
