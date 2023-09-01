@@ -829,24 +829,34 @@ class ImageViewer(ProcessImage):
         # Need to disable default window Exit in display windows b/c
         #  subsequent calls to them need a valid path name.
         # Allow image label panels in image windows to resize with window.
-        #  Note that images don't proportionally resize, just their boundaries;
-        #    images will remain anchored at their top left corners.
+        # Note that images don't proportionally resize, just their boundaries;
+        #  images will remain anchored at their top left corners.
         # Configure windows the same as the settings window, to give a yellow
         #  border when it has focus and light grey when being dragged.
-        for _name, toplevel in self.img_window.items():
-            toplevel.wm_withdraw()
-            toplevel.minsize(width=200, height=100)
-            toplevel.protocol(name='WM_DELETE_WINDOW', func=window_info)
-            toplevel.columnconfigure(index=0, weight=1)
-            toplevel.columnconfigure(index=1, weight=1)
-            toplevel.rowconfigure(index=0, weight=1)
-            toplevel.title(const.WIN_NAME[_name])
-            toplevel.config(
-                bg=const.MASTER_BG,
-                highlightthickness=5,
-                highlightcolor=const.COLORS_TK['yellow'],
-                highlightbackground=const.DRAG_GRAY,
-            )
+        # Need an image to replace blank tk desktop icon for each window.
+        #   Set correct path to the local 'images' directory and icon file.
+        try:
+            _icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
+            app.iconphoto(True, _icon)
+
+            for _name, toplevel in self.img_window.items():
+                toplevel.wm_withdraw()
+                toplevel.iconphoto(True, _icon)
+                toplevel.minsize(width=200, height=100)
+                toplevel.protocol(name='WM_DELETE_WINDOW', func=window_info)
+                toplevel.columnconfigure(index=0, weight=1)
+                toplevel.columnconfigure(index=1, weight=1)
+                toplevel.rowconfigure(index=0, weight=1)
+                toplevel.title(const.WIN_NAME[_name])
+                toplevel.config(bg=const.MASTER_BG,
+                                highlightthickness=5,
+                                highlightcolor=const.COLORS_TK['yellow'],
+                                highlightbackground=const.DRAG_GRAY)
+
+        except tk.TclError as _msg:
+            print('Cannot display program icon, so it will be left blank or tk default.')
+            print(f'tk error message: {_msg}')
+
 
         # The Labels to display scaled images, which are updated using
         #  .configure() for 'image=' in their respective processing methods.
