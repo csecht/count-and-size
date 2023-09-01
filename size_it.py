@@ -835,28 +835,28 @@ class ImageViewer(ProcessImage):
         #  border when it has focus and light grey when being dragged.
         # Need an image to replace blank tk desktop icon for each window.
         #   Set correct path to the local 'images' directory and icon file.
+        _icon = None
         try:
             _icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
             app.iconphoto(True, _icon)
-
-            for _name, toplevel in self.img_window.items():
-                toplevel.wm_withdraw()
-                toplevel.iconphoto(True, _icon)
-                toplevel.minsize(width=200, height=100)
-                toplevel.protocol(name='WM_DELETE_WINDOW', func=window_info)
-                toplevel.columnconfigure(index=0, weight=1)
-                toplevel.columnconfigure(index=1, weight=1)
-                toplevel.rowconfigure(index=0, weight=1)
-                toplevel.title(const.WIN_NAME[_name])
-                toplevel.config(bg=const.MASTER_BG,
-                                highlightthickness=5,
-                                highlightcolor=const.COLORS_TK['yellow'],
-                                highlightbackground=const.DRAG_GRAY)
-
         except tk.TclError as _msg:
             print('Cannot display program icon, so it will be left blank or tk default.')
             print(f'tk error message: {_msg}')
 
+        for _name, toplevel in self.img_window.items():
+            toplevel.wm_withdraw()
+            if _icon:
+                toplevel.iconphoto(True, _icon)
+            toplevel.minsize(width=200, height=100)
+            toplevel.protocol(name='WM_DELETE_WINDOW', func=window_info)
+            toplevel.columnconfigure(index=0, weight=1)
+            toplevel.columnconfigure(index=1, weight=1)
+            toplevel.rowconfigure(index=0, weight=1)
+            toplevel.title(const.WIN_NAME[_name])
+            toplevel.config(bg=const.MASTER_BG,
+                            highlightthickness=5,
+                            highlightcolor=const.COLORS_TK['yellow'],
+                            highlightbackground=const.DRAG_GRAY)
 
         # The Labels to display scaled images, which are updated using
         #  .configure() for 'image=' in their respective processing methods.
