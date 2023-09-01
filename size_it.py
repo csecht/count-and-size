@@ -331,7 +331,8 @@ class ProcessImage(tk.Tk):
         """
         Identify object contours with cv2.threshold(), cv2.distanceTransform,
         and skimage.segmentation.watershed. Threshold types limited to
-        Otsu and Triangle.
+        Otsu and Triangle. For larger images, progress notifications are
+        printed to Terminal.
         Called by process_all(). Calls select_and_size() and manage.tk_image().
         Returns: None.
         """
@@ -339,7 +340,7 @@ class ProcessImage(tk.Tk):
         # watershed code inspiration sources:
         #   https://pyimagesearch.com/2015/11/02/watershed-opencv/
         # see also: http://scipy-lectures.org/packages/scikit-image/index.html
-
+        img_size = self.cvimg['gray'].shape[1]
         connections = int(self.cbox_val['ws_connect'].get())
         th_type = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
         dt_type = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
@@ -369,7 +370,8 @@ class ProcessImage(tk.Tk):
         distances_img = cv2.distanceTransform(src=thresh_img,
                                               distanceType=dt_type,
                                               maskSize=mask_size)
-        print('Have completed distance transform; looking for peaks...')
+        if img_size > 2600:
+            print('Have completed distance transform; looking for peaks...')
 
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         local_max = peak_local_max(distances_img,
@@ -382,7 +384,8 @@ class ProcessImage(tk.Tk):
                                    p_norm=np.inf,  # Chebyshev distance
                                    # p_norm=2,  # Euclidean distance
                                    )
-        print('Found peaks; running skimage.segmentation watershed algorithm...')
+        if img_size > 2600:
+            print('Found peaks; running skimage.segmentation watershed algorithm...')
 
         mask = np.zeros(distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
@@ -401,7 +404,8 @@ class ProcessImage(tk.Tk):
                                   mask=thresh_img,
                                   compactness=0.03,
                                   watershed_line=True)
-        print('Completed watershed; now finding contours...')
+        if img_size > 2600:
+            print('Completed watershed; now finding contours...')
 
         # NOTE: this cv2.watershed substitutes for the skimage implementation.
         #  The negative -image provides full-sized enclosing circles,
@@ -458,7 +462,8 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='watershed',
                           img_array=watershed_gray)
 
-        print('Found contours. Segmentation completed. Report ready.\n')
+        if img_size > 2600:
+            print('Found contours. Segmentation completed. Report ready.\n')
 
         # Now draw enclosing circles around watershed segments to get sizes.
 
