@@ -639,7 +639,7 @@ class ImageViewer(ProcessImage):
         # Need style of the ttk.Button to match main window button style.
         manage.ttk_styles(mainloop=self)
 
-        def call_start(event=None) -> None:
+        def _call_start(event=None) -> None:
             """Remove this start window, then call the suite of methods
             to get things going.
             Called from process_now_button and Return/Enter keys.
@@ -672,8 +672,8 @@ class ImageViewer(ProcessImage):
 
         start_win.bind('<Escape>', lambda _: utils.quit_gui(app))
         start_win.bind('<Control-q>', lambda _: utils.quit_gui(app))
-        start_win.bind('<Return>', func=call_start)
-        start_win.bind('<KP_Enter>', func=call_start)
+        start_win.bind('<Return>', func=_call_start)
+        start_win.bind('<KP_Enter>', func=_call_start)
 
         # Take a break in configuring the window to grab the input.
         # For macOS, need to have the filedialog be a child of start_win.
@@ -757,7 +757,7 @@ class ImageViewer(ProcessImage):
                                         text='Process now',
                                         style='My.TButton',
                                         width=0,
-                                        command=call_start)
+                                        command=_call_start)
 
         # Window grid settings; sorted by row.
         padding = dict(padx=6, pady=6)
@@ -805,7 +805,7 @@ class ImageViewer(ProcessImage):
         Returns: None
         """
 
-        def window_info():
+        def _window_info():
             """
             Provide a notice in Terminal.
             Called from .protocol() in setup_image_windows().
@@ -825,43 +825,10 @@ class ImageViewer(ProcessImage):
             'ws_contours': tk.Toplevel(),
         }
 
-        # Prevent user from inadvertently resizing a window too small to use.
-        # Need to disable default window Exit in display windows b/c
-        #  subsequent calls to them need a valid path name.
-        # Allow image label panels in image windows to resize with window.
-        # Note that images don't proportionally resize, just their boundaries;
-        #  images will remain anchored at their top left corners.
-        # Configure windows the same as the settings window, to give a yellow
-        #  border when it has focus and light grey when being dragged.
-        # Need an image to replace blank tk desktop icon for each window.
-        #   Set correct path to the local 'images' directory and icon file.
-        _icon = None
-        try:
-            _icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
-            app.iconphoto(True, _icon)
-        except tk.TclError as _msg:
-            print('Cannot display program icon, so it will be left blank or tk default.')
-            print(f'tk error message: {_msg}')
-
-        for _name, toplevel in self.img_window.items():
-            toplevel.wm_withdraw()
-            if _icon:
-                toplevel.iconphoto(True, _icon)
-            toplevel.minsize(width=200, height=100)
-            toplevel.protocol(name='WM_DELETE_WINDOW', func=window_info)
-            toplevel.columnconfigure(index=0, weight=1)
-            toplevel.columnconfigure(index=1, weight=1)
-            toplevel.rowconfigure(index=0, weight=1)
-            toplevel.title(const.WIN_NAME[_name])
-            toplevel.config(bg=const.MASTER_BG,
-                            highlightthickness=5,
-                            highlightcolor=const.COLORS_TK['yellow'],
-                            highlightbackground=const.DRAG_GRAY)
-
-        # The Labels to display scaled images, which are updated using
-        #  .configure() for 'image=' in their respective processing methods.
-        #  Labels are gridded in their respective img_window in
-        #  grid_img_labels().
+        # Labels to display scaled images, which are updated using
+        #  .configure() for 'image=' in their respective processing methods
+        #  via ProcessImage.update_image().
+        #  Labels are gridded in their respective img_window in grid_img_labels().
         self.img_label = {
             'input': tk.Label(self.img_window['input']),
             'gray': tk.Label(self.img_window['input']),
@@ -877,6 +844,39 @@ class ImageViewer(ProcessImage):
 
             'ws_circled': tk.Label(self.img_window['ws_contours']),
         }
+
+        # Need an image to replace blank tk desktop icon for each window.
+        #   Set correct path to the local 'images' directory and icon file.
+        # Need to disable default window Exit in display windows b/c
+        #  subsequent calls to them need a valid path name.
+        # Allow image label panels in image windows to resize with window.
+        #  Note that images don't proportionally resize, just their boundaries;
+        #  images will remain anchored at their top left corners.
+        # Configure windows the same as the settings window, to give a yellow
+        #  border when it has focus and light grey when being dragged.
+        icon_path = None
+        try:
+            icon_path = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
+            # Provide icon for mainloop (settings&report) window here.
+            app.iconphoto(True, icon_path)
+        except tk.TclError as _msg:
+            print('Cannot display program icon, so it will be left blank or tk default.')
+            print(f'tk error message: {_msg}')
+
+        for _name, toplevel in self.img_window.items():
+            toplevel.wm_withdraw()
+            if icon_path:
+                toplevel.iconphoto(True, icon_path)
+            toplevel.minsize(width=200, height=100)
+            toplevel.protocol(name='WM_DELETE_WINDOW', func=_window_info)
+            toplevel.columnconfigure(index=0, weight=1)
+            toplevel.columnconfigure(index=1, weight=1)
+            toplevel.rowconfigure(index=0, weight=1)
+            toplevel.title(const.WIN_NAME[_name])
+            toplevel.config(bg=const.MASTER_BG,
+                            highlightthickness=5,
+                            highlightcolor=const.COLORS_TK['yellow'],
+                            highlightbackground=const.DRAG_GRAY)
 
     def setup_settings_window(self) -> None:
         """
@@ -962,7 +962,7 @@ class ImageViewer(ProcessImage):
         """
         manage.ttk_styles(mainloop=self)
 
-        def save_results():
+        def _save_results():
             """
             A Button kw "command" caller to avoid messy lambda statements.
             """
@@ -973,7 +973,7 @@ class ImageViewer(ProcessImage):
                 txt2save=self.size_settings_txt + sizes,
                 caller='sizeit')
 
-        def do_reset():
+        def _do_reset():
             """
             Separates setting default values from process calls during
             startup, thus shortening startup time.
@@ -986,11 +986,11 @@ class ImageViewer(ProcessImage):
             width=0)
 
         reset_btn = ttk.Button(text='Reset settings',
-                               command=do_reset,
+                               command=_do_reset,
                                **button_params)
 
         save_btn = ttk.Button(text='Save settings & sized image',
-                              command=save_results,
+                              command=_save_results,
                               **button_params)
 
         # Widget grid in the mainloop window.
