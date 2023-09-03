@@ -282,12 +282,12 @@ def no_objects_found_msg():
 
 def wait4it_msg(img):
     """Pop up info for larger input image files."""
-    if img.shape[1] > 2000:
+    if img.shape[1] > 2600:
         msg = ('Larger images will take longer to process.\n'
-               'A large number of objects will take longer to process.\n'
+               'A large number of objects take longer to process.\n'
                'So, patience Grasshopper.\n'
                'Resist the urge to start clicking away if things seem stalled.\n'
                'If the threshold image shows up as black-on-white, then use\n'
-               'the inverse option at start or in the Threshold type pull-down.')
+               'the inverse option at start or in the Threshold type menu.')
         messagebox.showinfo(title='Wait for it...',
                             detail=msg)

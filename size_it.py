@@ -115,8 +115,8 @@ class ProcessImage(tk.Tk):
             'filter_k': tk.IntVar(),
             'plm_mindist': tk.IntVar(),
             'plm_footprint': tk.IntVar(),
-            'c_min_r': tk.IntVar(),
-            'c_max_r': tk.IntVar(),
+            'circle_r_min': tk.IntVar(),
+            'circle_r_max': tk.IntVar(),
             # For scale_slider variable in setup_start_window()...
             'scale': tk.DoubleVar(),
         }
@@ -232,12 +232,12 @@ class ProcessImage(tk.Tk):
         #   the displayed image.
         _k = self.slider_val['noise_k'].get()
         noise_k = _k + 1 if _k % 2 == 0 else _k
+        iteration = self.slider_val['noise_iter'].get()
 
         # Need integers for the cv function parameters.
         morph_shape = const.CV_MORPH_SHAPE[self.cbox_val['morphshape'].get()]
         morph_op = const.CV_MORPHOP[self.cbox_val['morphop'].get()]
         border_type = cv2.BORDER_DEFAULT  # const.CV_BORDER[self.cbox_val['border'].get()]
-        iteration = self.slider_val['noise_iter'].get()
 
         # See: https://docs.opencv2.org/3.0-beta/modules/imgproc/doc/filtering.html
         #  on page, see: cv2.getStructuringElement(shape, ksize[, anchor])
@@ -336,11 +336,14 @@ class ProcessImage(tk.Tk):
         Called by process_all(). Calls select_and_size() and manage.tk_image().
         Returns: None.
         """
-
         # watershed code inspiration sources:
         #   https://pyimagesearch.com/2015/11/02/watershed-opencv/
         # see also: http://scipy-lectures.org/packages/scikit-image/index.html
-        img_size = self.cvimg['gray'].shape[1]
+
+        # Help user know what is taking so long.
+        img_size = max(self.cvimg['gray'].shape)
+        img_size_for_msg = 2600
+
         connections = int(self.cbox_val['ws_connect'].get())
         th_type = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
         dt_type = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
@@ -359,7 +362,7 @@ class ProcessImage(tk.Tk):
                                       maxval=255,
                                       type=th_type)  # need *_INVERSE for black on white image.
 
-        # Now we want to separate objects in image.
+        # Now we want to separate objects in the image.
         # Generate the markers as local maxima of the distance to the background.
         # Calculate the distance transform of the input, by replacing each
         #   foreground (non-zero) element, with its shortest distance to
@@ -367,24 +370,26 @@ class ProcessImage(tk.Tk):
         #   Returns a float64 ndarray.
         # Note that maskSize=0 calculates the precise mask size only for
         #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
-        distances_img = cv2.distanceTransform(src=thresh_img,
-                                              distanceType=dt_type,
-                                              maskSize=mask_size)
-        if img_size > 2600:
+        distances_img: np.ndarray = cv2.distanceTransform(
+                                                src=thresh_img,
+                                                distanceType=dt_type,
+                                                maskSize=mask_size)
+        if img_size > img_size_for_msg:
             print('Have completed distance transform; looking for peaks...')
 
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
-        local_max = peak_local_max(distances_img,
-                                   min_distance=min_dist,
-                                   exclude_border=True,  # is =min_dist
-                                   num_peaks=np.inf,
-                                   footprint=plm_kernel,
-                                   labels=thresh_img,
-                                   num_peaks_per_label=np.inf,
-                                   p_norm=np.inf,  # Chebyshev distance
-                                   # p_norm=2,  # Euclidean distance
+        local_max: ndimage = peak_local_max(
+                                    image=distances_img,
+                                    min_distance=min_dist,
+                                    exclude_border=True,  # is min_dist
+                                    num_peaks=np.inf,
+                                    footprint=plm_kernel,
+                                    labels=thresh_img,
+                                    num_peaks_per_label=np.inf,
+                                    p_norm=np.inf,  # for Chebyshev distance
+                                    # p_norm=2,  # for Euclidean distance
                                    )
-        if img_size > 2600:
+        if img_size > img_size_for_msg:
             print('Found peaks; running skimage.segmentation watershed algorithm...')
 
         mask = np.zeros(distances_img.shape, dtype=bool)
@@ -404,7 +409,7 @@ class ProcessImage(tk.Tk):
                                   mask=thresh_img,
                                   compactness=0.03,
                                   watershed_line=True)
-        if img_size > 2600:
+        if img_size > img_size_for_msg:
             print('Completed watershed; now finding contours...')
 
         # NOTE: this cv2.watershed substitutes for the skimage implementation.
@@ -462,7 +467,7 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='watershed',
                           img_array=watershed_gray)
 
-        if img_size > 2600:
+        if img_size > img_size_for_msg:
             print('Found contours. Segmentation completed. Report ready.\n')
 
         # Now draw enclosing circles around watershed segments to get sizes.
@@ -550,11 +555,11 @@ class ImageViewer(ProcessImage):
             'plm_footprint': tk.Scale(master=self.contour_selectors_frame),
             'plm_footprint_lbl': tk.Label(master=self.contour_selectors_frame),
 
-            'c_min_r': tk.Scale(master=self.contour_selectors_frame),
-            'c_min_r_lbl': tk.Label(master=self.contour_selectors_frame),
+            'circle_r_min': tk.Scale(master=self.contour_selectors_frame),
+            'circle_r_min_lbl': tk.Label(master=self.contour_selectors_frame),
 
-            'c_max_r': tk.Scale(master=self.contour_selectors_frame),
-            'c_max_r_lbl': tk.Label(master=self.contour_selectors_frame),
+            'circle_r_max': tk.Scale(master=self.contour_selectors_frame),
+            'circle_r_max_lbl': tk.Label(master=self.contour_selectors_frame),
         }
 
         self.cbox = {
@@ -630,10 +635,10 @@ class ImageViewer(ProcessImage):
     def setup_start_window(self) -> None:
         """
         Set up a basic Toplevel, then prompt for an input file, then
-        proceed with configuring the window's widgets and set initial
+        proceed with configuring the window's widgets to set initial
         parameters of display scale, font color, and threshold type
         (inverse vs. not). A button will then trigger image processing
-        steps. Window is destroyed once button is used.
+        steps to begin. Window is destroyed once button is used.
         """
 
         # Need style of the ttk.Button to match main window button style.
@@ -701,8 +706,8 @@ class ImageViewer(ProcessImage):
         # Once a file is selected, the file dialog is removed, and the
         #  start window setup can proceed, now with its active title and
         #  at its full width.
-        start_win.resizable(width=True, height=False)
         start_win.title('Set run settings')
+        start_win.resizable(width=True, height=False)
         self.update_idletasks()
 
         # Window widgets:
@@ -1017,6 +1022,10 @@ class ImageViewer(ProcessImage):
         #  for one Scale() in each Toplevel().
         scale_len = int(self.winfo_screenwidth() * 0.25)
 
+        # All Scales() use a mouse bind to call process_all() or process_sizes().
+        # Only the 'alpha' Scale() uses a command argument to initiate
+        #  processing through process_all(). This occurs at startup when
+        #  the 'alpha' slide bar is repositioned in set_defaults().
         self.slider['alpha_lbl'].configure(text='Contrast/gain/alpha:',
                                            **const.LABEL_PARAMETERS)
         self.slider['alpha'].configure(from_=0.0, to=4.0,
@@ -1024,6 +1033,7 @@ class ImageViewer(ProcessImage):
                                        resolution=0.1,
                                        tickinterval=0.5,
                                        variable=self.slider_val['alpha'],
+                                       command=self.process_all,
                                        **const.SCALE_PARAMETERS)
 
         self.slider['beta_lbl'].configure(text='Brightness/bias/beta:',
@@ -1043,10 +1053,10 @@ class ImageViewer(ProcessImage):
 
         self.slider['noise_iter_lbl'].configure(text='Reduce noise, iterations:',
                                                 **const.LABEL_PARAMETERS)
+
         self.slider['noise_iter'].configure(from_=1, to=5,
                                             tickinterval=1,
                                             variable=self.slider_val['noise_iter'],
-                                            command=self.process_all,
                                             **const.SCALE_PARAMETERS)
 
         self.slider['filter_k_lbl'].configure(text='Filter kernel size\n'
@@ -1073,24 +1083,24 @@ class ImageViewer(ProcessImage):
                                                variable=self.slider_val['plm_footprint'],
                                                **const.SCALE_PARAMETERS)
 
-        self.slider['c_min_r_lbl'].configure(text='Circled radius size\n'
+        self.slider['circle_r_min_lbl'].configure(text='Circled radius size\n'
                                                   'minimum pixels:',
                                              **const.LABEL_PARAMETERS)
-        self.slider['c_max_r_lbl'].configure(text='Circled radius size\n'
+        self.slider['circle_r_max_lbl'].configure(text='Circled radius size\n'
                                                   'maximum pixels:',
                                              **const.LABEL_PARAMETERS)
 
         # Note: may need to adjust c_lim scaling with image size b/c
         #   large contours cannot be selected if max limit is too small.
-        c_min_r = self.metrics['max_circle_r'] // 8
-        c_max_r = self.metrics['max_circle_r']
-        self.slider['c_min_r'].configure(from_=1, to=c_min_r,
-                                         tickinterval=c_min_r / 10,
-                                         variable=self.slider_val['c_min_r'],
+        circle_r_min = self.metrics['max_circle_r'] // 8
+        circle_r_max = self.metrics['max_circle_r']
+        self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
+                                         tickinterval=circle_r_min / 10,
+                                         variable=self.slider_val['circle_r_min'],
                                          **const.SCALE_PARAMETERS)
-        self.slider['c_max_r'].configure(from_=1, to=c_max_r,
-                                         tickinterval=c_max_r / 10,
-                                         variable=self.slider_val['c_max_r'],
+        self.slider['circle_r_max'].configure(from_=1, to=circle_r_max,
+                                         tickinterval=circle_r_max / 10,
+                                         variable=self.slider_val['circle_r_max'],
                                          **const.SCALE_PARAMETERS)
 
         # To avoid grabbing all the intermediate values between normal
@@ -1099,13 +1109,15 @@ class ImageViewer(ProcessImage):
         # Most are bound to process_all(), but to speed program
         # responsiveness when changing the size range, only call the
         # sizing method to avoid image processing overhead.
-        # Note that the <if '_lbl'> condition doesn't seem to be needed to
-        #   improve performance, but is there for clarity's sake.
+        # Note that the <if '_lbl'> condition doesn't improve performance,
+        #  but is there for clarity's sake.
         for name, widget in self.slider.items():
-            if '_lbl' not in name and 'c_lim' not in name:
-                widget.bind('<ButtonRelease-1>', self.process_all)
-            elif 'c_lim' in name:
-                widget.bind('<ButtonRelease-1>', self.process_sizes)
+            if '_lbl' not in name:
+                if 'circle_r' in name:
+                    widget.bind('<ButtonRelease-1>', self.process_sizes)
+                else:
+                    widget.bind('<ButtonRelease-1>', self.process_all)
+
 
     def config_comboboxes(self) -> None:
         """
@@ -1291,11 +1303,11 @@ class ImageViewer(ProcessImage):
         self.slider['plm_footprint_lbl'].grid(column=0, row=13, **east_grid_params)
         self.slider['plm_footprint'].grid(column=1, row=13, **slider_grid_params)
 
-        self.slider['c_min_r_lbl'].grid(column=0, row=17, **east_grid_params)
-        self.slider['c_min_r'].grid(column=1, row=17, **slider_grid_params)
+        self.slider['circle_r_min_lbl'].grid(column=0, row=17, **east_grid_params)
+        self.slider['circle_r_min'].grid(column=1, row=17, **slider_grid_params)
 
-        self.slider['c_max_r_lbl'].grid(column=0, row=18, **east_grid_params)
-        self.slider['c_max_r'].grid(column=1, row=18, **slider_grid_params)
+        self.slider['circle_r_max_lbl'].grid(column=0, row=18, **east_grid_params)
+        self.slider['circle_r_max'].grid(column=1, row=18, **slider_grid_params)
 
         self.size_std_px_label.grid(column=0, row=19, **east_grid_params)
         self.size_std_px_entry.grid(column=1, row=19, **west_grid_params)
@@ -1399,15 +1411,20 @@ class ImageViewer(ProcessImage):
         # Settings are optimized for the default sample1.jpg input.
 
         # Set/Reset Scale widgets.
-        self.slider_val['alpha'].set(1.0)
+        # Repositioning the 'alpha' slide from zero calls its command
+        #  argument process_all(). Only the 'alpha' Scale() uses
+        #  the 'command' argument. All Scales() use a mouse bind to call
+        #  process_all() or process_sizes().
+        self.slider['alpha'].set(1.0)
+
         self.slider_val['beta'].set(0)
         self.slider_val['noise_k'].set(5)
         self.slider_val['noise_iter'].set(3)
         self.slider_val['filter_k'].set(5)
         self.slider_val['plm_mindist'].set(40)
         self.slider_val['plm_footprint'].set(3)
-        self.slider_val['c_min_r'].set(8)
-        self.slider_val['c_max_r'].set(300)
+        self.slider_val['circle_r_min'].set(8)
+        self.slider_val['circle_r_max'].set(300)
 
         if self.do_inverse_th.get() == 'yes':
             self.cbox['th_type'].current(1)
@@ -1516,8 +1533,8 @@ class ImageViewer(ProcessImage):
         #  1) Displayed values have fewer digits, so a cleaner slide bar.
         #  2) Sizes are diameters, so radii are conceptually easier than areas.
         #  So, need to convert to area for the cv2.contourArea function.
-        c_area_min = self.slider_val['c_min_r'].get() ** 2 * np.pi
-        c_area_max = self.slider_val['c_max_r'].get() ** 2 * np.pi
+        c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
+        c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
 
         # Set coordinate point limits to find contours along a file border.
         bottom_edge = self.cvimg['gray'].shape[0] - 1
@@ -1611,8 +1628,7 @@ class ImageViewer(ProcessImage):
         """
 
         # Note: recall that *_val dict are inherited from ProcessImage().
-        px_w = self.cvimg['gray'].shape[0]
-        px_h = self.cvimg['gray'].shape[1]
+        px_w, px_h = self.cvimg['gray'].shape
         alpha = self.slider_val['alpha'].get()
         beta = self.slider_val['beta'].get()
         noise_iter = self.slider_val['noise_iter'].get()
@@ -1620,8 +1636,8 @@ class ImageViewer(ProcessImage):
         morph_shape = self.cbox_val['morphshape'].get()
         filter_selected = self.cbox_val['filter'].get()
         th_type = self.cbox_val['th_type'].get()
-        c_min_r = self.slider_val['c_min_r'].get()
-        c_max_r = self.slider_val['c_max_r'].get()
+        circle_r_min = self.slider_val['circle_r_min'].get()
+        circle_r_max = self.slider_val['circle_r_max'].get()
         min_dist = self.slider_val['plm_mindist'].get()
         connections = int(self.cbox_val['ws_connect'].get())
         dt_type = self.cbox_val['dt_type'].get()
@@ -1694,7 +1710,7 @@ class ImageViewer(ProcessImage):
             f'{tab}compactness=0.03\n'  # NOTE: change if changed in watershed method.
             f'{divider}\n'
             f'{"# distTrans segments:".ljust(space)}{self.num_dt_segments}\n'
-            f'{"Selected size range:".ljust(space)}{c_min_r}--{c_max_r} pixels, diameter\n'
+            f'{"Selected size range:".ljust(space)}{circle_r_min}--{circle_r_max} pixels, diameter\n'
             f'{"Selected size std.:".ljust(space)}{size_std},'
             f' {size_std_size} {unit} diameter\n'
             f'{tab}Pixel diameter entered: {self.size_std_px.get()},'
@@ -1729,7 +1745,7 @@ class ImageViewer(ProcessImage):
     def process_sizes(self, event=None) -> None:
         """
         Call only sizing and reporting methods to improve performance.
-        Called from the c_min_r and c_max_r sliders.
+        Called from the circle_r_min and circle_r_max sliders.
         Args:
             event: The implicit mouse button event.
         Returns: *event* as a formality; is functionally None.
