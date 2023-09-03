@@ -29,9 +29,11 @@ import utility_modules
 from utility_modules import utils, constants as const
 
 
-def arguments():
+def arguments() -> None:
     """
     Handle command line arguments.
+    Returns:
+        None
     """
 
     parser = argparse.ArgumentParser(description='Image Processing to Size Objects.')
@@ -65,7 +67,8 @@ def input_metrics(img: np.ndarray) -> dict:
     then calculate and assign to a dictionary values that can be used
     as constants for image file path, processing, and display.
 
-    Returns: Dictionary of image values and metrics; keys:'input_img',
+    Returns:
+        Dictionary of image values and metrics; keys:'input_img',
         'gray_img', 'font_scale', 'line_thickness', 'max_circle_r'.
     """
 
@@ -114,7 +117,8 @@ def tk_image(image: np.ndarray, scale_coef: float) -> PhotoImage:
                a PIL ImageTk.PhotoImage.
         scale_coef: The user-selected scaling, from start parameters.
 
-    Returns: Scaled PIL ImageTk.PhotoImage to display in tk.Label.
+    Returns:
+        Scaled PIL ImageTk.PhotoImage to display in tk.Label.
     """
 
     # Need to scale images for display; images for processing are left raw.
@@ -150,7 +154,8 @@ def ttk_styles(mainloop: tkinter.Tk) -> None:
     Args:
          mainloop: The tk.Toplevel running as the mainloop.
 
-    Returns: None
+    Returns:
+        None
     """
 
     ttk.Style().theme_use('alt')

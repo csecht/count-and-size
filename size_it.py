@@ -185,7 +185,8 @@ class ProcessImage(tk.Tk):
                       dictionaries.
             img_array: The new cv2 processed numpy image array.
 
-        Returns: None
+        Returns:
+            None
         """
         # Use .configure to update images.
         self.tkimg[img_name] = manage.tk_image(
@@ -201,7 +202,8 @@ class ProcessImage(tk.Tk):
         Displays contrasted and redux noise images.
         Called by process_all(). Calls manage.tk_image().
 
-        Returns: None
+        Returns:
+            None
         """
         # Source concepts:
         # https://docs.opencv2.org/3.4/d3/dc1/tutorial_basic_linear_transform.html
@@ -225,7 +227,8 @@ class ProcessImage(tk.Tk):
         of cv2.morphologyEx operations.
         Called by process_all(). Calls manage.tk_image().
 
-        Returns: None
+        Returns:
+            None
         """
 
         # Need (sort of) kernel to be odd, to avoid an annoying shift of
@@ -272,7 +275,8 @@ class ProcessImage(tk.Tk):
         Called from watershed_segmentation() and process_all().
         Calls manage.tk_image().
 
-        Returns: None
+        Returns:
+            None
         """
 
         filter_selected = self.cbox_val['filter'].get()
@@ -334,7 +338,9 @@ class ProcessImage(tk.Tk):
         Otsu and Triangle. For larger images, progress notifications are
         printed to Terminal.
         Called by process_all(). Calls select_and_size() and manage.tk_image().
-        Returns: None.
+
+        Returns:
+            None
         """
         # watershed code inspiration sources:
         #   https://pyimagesearch.com/2015/11/02/watershed-opencv/
@@ -623,6 +629,9 @@ class ImageViewer(ProcessImage):
         so that it doesn't cover up the img windows; also so that
         the bottom of the window is, hopefully, not below the bottom
         of the screen.
+
+        Returns:
+            None
         """
 
         # Make geometry offset a function of the screen width.
@@ -639,6 +648,9 @@ class ImageViewer(ProcessImage):
         parameters of display scale, font color, and threshold type
         (inverse vs. not). A button will then trigger image processing
         steps to begin. Window is destroyed once button is used.
+
+        Returns:
+            None
         """
 
         # Need style of the ttk.Button to match main window button style.
@@ -787,6 +799,8 @@ class ImageViewer(ProcessImage):
         Initiate the processing pipeline by setting up and configuring
         all settings widgets.
         Called from setup_start_window().
+        Returns:
+            None
         """
 
         self.setup_image_windows()
@@ -807,7 +821,8 @@ class ImageViewer(ProcessImage):
         Create and configure all Toplevel windows and their Labels that
         are used to display and update processed images.
 
-        Returns: None
+        Returns:
+            None
         """
 
         def _window_info():
@@ -887,6 +902,8 @@ class ImageViewer(ProcessImage):
         """
         Settings and report window (mainloop, "app") keybindings,
         configurations, and grids for contour settings and reporting frames.
+        Returns:
+            None
         """
 
         app.resizable(width=True, height=False)
@@ -945,6 +962,8 @@ class ImageViewer(ProcessImage):
         Informative note at bottom of settings (mainloop) window about
         the displayed size units.
         Called from __init__.
+        Returns:
+            None
         """
 
         explain_label = tk.Label(
@@ -963,7 +982,8 @@ class ImageViewer(ProcessImage):
         Assign and grid Buttons in the settings (mainloop) window.
         Called from __init__.
 
-        Returns: None
+        Returns:
+            None
         """
         manage.ttk_styles(mainloop=self)
 
@@ -1014,7 +1034,8 @@ class ImageViewer(ProcessImage):
         widgets in the settings (mainloop) window.
         Called from __init__.
 
-        Returns: None
+        Returns:
+            None
         """
         # Set minimum width for the enclosing Toplevel by setting a length
         #  for a single Scale widget that is sufficient to fit everything
@@ -1112,11 +1133,12 @@ class ImageViewer(ProcessImage):
         # Note that the <if '_lbl'> condition doesn't improve performance,
         #  but is there for clarity's sake.
         for name, widget in self.slider.items():
-            if '_lbl' not in name:
-                if 'circle_r' in name:
-                    widget.bind('<ButtonRelease-1>', self.process_sizes)
-                else:
-                    widget.bind('<ButtonRelease-1>', self.process_all)
+            if '_lbl' in name:
+                continue
+            if 'circle_r' in name:
+                widget.bind('<ButtonRelease-1>', self.process_sizes)
+            else:
+                widget.bind('<ButtonRelease-1>', self.process_all)
 
 
     def config_comboboxes(self) -> None:
@@ -1209,7 +1231,8 @@ class ImageViewer(ProcessImage):
         in the settings (mainloop) window.
         Called from __init__.
 
-        Returns: None
+        Returns:
+            None
         """
 
         self.size_std_px_entry.config(textvariable=self.size_std_px,
@@ -1233,7 +1256,8 @@ class ImageViewer(ProcessImage):
         Developer: Grid as a method to clarify spatial relationships.
         Called from __init__.
 
-        Returns: None
+        Returns:
+            None
         """
 
         # Use the dict() function with keyword arguments to mimic the
@@ -1364,7 +1388,8 @@ class ImageViewer(ProcessImage):
         updated with .configure() in each PI processing method.
         Called from __init__.
 
-        Returns: None
+        Returns:
+            None
         """
 
         self.img_label['input'].grid(**const.PANEL_LEFT)
@@ -1385,6 +1410,8 @@ class ImageViewer(ProcessImage):
         Show the input image in its window.
         Ready all image window for display.
         Called from __init__.
+        Returns:
+            None
         """
 
         # All image windows were withdrawn upon their creation in
@@ -1407,6 +1434,8 @@ class ImageViewer(ProcessImage):
         """
         Sets and resets selector widgets.
         Called from __init__ and "Reset" button.
+        Returns:
+            None
         """
         # Settings are optimized for the default sample1.jpg input.
 
@@ -1454,7 +1483,8 @@ class ImageViewer(ProcessImage):
         figure in any custom size entry.
         Called from process_all(), process_sizes(), __init__.
 
-        Returns: None
+        Returns:
+            None
         """
 
         custom_size: str = self.custom_size_entry.get()
@@ -1517,7 +1547,8 @@ class ImageViewer(ProcessImage):
             contour_pointset: List of selected contours from
              cv2.findContours in ProcessImage.watershed_segmentation().
 
-        Returns: None
+        Returns:
+            None
         """
         # Note that cvimg['ws_circled'] is an instance attribute because
         #  it is the image also used for utils.save_settings_and_img().
@@ -1625,6 +1656,8 @@ class ImageViewer(ProcessImage):
         the report_frame. Same text is printed in Terminal from "Save"
         button.
         Called from process_all(), process_sizes(), __init__.
+        Returns:
+            None
         """
 
         # Note: recall that *_val dict are inherited from ProcessImage().
@@ -1730,7 +1763,8 @@ class ImageViewer(ProcessImage):
         Args:
             event: The implicit mouse button event.
 
-        Returns: *event* as a formality; is functionally None.
+        Returns:
+            *event* as a formality; is functionally None.
         """
         self.adjust_contrast()
         self.reduce_noise()
@@ -1746,9 +1780,12 @@ class ImageViewer(ProcessImage):
         """
         Call only sizing and reporting methods to improve performance.
         Called from the circle_r_min and circle_r_max sliders.
+
         Args:
             event: The implicit mouse button event.
-        Returns: *event* as a formality; is functionally None.
+
+        Returns:
+            *event* as a formality; is functionally None.
         """
         self.set_size_std()
         self.select_and_size(contour_pointset=self.ws_max_contours)
