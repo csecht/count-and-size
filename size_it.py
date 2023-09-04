@@ -499,7 +499,7 @@ class ImageViewer(ProcessImage):
     setup_start_window
     start_now
     setup_image_windows
-    setup_settings_window
+    configure_main_window
     setup_sizing_info
     setup_buttons
     config_sliders
@@ -627,16 +627,16 @@ class ImageViewer(ProcessImage):
         # Manage the starting windows, grab the input and run settings,
         #  then proceed with image processing and sizing.
         # This order of events allows macOS implementation to flow well.
-        self.manage_main_win()
+        self.manage_main_window()
         self.input_file = ''
         self.setup_start_window()
 
-    def manage_main_win(self):
+    def manage_main_window(self):
         """
         For clarity, remove from view the Tk mainloop window created
         by the inherited ProcessImage() Class. But, to make window
         transitions smoother, first position it where it needs to go.
-        Set this window toward the top right corner of the screen
+        Put this window toward the top right corner of the screen
         so that it doesn't cover up the img windows; also so that
         the bottom of the window is, hopefully, not below the bottom
         of the screen.
@@ -650,6 +650,17 @@ class ImageViewer(ProcessImage):
         #  managers position windows.
         w_offset = int(self.winfo_screenwidth() * 0.55)
         self.geometry(f'+{w_offset}+0')
+        self.resizable(width=True, height=False)
+
+        # Need to provide exit info msg to Terminal.
+        self.protocol(name='WM_DELETE_WINDOW',
+                      func=lambda: utils.quit_gui(app))
+
+        self.bind('<Escape>', func=lambda _: utils.quit_gui(app))
+        self.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
+        # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
+
+        # Deiconify in configure_main_window(), but hide for now.
         self.wm_withdraw()
 
     def setup_start_window(self) -> None:
@@ -815,7 +826,7 @@ class ImageViewer(ProcessImage):
         """
 
         self.setup_image_windows()
-        self.setup_settings_window()
+        self.configure_main_window()
         utils.wait4it_msg(img=self.cvimg['gray'])
         self.setup_sizing_info()
         self.setup_buttons()
@@ -908,34 +919,28 @@ class ImageViewer(ProcessImage):
                             highlightthickness=5,
                             highlightcolor=const.COLORS_TK['yellow'],
                             highlightbackground=const.DRAG_GRAY)
+            toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(app))
+            toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
+            # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
-    def setup_settings_window(self) -> None:
+    def configure_main_window(self) -> None:
         """
         Settings and report window (mainloop, "app") keybindings,
         configurations, and grids for contour settings and reporting frames.
+
         Returns:
             None
         """
 
-        app.resizable(width=True, height=False)
-
-        # Color in all the master (app) Frame and use a yellow border;
+        # Color in all of main (app) window and use a yellow border;
         #   border highlightcolor changes to grey with loss of focus.
-        self.config(
+        app.config(
             bg=const.MASTER_BG,
             # bg=const.COLORS_TK['sky blue'],  # for development
             highlightthickness=5,
             highlightcolor=const.COLORS_TK['yellow'],
             highlightbackground=const.DRAG_GRAY,
         )
-
-        # Need to provide exit info msg to Terminal.
-        self.protocol(name='WM_DELETE_WINDOW',
-                      func=lambda: utils.quit_gui(app))
-
-        self.bind_all('<Escape>', func=lambda _: utils.quit_gui(app))
-        self.bind_all('<Control-q>', func=lambda _: utils.quit_gui(app))
-        # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
         # Default Frame() arguments work fine to display report text.
         # bg won't show when grid sticky EW for tk.Text; see utils.display_report().
@@ -965,7 +970,8 @@ class ImageViewer(ProcessImage):
         # Finally, show mainloop window that was withdrawn at program start
         #  in manage_main_win(). Deiconifying after everything is
         #  configured shortens the visual transition time.
-        app.wm_deiconify()
+        # app.wm_deiconify() also works here, but not in manage_main_window().
+        self.wm_deiconify()
 
     @staticmethod
     def setup_sizing_info() -> None:
@@ -978,11 +984,10 @@ class ImageViewer(ProcessImage):
         """
 
         explain_label = tk.Label(
-            text='When the entered pixel size is 1 and the selected\n'
-                 ' size standard is None, then circled diameters'
-                 ' are pixels.\nDiameters are millimeters for any pre-set'
-                 ' size standard,\nand whatever you want for custom '
-                 'standards.',
+            text='When the entered pixel size is 1 and the selected size\n'
+                 'standard is None, then circled diameters are pixels.\n'
+                 'Diameters are millimeters for any pre-set size standard,\n'
+                 'and whatever you want for custom standards.',
             font=const.WIDGET_FONT,
             bg=const.MASTER_BG)
         explain_label.grid(column=1, row=2, rowspan=2,
