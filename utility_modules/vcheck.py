@@ -39,5 +39,5 @@ def maxversion(req_version: str) -> None:
     if sys.version_info > ver:
         print(f'NOTICE: this program has not yet been tested with'
               f' Python versions newer than {req_version}.\n'
-              'Current Python version:'
+              'Python version now running:'
               f' {sys.version_info.major}.{sys.version_info.minor}\n')

@@ -15,7 +15,6 @@ import sys
 import tkinter
 # noinspection PyCompatibility
 from __main__ import __doc__
-from pathlib import Path
 from tkinter import ttk, messagebox
 
 # Third party imports.

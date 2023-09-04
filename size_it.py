@@ -120,6 +120,7 @@ class ProcessImage(tk.Tk):
             # For scale_slider variable in setup_start_window()...
             'scale': tk.DoubleVar(),
         }
+
         self.cbox_val = {
             # For textvariables in config_comboboxes()...
             'morphop': tk.StringVar(),
@@ -200,7 +201,7 @@ class ProcessImage(tk.Tk):
         Adjust contrast of the input self.cvimg['gray'] image.
         Updates contrast and brightness via alpha and beta sliders.
         Displays contrasted and redux noise images.
-        Called by process_all(). Calls manage.tk_image().
+        Called by process_all(). Calls update_image().
 
         Returns:
             None
@@ -225,7 +226,7 @@ class ProcessImage(tk.Tk):
         """
         Reduce noise in the contrast adjust image erode and dilate actions
         of cv2.morphologyEx operations.
-        Called by process_all(). Calls manage.tk_image().
+        Called by process_all(). Calls update_image().
 
         Returns:
             None
@@ -260,7 +261,7 @@ class ProcessImage(tk.Tk):
             op=morph_op,
             kernel=element,
             iterations=iteration,
-            borderType=border_type
+            borderType=border_type,
         )
 
         self.update_image(img_name='redux',
@@ -273,7 +274,7 @@ class ProcessImage(tk.Tk):
         to prepare for threshold segmentation. Can also serve as a
         specialized noise reduction step.
         Called from watershed_segmentation() and process_all().
-        Calls manage.tk_image().
+        Calls update_image().
 
         Returns:
             None
@@ -299,34 +300,39 @@ class ProcessImage(tk.Tk):
         # NOTE: filtered image dtype is uint8
 
         if filter_selected == 'cv2.bilateralFilter':
-            self.cvimg['filter'] = cv2.bilateralFilter(src=self.cvimg['redux'],
-                                               # d=-1 or 0, is very CPU intensive.
-                                               d=filter_k,
-                                               sigmaColor=19,
-                                               sigmaSpace=19,
-                                               borderType=border_type)
+            self.cvimg['filter'] = cv2.bilateralFilter(
+                src=self.cvimg['redux'],
+                # d=-1 or 0, is very CPU intensive.
+                d=filter_k,
+                sigmaColor=19,
+                sigmaSpace=19,
+                borderType=border_type)
 
         # Gaussian parameters:
         # see: https://theailearner.com/tag/cv-gaussianblur/
         # see: https://dsp.stackexchange.com/questions/32273/
         #  how-to-get-rid-of-ripples-from-a-gradient-image-of-a-smoothed-image
         elif filter_selected == 'cv2.GaussianBlur':
-            self.cvimg['filter'] = cv2.GaussianBlur(src=self.cvimg['redux'],
-                                            ksize=(filter_k, filter_k),
-                                            sigmaX=0,
-                                            sigmaY=0,
-                                            borderType=border_type)
+            self.cvimg['filter'] = cv2.GaussianBlur(
+                src=self.cvimg['redux'],
+                ksize=(filter_k, filter_k),
+                sigmaX=0,
+                sigmaY=0,
+                borderType=border_type)
         elif filter_selected == 'cv2.medianBlur':
-            self.cvimg['filter'] = cv2.medianBlur(src=self.cvimg['redux'],
-                                          ksize=filter_k)
+            self.cvimg['filter'] = cv2.medianBlur(
+                src=self.cvimg['redux'],
+                ksize=filter_k)
         elif filter_selected == 'cv2.blur':
-            self.cvimg['filter'] = cv2.blur(src=self.cvimg['redux'],
-                                    ksize=(filter_k, filter_k),
-                                    borderType=border_type)
+            self.cvimg['filter'] = cv2.blur(
+                src=self.cvimg['redux'],
+                ksize=(filter_k, filter_k),
+                borderType=border_type)
         else:  # there are no other choices, but include for future.
-            self.cvimg['filter'] = cv2.blur(src=self.cvimg['redux'],
-                                    ksize=(filter_k, filter_k),
-                                    borderType=border_type)
+            self.cvimg['filter'] = cv2.blur(
+                src=self.cvimg['redux'],
+                ksize=(filter_k, filter_k),
+                borderType=border_type)
 
         self.update_image(img_name='filter',
                           img_array=self.cvimg['filter'])
@@ -337,7 +343,7 @@ class ProcessImage(tk.Tk):
         and skimage.segmentation.watershed. Threshold types limited to
         Otsu and Triangle. For larger images, progress notifications are
         printed to Terminal.
-        Called by process_all(). Calls select_and_size() and manage.tk_image().
+        Called by process_all(). Calls select_and_size() and update_image().
 
         Returns:
             None
@@ -346,7 +352,7 @@ class ProcessImage(tk.Tk):
         #   https://pyimagesearch.com/2015/11/02/watershed-opencv/
         # see also: http://scipy-lectures.org/packages/scikit-image/index.html
 
-        # Help user know what is taking so long.
+        # Help user know what is happening with large image processing.
         img_size = max(self.cvimg['gray'].shape)
         img_size_for_msg = 2600
 
@@ -363,10 +369,12 @@ class ProcessImage(tk.Tk):
         #   are implemented only for 8-bit single-channel images.
         #   For other cv2.THRESH_*, thresh needs to be manually provided.
         # Convert values above thresh to a maxval of 255, white.
-        _, thresh_img = cv2.threshold(src=self.cvimg['filter'],
-                                      thresh=0,
-                                      maxval=255,
-                                      type=th_type)  # need *_INVERSE for black on white image.
+        # Need to use type *_INVERSE for black on white images.
+        _, thresh_img = cv2.threshold(
+            src=self.cvimg['filter'],
+            thresh=0,
+            maxval=255,
+            type=th_type)
 
         # Now we want to separate objects in the image.
         # Generate the markers as local maxima of the distance to the background.
@@ -377,24 +385,26 @@ class ProcessImage(tk.Tk):
         # Note that maskSize=0 calculates the precise mask size only for
         #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
         distances_img: np.ndarray = cv2.distanceTransform(
-                                                src=thresh_img,
-                                                distanceType=dt_type,
-                                                maskSize=mask_size)
+            src=thresh_img,
+            distanceType=dt_type,
+            maskSize=mask_size)
+
         if img_size > img_size_for_msg:
             print('Have completed distance transform; looking for peaks...')
 
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         local_max: ndimage = peak_local_max(
-                                    image=distances_img,
-                                    min_distance=min_dist,
-                                    exclude_border=True,  # is min_dist
-                                    num_peaks=np.inf,
-                                    footprint=plm_kernel,
-                                    labels=thresh_img,
-                                    num_peaks_per_label=np.inf,
-                                    p_norm=np.inf,  # for Chebyshev distance
-                                    # p_norm=2,  # for Euclidean distance
-                                   )
+            image=distances_img,
+            min_distance=min_dist,
+            exclude_border=True,  # is min_dist
+            num_peaks=np.inf,
+            footprint=plm_kernel,
+            labels=thresh_img,
+            num_peaks_per_label=np.inf,
+            p_norm=np.inf,  # for Chebyshev distance
+            # p_norm=2,  # for Euclidean distance
+        )
+
         if img_size > img_size_for_msg:
             print('Found peaks; running skimage.segmentation watershed algorithm...')
 
@@ -415,6 +425,7 @@ class ProcessImage(tk.Tk):
                                   mask=thresh_img,
                                   compactness=0.03,
                                   watershed_line=True)
+
         if img_size > img_size_for_msg:
             print('Completed watershed; now finding contours...')
 
@@ -459,7 +470,7 @@ class ProcessImage(tk.Tk):
                                           mode=cv2.RETR_EXTERNAL,
                                           method=cv2.CHAIN_APPROX_SIMPLE)
 
-        cv2.drawContours(watershed_gray,
+        cv2.drawContours(image=watershed_gray,
                          contours=ws_contours,
                          contourIdx=-1,  # all contours.
                          color=(120, 120, 120),  # mid-gray
@@ -712,7 +723,7 @@ class ImageViewer(ProcessImage):
             self.cvimg['input'] = cv2.imread(self.input_file)
             self.cvimg['gray'] = cv2.cvtColor(self.cvimg['input'], cv2.COLOR_RGBA2GRAY)
             self.metrics = manage.input_metrics(self.cvimg['input'])
-        else:
+        else:  # User has closed the filedialog window instead of selecting a file.
             utils.quit_gui(self)
 
         # Once a file is selected, the file dialog is removed, and the
@@ -1441,9 +1452,9 @@ class ImageViewer(ProcessImage):
 
         # Set/Reset Scale widgets.
         # Repositioning the 'alpha' slide from zero calls its command
-        #  argument process_all(). Only the 'alpha' Scale() uses
-        #  the 'command' argument. All Scales() use a mouse bind to call
-        #  process_all() or process_sizes().
+        #  argument process_all() at startup. Only the 'alpha' Scale()
+        #  uses a 'command' argument. All Scales() use a mouse bind to
+        #  call process_all() or process_sizes() for subsequent processing.
         self.slider['alpha'].set(1.0)
 
         self.slider_val['beta'].set(0)
@@ -1541,7 +1552,7 @@ class ImageViewer(ProcessImage):
         on the input image. Objects are expected to be oblong so that
         circle diameter can represent the object's length.
         Called by process_all(), process_sizes().
-        Calls manage.tk_image().
+        Calls update_image().
 
         Args:
             contour_pointset: List of selected contours from
@@ -1799,6 +1810,7 @@ if __name__ == "__main__":
     #   argument --about is used, which prints info, then exits.
     utils.check_platform()
     vcheck.minversion('3.7')
+    vcheck.maxversion('3.11')
     manage.arguments()
 
     try:
