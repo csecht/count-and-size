@@ -7,15 +7,21 @@ pull-down menus. Related image processing factors like contrast,
 brightness, noise reduction, and filtering are also adjusted
 interactively.
 
-USAGE Example command lines, from within the count-and-size-main folder:
+USAGE
+For command line execution, from within the count-and-size-main folder:
 python3 -m size_it --about
 python3 -m size_it
-
 Windows systems may need to substitute 'python3' with 'py' or 'python'.
+
+Note that from the initial "Set run settings" window, the file, scale
+factor, and annotation color cannot be changed after the "Process now"
+button is clicked. Once image processing begins, if the run settings are
+not to your liking, just quit, restart, and choose different values.
 
 Quit program with Esc key, Ctrl-Q key, the close window icon of the
 settings windows, or from command line with Ctrl-C.
-Save settings and the contoured image with Save button.
+
+Save settings and the contoured image with "Save" button.
 
 Requires Python 3.7 or later and the packages opencv-python, numpy,
 scikit-image and scipy.
