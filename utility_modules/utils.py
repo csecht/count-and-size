@@ -206,9 +206,10 @@ def display_report(frame: tk.Frame, report: str) -> None:
 def count_sig_fig(entry_number: Union[int, float, str]) -> int:
     """
     Determine the number of significant figures in a number.
-    Be sure to verify that *entry_number* is a real number prior to calling.
-    The sigfig length value returned here is generally for use as the
-    'precision' parameter in to_p.to_precision() statements.
+    Be sure to verify that *entry_number* is a real number prior to using
+    it as a parameter.
+    The sigfig length value returned here can be used as the 'precision'
+    parameter value in to_p.to_precision() statements.
 
     Args:
         entry_number: Any numerical representation, as string or digits.
@@ -225,20 +226,18 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
 
     # If scientific notation, remove the trailing exponent value.
     #  The exponent and exp_len statements allow any size of e power.
-    #  The 'e0' and 'e-0' statements account for use of a leading zero in the exponent.
-    #  Note: if, for some odd reason, an exponent of zero is entered, then the sig. fig.
-    #   count will be 1 less than expected. Oh, well. It's not worth importing
-    #   regular expressions to fix this bug for a very rare occurrence.
+    #  Determine only absolute value of exponent to get its string length.
+    #  The 'e0' and 'e-0' conditions account for use of a leading zero in the exponent.
     if 'e' in number_str:
-        exponent = floor(log10(float(number_str)))
-        if 'e-0' in number_str:
-            exp_len = len(str(exponent))
+        abs_exp = floor(log10(float(number_str))) - 1
+        if 'e-0' in number_str or abs_exp == 0:
+            exp_len = len(str(abs_exp))
         elif 'e0' in number_str:
-            exp_len = len(str(exponent)) + 1
+            exp_len = len(str(abs_exp)) + 1
         elif 'e-' in number_str:
-            exp_len = len(str(exponent)) - 1
-        else:
-            exp_len = len(str(exponent))
+            exp_len = len(str(abs_exp)) - 1
+        else:  # is a plain old positive exponent
+            exp_len = len(str(abs_exp))
 
         sigfig_str = sigfig_str[:-exp_len]
 
