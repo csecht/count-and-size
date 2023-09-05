@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
-A tkinter GUI for image processing to count and size objects in an
-image to obtain sample size mean and range. The watershed algorithm is
-used interactively by adjusting parameter values with slide bars and
-pull-down menus. Adjusting contributing factors like contrast,
-brightness, noise, and filter blurring is also interactive.
+A tkinter GUI for OpenCV processing of an image to obtain sizes, means,
+and ranges of objects in a sample population. The watershed algorithm
+is used interactively by setting parameter values with slide bars and
+pull-down menus. Related image processing factors like contrast,
+brightness, noise reduction, and filtering are also adjusted
+interactively.
 
 USAGE Example command lines, from within the count-and-size-main folder:
 python3 -m size_it --about
@@ -16,9 +17,10 @@ Quit program with Esc key, Ctrl-Q key, the close window icon of the
 settings windows, or from command line with Ctrl-C.
 Save settings and the contoured image with Save button.
 
-Requires Python3.7 or later and the packages opencv-python and numpy.
+Requires Python 3.7 or later and the packages opencv-python, numpy,
+scikit-image and scipy.
 See this distribution's requirements.txt file for details.
-Developed in Python 3.8-3.9.
+Developed in Python 3.8 and 3.9, tested up to 3.11.
 """
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License
 
@@ -983,6 +985,7 @@ class ImageViewer(ProcessImage):
         # Note: the settings window (app) is deiconified in
         #  display_windows() after all image windows so that it
         #  initially stacks on top.
+
     @staticmethod
     def setup_sizing_info() -> None:
         """
