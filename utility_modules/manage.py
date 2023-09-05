@@ -13,9 +13,7 @@ ttk_styles: configures platform-specific ttk.Style for Buttons and Comboboxes.
 import argparse
 import sys
 import tkinter
-# noinspection PyCompatibility
-from __main__ import __doc__
-from tkinter import ttk, messagebox
+from tkinter import ttk
 
 # Third party imports.
 import cv2
@@ -24,11 +22,13 @@ from PIL import Image, ImageTk
 from PIL.ImageTk import PhotoImage
 
 # Local application imports.
+# noinspection PyCompatibility
+from __main__ import __doc__
 import utility_modules
-from utility_modules import utils, constants as const
+from utility_modules import constants as const
 
 
-def arguments() -> None:
+def arguments() -> str:
     """
     Handle command line arguments.
     Returns:
@@ -56,8 +56,9 @@ def arguments() -> None:
         print('====================== ABOUT START ====================')
         print(about_text)
         print('====================== ABOUT END ====================')
-
         sys.exit(0)
+    else:  # is called from a widget command for utils.about().
+        return about_text
 
 
 def input_metrics(img: np.ndarray) -> dict:

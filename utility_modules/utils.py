@@ -20,6 +20,7 @@ from datetime import datetime
 from math import floor, log10
 from pathlib import Path
 from tkinter import messagebox
+from tkinter.scrolledtext import ScrolledText
 from typing import Union
 
 # Third party imports.
@@ -28,7 +29,7 @@ import numpy as np
 from PIL import ImageTk
 
 # Local application imports.
-from utility_modules import (constants as const)
+from utility_modules import manage, constants as const
 
 
 def check_platform() -> None:
@@ -278,7 +279,6 @@ def no_objects_found_msg():
           'Also, "Contour radius size" sliders may need adjusting.')
     messagebox.showinfo(detail=_m)
 
-
 def wait4it_msg(img):
     """Pop up info for larger input image files."""
     # It is probably desirable to have this size limit match that used for
@@ -292,3 +292,28 @@ def wait4it_msg(img):
                'the inverse option at start or in the Threshold type menu.')
         messagebox.showinfo(title='Wait for it...',
                             detail=msg)
+
+
+def about() -> None:
+    """
+    Basic information about the package.
+    Called from Start window "About" button.
+    """
+    aboutwin = tk.Toplevel()
+    aboutwin.title('About Count & Size')
+    aboutwin.minsize(width=400, height=200)
+    aboutwin.focus_set()
+    abouttext = ScrolledText(master=aboutwin,
+                             width=74,
+                             bg='gray100',  # light gray
+                             relief='groove',
+                             borderwidth=8,
+                             padx=30, pady=10,
+                             wrap=tk.WORD,
+                             font='TkFixedFont',
+                             )
+
+    # The text returned from manage.arguments is that used for the --about arg.
+    abouttext.insert(tk.INSERT,
+                     f'{manage.arguments()}')
+    abouttext.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)

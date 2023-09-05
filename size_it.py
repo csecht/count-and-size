@@ -370,11 +370,10 @@ class ProcessImage(tk.Tk):
         #   For other cv2.THRESH_*, thresh needs to be manually provided.
         # Convert values above thresh to a maxval of 255, white.
         # Need to use type *_INVERSE for black on white images.
-        _, thresh_img = cv2.threshold(
-            src=self.cvimg['filter'],
-            thresh=0,
-            maxval=255,
-            type=th_type)
+        _, thresh_img = cv2.threshold(src=self.cvimg['filter'],
+                                      thresh=0,
+                                      maxval=255,
+                                      type=th_type)
 
         # Now we want to separate objects in the image.
         # Generate the markers as local maxima of the distance to the background.
@@ -660,7 +659,7 @@ class ImageViewer(ProcessImage):
         self.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
-        # Deiconify in configure_main_window(), but hide for now.
+        # Deiconify in display_image_windows(), but hide for now.
         self.wm_withdraw()
 
     def setup_start_window(self) -> None:
@@ -798,6 +797,18 @@ class ImageViewer(ProcessImage):
                                         width=0,
                                         command=_call_start)
 
+        about_button = ttk.Button(master=start_win,
+                                        text='About',
+                                        style='My.TButton',
+                                        width=0,
+                                        command=utils.about)
+
+        quit_button = ttk.Button(master=start_win,
+                                        text='Quit',
+                                        style='My.TButton',
+                                        width=0,
+                                        command=lambda: utils.quit_gui(app))
+
         # Window grid settings; sorted by row.
         padding = dict(padx=6, pady=6)
 
@@ -814,7 +825,9 @@ class ImageViewer(ProcessImage):
         inverse_no.grid(row=3, column=1, **padding, sticky=tk.W)
         inverse_yes.grid(row=3, column=1, padx=(50, 0), sticky=tk.W)
 
-        process_now_button.grid(row=3, column=1, **padding, sticky=tk.E)
+        process_now_button.grid(row=4, column=1, **padding, sticky=tk.W)
+        quit_button.grid(row=4, column=1, **padding, sticky=tk.E)
+        about_button.grid(row=4, column=1, padx=(0, 50), sticky=tk.E)
 
     def start_now(self) -> None:
         """
@@ -967,12 +980,9 @@ class ImageViewer(ProcessImage):
                                           ipadx=4, ipady=4,
                                           sticky=tk.EW)
 
-        # Finally, show mainloop window that was withdrawn at program start
-        #  in manage_main_win(). Deiconifying after everything is
-        #  configured shortens the visual transition time.
-        # app.wm_deiconify() also works here, but not in manage_main_window().
-        self.wm_deiconify()
-
+        # Note: the settings window (app) is deiconified in
+        #  display_image_windows() after all image windows so that it
+        #  initially stacks on top.
     @staticmethod
     def setup_sizing_info() -> None:
         """
@@ -1445,6 +1455,11 @@ class ImageViewer(ProcessImage):
         #  not display because of garbage collection.
         self.update_image(img_name='input',
                           img_array=self.cvimg['input'])
+
+        # Now is time to show the mainloop (app) settings window that was
+        #   hidden in manage_main_window.
+        #   Deiconifying here stacks it on top of all windows.
+        self.wm_deiconify()
 
     def set_defaults(self) -> None:
         """
