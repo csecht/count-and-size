@@ -659,7 +659,7 @@ class ImageViewer(ProcessImage):
         self.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
-        # Deiconify in display_image_windows(), but hide for now.
+        # Deiconify in display_windows(), but hide for now.
         self.wm_withdraw()
 
     def setup_start_window(self) -> None:
@@ -849,7 +849,7 @@ class ImageViewer(ProcessImage):
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
-        self.display_image_windows()
+        self.display_windows()
 
     def setup_image_windows(self) -> None:
         """
@@ -981,7 +981,7 @@ class ImageViewer(ProcessImage):
                                           sticky=tk.EW)
 
         # Note: the settings window (app) is deiconified in
-        #  display_image_windows() after all image windows so that it
+        #  display_windows() after all image windows so that it
         #  initially stacks on top.
     @staticmethod
     def setup_sizing_info() -> None:
@@ -1431,7 +1431,7 @@ class ImageViewer(ProcessImage):
 
         self.img_label['ws_circled'].grid(**const.PANEL_LEFT)
 
-    def display_image_windows(self) -> None:
+    def display_windows(self) -> None:
         """
         Show the input image in its window.
         Ready all image window for display.
