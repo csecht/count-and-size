@@ -806,16 +806,16 @@ class ImageViewer(ProcessImage):
                                         command=_call_start)
 
         about_button = ttk.Button(master=start_win,
-                                        text='About',
-                                        style='My.TButton',
-                                        width=0,
-                                        command=utils.about)
+                                  text='About',
+                                  style='My.TButton',
+                                  width=0,
+                                  command=lambda: utils.about(parent=start_win))
 
         quit_button = ttk.Button(master=start_win,
-                                        text='Quit',
-                                        style='My.TButton',
-                                        width=0,
-                                        command=lambda: utils.quit_gui(app))
+                                 text='Quit',
+                                 style='My.TButton',
+                                 width=0,
+                                 command=lambda: utils.quit_gui(mainloop=app))
 
         # Window grid settings; sorted by row.
         padding = dict(padx=6, pady=6)

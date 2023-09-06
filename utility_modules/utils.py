@@ -294,12 +294,18 @@ def wait4it_msg(img):
                             detail=msg)
 
 
-def about() -> None:
+def about(parent: tk.Toplevel) -> None:
     """
-    Basic information about the package.
+    Basic information about the package in scrolling text in a new
+    Toplevel window. Closes when the calling *parent* closes.
     Called from Start window "About" button.
+
+    Args:
+        parent: The Toplevel name that is calling.
+    Returns:
+        None
     """
-    aboutwin = tk.Toplevel()
+    aboutwin = tk.Toplevel(master=parent)
     aboutwin.title('About Count & Size')
     aboutwin.minsize(width=400, height=200)
     aboutwin.focus_set()
@@ -314,6 +320,6 @@ def about() -> None:
                              )
 
     # The text returned from manage.arguments is that used for the --about arg.
-    abouttext.insert(tk.INSERT,
-                     f'{manage.arguments()}')
+    abouttext.insert(index=tk.INSERT,
+                     chars=f'{manage.arguments()}')
     abouttext.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
