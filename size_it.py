@@ -723,7 +723,8 @@ class ImageViewer(ProcessImage):
 
         # Take a break in configuring the window to grab the input.
         # For macOS, need to have the filedialog be a child of start_win.
-        self.update()
+        #  Otherwise, this filedialog should be a separate method, but
+        #   didn't want to create a self.start_win attribute just for mac.
         self.input_file = filedialog.askopenfilename(
             parent=start_win,
             title='Select input image',
@@ -756,8 +757,7 @@ class ImageViewer(ProcessImage):
         file_label = tk.Label(
             master=start_win,
             text=f'Image: {self.input_file}\n'
-                 f'size:{self.cvimg["gray"].shape[0]}x{self.cvimg["gray"].shape[1]}'
-                 ' (Larger files need a smaller scale factor.)',
+                 f'size:{self.cvimg["gray"].shape[0]}x{self.cvimg["gray"].shape[1]}',
             **const.LABEL_PARAMETERS)
 
         scale_label = tk.Label(master=start_win,
@@ -784,8 +784,7 @@ class ImageViewer(ProcessImage):
         color_cbox.current(0)  # blue
 
         inverse_label = tk.Label(master=start_win,
-                                 text='Use inverse threshold type for\n'
-                                      'dark objects on light background?',
+                                 text='Use INVERSE threshold type?',
                                  **const.LABEL_PARAMETERS)
         inverse_yes = tk.Radiobutton(master=start_win,
                                      text='Yes',
@@ -805,18 +804,6 @@ class ImageViewer(ProcessImage):
                                         width=0,
                                         command=_call_start)
 
-        about_button = ttk.Button(master=start_win,
-                                  text='About',
-                                  style='My.TButton',
-                                  width=0,
-                                  command=lambda: utils.about(parent=start_win))
-
-        quit_button = ttk.Button(master=start_win,
-                                 text='Quit',
-                                 style='My.TButton',
-                                 width=0,
-                                 command=lambda: utils.quit_gui(mainloop=app))
-
         # Window grid settings; sorted by row.
         padding = dict(padx=6, pady=6)
 
@@ -832,10 +819,39 @@ class ImageViewer(ProcessImage):
         inverse_label.grid(row=3, column=0, **padding, sticky=tk.E)
         inverse_no.grid(row=3, column=1, **padding, sticky=tk.W)
         inverse_yes.grid(row=3, column=1, padx=(50, 0), sticky=tk.W)
+        process_now_button.grid(row=3, column=1, **padding, sticky=tk.E)
 
-        process_now_button.grid(row=4, column=1, **padding, sticky=tk.W)
-        quit_button.grid(row=4, column=1, **padding, sticky=tk.E)
-        about_button.grid(row=4, column=1, padx=(0, 50), sticky=tk.E)
+        # Create menu instance and add pull-down menus.
+        menubar = tk.Menu(master=start_win,)
+        start_win.config(menu=menubar)
+
+        os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
+        file = tk.Menu(self.master, tearoff=0)
+        menubar.add_cascade(label=f'{Path(__file__).stem}', menu=file)
+        file.add_command(label='Process now',
+                         command=_call_start,
+                         accelerator='Enter/Return')
+        file.add_command(label='Quit',
+                         command=lambda: utils.quit_gui(app),
+                         # macOS doesn't recognize 'Command+Q' as an accelerator
+                         #   b/c cannot override that system's native Command-Q,
+                         accelerator=f'{os_accelerator}+Q')
+
+        help_menu = tk.Menu(master=start_win, tearoff=0)
+        tips = tk.Menu(master=start_win, tearoff=0)
+        menubar.add_cascade(label='Help', menu=help_menu)
+        help_menu.add_cascade(label='Tips...', menu=tips)
+        # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
+        tips.add_command(label='• Larger image files need a smaller scale factor')
+        tips.add_command(label='     ...to fit image windows on the screen.')
+        tips.add_command(label='• Use a lighter font color with darker objects.')
+        tips.add_command(label='• Use the INVERSE threshold type for')
+        tips.add_command(label='     ...dark objects on a light background.')
+        tips.add_command(label='• Enter or Return key starts processing.')
+        tips.add_command(label='• More Tips are in the README file.')
+        tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.')
+        help_menu.add_command(label='About',
+                              command=lambda: utils.about(parent=start_win))
 
     def start_now(self) -> None:
         """
@@ -1763,7 +1779,7 @@ class ImageViewer(ProcessImage):
         tab = " " * space
 
         # Divider symbol is Box Drawings Double Horizontal from https://coolsymbol.com/
-        divider = "═" * 20  # divider's unicode_escape: b'\\u2550\'
+        divider = "═" * 20  # divider's unicode_escape: u'\u2550\'
 
         self.size_settings_txt = (
             f'Image: {self.input_file} {px_h}x{px_w}\n\n'
