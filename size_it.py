@@ -4,8 +4,7 @@ A tkinter GUI for OpenCV processing of an image to obtain sizes, means,
 and ranges of objects in a sample population. The watershed algorithm
 is used interactively by setting parameter values with slide bars and
 pull-down menus. Related image processing factors like contrast,
-brightness, noise reduction, and filtering are also adjusted
-interactively.
+brightness, noise reduction, and filtering are also adjusted interactively.
 
 USAGE
 For command line execution, from within the count-and-size-main folder:
