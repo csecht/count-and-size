@@ -31,6 +31,8 @@ from PIL import ImageTk
 # Local application imports.
 from utility_modules import manage, constants as const
 
+if const.MY_OS == 'win':
+    from ctypes import windll
 
 def check_platform() -> None:
     """
@@ -42,7 +44,6 @@ def check_platform() -> None:
 
     # Need to account for scaling in Windows10 and earlier releases.
     elif const.MY_OS == 'win':
-        from ctypes import windll
 
         if platform.release() < '10':
             windll.user32.SetProcessDPIAware()
@@ -66,7 +67,7 @@ def valid_path_to(input_path: str) -> Path:
     :param input_path: Program's local dir/file name, as string.
     :return: Absolute path as pathlib Path object.
     """
-    # Note that Path(Path(__file__).parent is the contours_modules folder.
+    # Note that Path(Path(__file__).parent is the utility_modules folder.
     # Modified from: https://stackoverflow.com/questions/7674790/
     #    bundling-data-files-with-pyinstaller-onefile and PyInstaller manual.
     if getattr(sys, 'frozen', False):  # hasattr(sys, '_MEIPASS'):
@@ -289,7 +290,7 @@ def wait4it_msg(img):
                'So, patience Grasshopper.\n'
                'Resist the urge to start clicking away if things seem stalled.\n'
                'If the threshold image shows up as black-on-white, then use\n'
-               'the inverse option at start or in the Threshold type menu.')
+               'the INVERSE option at start or in the Threshold type menu.')
         messagebox.showinfo(title='Wait for it...',
                             detail=msg)
 

@@ -20,7 +20,7 @@ not to your liking, just quit, restart, and choose different values.
 Quit program with Esc key, Ctrl-Q key, the close window icon of the
 settings windows, or from command line with Ctrl-C.
 
-Save settings and the contoured image with "Save" button.
+Save settings report and the annotated image with the "Save" button.
 
 Requires Python 3.7 or later and the packages opencv-python, numpy,
 scikit-image and scipy.
@@ -31,7 +31,6 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 
 # Standard library imports.
 import sys
-
 from pathlib import Path
 from statistics import mean, median
 from typing import List
@@ -363,7 +362,7 @@ class ProcessImage(tk.Tk):
         img_size = max(self.cvimg['gray'].shape)
         img_size_for_msg = 2600
 
-        connections = int(self.cbox_val['ws_connect'].get())
+        connections = int(self.cbox_val['ws_connect'].get())  # 1, 4 or 8.
         th_type = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
         dt_type = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
         mask_size = int(self.cbox_val['dt_mask_size'].get())
@@ -425,24 +424,19 @@ class ProcessImage(tk.Tk):
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Need watershed_line to show boundaries on displayed watershed_img contours.
-        watershed_img = watershed(image=-distances_img,
-                                  markers=labeled_array,
-                                  connectivity=connections,  # 1, 4 or 8.
-                                  mask=thresh_img,
-                                  compactness=0.03,
-                                  watershed_line=True)
-
+        watershed_img: np.ndarray = watershed(image=-distances_img,
+                                              markers=labeled_array,
+                                              connectivity=connections,
+                                              mask=thresh_img,
+                                              compactness=0.03,
+                                              watershed_line=True)
         if img_size > img_size_for_msg:
             print('Completed watershed; now finding contours...')
 
-        # NOTE: this cv2.watershed substitutes for the skimage implementation.
-        #  The negative -image provides full-sized enclosing circles,
-        #  but is not as good separation as the ~half-sized circles when
-        #  left as positive.
-        #  Need to add a channel to the src image for cv2.watershed to work.
-        # dist3d = cv2.cvtColor(np.uint8(distances_img), cv2.COLOR_GRAY2BGR)
-        # watershed_img = cv2.watershed(image=-dist3d,
-        #                               markers=markers)
+        # NOTE: The CPU times for watershed() and the <for label in np.unique>
+        #  loop can take many seconds for large or complex images. Either
+        #  process can be the longer of the two depending on size and complexity.
+        #  Can these two segmentation steps each be parallelized?
 
         self.ws_max_contours.clear()
         for label in np.unique(ar=watershed_img):
@@ -458,15 +452,15 @@ class ProcessImage(tk.Tk):
             mask[watershed_img == label] = 255
 
             # Detect contours in the mask and grab the largest one.
-            contours, _ = cv2.findContours(image=mask.copy(),
+            contours, _ = cv2.findContours(image=mask, #mask.copy(),
                                            mode=cv2.RETR_EXTERNAL,
                                            method=cv2.CHAIN_APPROX_SIMPLE)
 
-            # Grow the list used to draw circles around WS contours.
+            # Grow the list used to draw circles around largest WS contours.
             self.ws_max_contours.append(max(contours, key=cv2.contourArea))
 
-        # Convert from float32 to uint8 data type to make a PIL Imagetk
-        #  Photoimage or find contours.
+        # Convert from float32 to uint8 data type to find contours and
+        #  make a PIL ImageTk.PhotoImage.
         distances_img = np.uint8(distances_img)
         watershed_gray = np.uint8(watershed_img)
 
@@ -478,9 +472,9 @@ class ProcessImage(tk.Tk):
 
         cv2.drawContours(image=watershed_gray,
                          contours=ws_contours,
-                         contourIdx=-1,  # all contours.
-                         color=(120, 120, 120),  # mid-gray
-                         thickness=-1,  # filled
+                         contourIdx=-1,  # do all contours
+                         color=(120, 120, 120),  # is mid-gray
+                         thickness=-1,  # is filled
                          lineType=cv2.LINE_AA)
 
         self.update_image(img_name='thresh',
@@ -700,7 +694,7 @@ class ImageViewer(ProcessImage):
         # Open with a temporary, instructional title.
         start_win = tk.Toplevel()
         start_win.title('First, select an image file')
-        start_win.minsize(width=500, height=175)
+        start_win.minsize(width=500, height=165)
         start_win.config(relief='raised',
                          bg=const.DARK_BG,
                          # bg=const.COLORS_TK['sky blue'],  # for development
@@ -745,10 +739,9 @@ class ImageViewer(ProcessImage):
             utils.quit_gui(self)
 
         # Once a file is selected, the file dialog is removed, and the
-        #  start window setup can proceed, now with its active title and
-        #  at its full width.
+        #  start window setup can proceed, now with its active title.
         start_win.title('Set run settings')
-        start_win.resizable(width=True, height=False)
+        start_win.resizable(width=False, height=False)
         self.update_idletasks()
 
         # Window widgets:
@@ -1856,7 +1849,6 @@ if __name__ == "__main__":
     vcheck.minversion('3.7')
     vcheck.maxversion('3.11')
     manage.arguments()
-
     try:
         print(f'{Path(__file__).name} has launched...')
         app = ImageViewer()
