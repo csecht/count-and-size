@@ -284,7 +284,7 @@ def wait4it_msg(img):
     """Pop up info for larger input image files."""
     # It is probably desirable to have this size limit match that used for
     #  the img_size_for_msg local var in size_it watershed_segmentation().
-    if max(img.shape) > 2600:
+    if max(img.shape) > const.SIZE_TO_WAIT:
         msg = ('Larger images will take longer to process.\n'
                'A large number of objects take longer to process.\n'
                'So, patience Grasshopper.\n'

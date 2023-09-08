@@ -32,10 +32,11 @@ WIN_NAME
 
 # Standard library import
 import sys
-import numpy as np
+from multiprocessing import cpu_count
 
 # Third party import
 import cv2
+import numpy as np
 
 MY_OS = sys.platform[:3]
 
@@ -281,3 +282,13 @@ SIZE_STANDARDS = {
     'Sacagawea $': 26.5,
     'Eisenhower $': 38.1
 }
+
+# The image dimension limit to issue a warning that processing may take
+#   a while to complete.
+SIZE_TO_WAIT = 3000
+
+# If you need to restrict to physical cores (exclude hyperthreads), then:
+# import psutil
+# ncpu = psutil.cpu_count(logical=False)
+# The multiprocess cpu_count() will count hyperthreads as CPUs.
+NCPU = cpu_count()

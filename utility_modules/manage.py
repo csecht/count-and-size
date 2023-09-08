@@ -80,8 +80,8 @@ def input_metrics(img: np.ndarray) -> dict:
     gray_img = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
     fig_width: int = gray_img.shape[1]
 
-    if fig_width > 2000:
-        print('Images over 2000 pixels wide will take longer to process...'
+    if fig_width > const.SIZE_TO_WAIT:
+        print(f'Images over {const.SIZE_TO_WAIT} pixels wide will take longer to process...'
               ' patience Grasshopper.\n  If the threshold image shows up as'
               ' black-on-white, then use the inverse option.\n'
               'If the displayed image is too large, reduce the scaling factor.')

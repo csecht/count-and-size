@@ -31,6 +31,7 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 
 # Standard library imports.
 import sys
+from multiprocessing.pool import Pool
 from pathlib import Path
 from statistics import mean, median
 from typing import List
@@ -103,7 +104,7 @@ class ProcessImage(tk.Tk):
         'sorted_size_list',
         'tkimg',
         'unit_per_px',
-        'ws_max_contours',
+        'largest_ws_contours',
         'tk',
     )
 
@@ -174,7 +175,7 @@ class ProcessImage(tk.Tk):
         self.metrics = {}
 
         self.num_dt_segments = 0
-        self.ws_max_contours = []
+        self.largest_ws_contours = []
         self.sorted_size_list = []
         self.unit_per_px = tk.DoubleVar()
         self.num_sigfig = 0
@@ -360,7 +361,6 @@ class ProcessImage(tk.Tk):
 
         # Help user know what is happening with large image processing.
         img_size = max(self.cvimg['gray'].shape)
-        img_size_for_msg = 2600
 
         connections = int(self.cbox_val['ws_connect'].get())  # 1, 4 or 8.
         th_type = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
@@ -381,7 +381,7 @@ class ProcessImage(tk.Tk):
                                       maxval=255,
                                       type=th_type)
 
-        # Now we want to separate objects in the image.
+        # Now we want to segment objects in the image.
         # Generate the markers as local maxima of the distance to the background.
         # Calculate the distance transform of the input, by replacing each
         #   foreground (non-zero) element, with its shortest distance to
@@ -394,7 +394,7 @@ class ProcessImage(tk.Tk):
             distanceType=dt_type,
             maskSize=mask_size)
 
-        if img_size > img_size_for_msg:
+        if img_size > const.SIZE_TO_WAIT:
             print('Have completed distance transform; looking for peaks...')
 
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
@@ -410,54 +410,74 @@ class ProcessImage(tk.Tk):
             # p_norm=2,  # for Euclidean distance
         )
 
-        if img_size > img_size_for_msg:
+        if img_size > const.SIZE_TO_WAIT:
             print('Found peaks; running skimage.segmentation watershed algorithm...')
 
-        mask = np.zeros(distances_img.shape, dtype=bool)
+        mask = np.zeros(shape=distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
         mask[tuple(local_max.T)] = True
         # Note that markers are single px, colored in gray series?
-        labeled_array, self.num_dt_segments = ndimage.label(mask)
+        labeled_array, self.num_dt_segments = ndimage.label(input=mask)
 
         # WHY minus sign? It separates objects much better than without it,
         #  minus symbol turns distances into threshold.
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Need watershed_line to show boundaries on displayed watershed_img contours.
+        # compactness=1.0 based on: DOI:10.1109/ICPR.2014.181
+        #   https://www.tu-chemnitz.de/etit/proaut/publications/cws_pSLIC_ICPR.pdf
         watershed_img: np.ndarray = watershed(image=-distances_img,
                                               markers=labeled_array,
                                               connectivity=connections,
                                               mask=thresh_img,
-                                              compactness=0.03,
+                                              compactness=1.0,
                                               watershed_line=True)
-        if img_size > img_size_for_msg:
-            print('Completed watershed; now finding contours...')
+        if img_size > const.SIZE_TO_WAIT:
+            print('Watershed completed; now finding contours...')
 
-        # NOTE: The CPU times for watershed() and the <for label in np.unique>
-        #  loop can take many seconds for large or complex images. Either
-        #  process can be the longer of the two depending on size and complexity.
-        #  Can these two segmentation steps each be parallelized?
+        # TODO: find a way to parallel process watershed() to reduce time
+        #  for processing large images.
 
-        self.ws_max_contours.clear()
-        for label in np.unique(ar=watershed_img):
+        self.largest_ws_contours.clear()
 
-            # If the label is zero, we are examining the 'background',
-            #   so simply ignore it.
-            if label == 0:
-                continue
+        # This function needs to be scoped globally to avoid a Pool picking error.
+        # Not ideal to use global, but cannot figure out how to restructure otherwise.
+        global contour_the_labels
+        def contour_the_labels(label: int) -> np.ndarray:
+            """
+            Used in multiprocess.Pool to generate watershed contours.
+            Args:
+                label: an integer element from the list of marker indexes
+                       from the watershed image.
+            Returns:
+                The indexed ndarray element to add to the
+                largest_ws_contours list.
+            """
 
-            # ...otherwise, allocate memory for the label region and draw
-            #   it on the mask.
-            mask = np.zeros(shape=watershed_img.shape, dtype="uint8")
-            mask[watershed_img == label] = 255
+            # There is no need to exclude the background label 0 here
+            #  because its contours will be excluded in select_and_size().
 
-            # Detect contours in the mask and grab the largest one.
-            contours, _ = cv2.findContours(image=mask, #mask.copy(),
+            # Note: Do not move this statement out of the function.
+            lbl_mask = np.zeros(shape=watershed_img.shape, dtype="uint8")
+            lbl_mask[watershed_img == label] = 255
+
+            # Detect contours in the masked label and return the largest one.
+            contours, _ = cv2.findContours(image=lbl_mask,
                                            mode=cv2.RETR_EXTERNAL,
                                            method=cv2.CHAIN_APPROX_SIMPLE)
+            return max(contours, key=cv2.contourArea)
 
-            # Grow the list used to draw circles around largest WS contours.
-            self.ws_max_contours.append(max(contours, key=cv2.contourArea))
+        # Note: using multiprocessing to find ws contours takes ~1/2 to ~1/3
+        #  the time of finding serially with a for-loop.
+        # DON'T use concurrent.futures here because we don't want the
+        #  user doing concurrent things that may wreck the flow.
+        # self.largest_ws_contours is used in select_and_size() to draw
+        #   enclosing circles and calculate sizes of ws objects.
+        with Pool(processes=const.NCPU) as mpool:
+            self.largest_ws_contours: list = mpool.map(
+                func=contour_the_labels,
+                iterable=np.unique(ar=watershed_img)
+            )
 
         # Convert from float32 to uint8 data type to find contours and
         #  make a PIL ImageTk.PhotoImage.
@@ -466,7 +486,7 @@ class ProcessImage(tk.Tk):
 
         # Draw all watershed objects in 1 gray shade instead of each object
         #  decremented by 1 gray value in series; ws boundaries will be black.
-        ws_contours, _ = cv2.findContours(watershed_gray,
+        ws_contours, _ = cv2.findContours(image=watershed_gray,
                                           mode=cv2.RETR_EXTERNAL,
                                           method=cv2.CHAIN_APPROX_SIMPLE)
 
@@ -484,7 +504,7 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='watershed',
                           img_array=watershed_gray)
 
-        if img_size > img_size_for_msg:
+        if img_size > const.SIZE_TO_WAIT:
             print('Found contours. Segmentation completed. Report ready.\n')
 
         # Now draw enclosing circles around watershed segments to get sizes.
@@ -1619,82 +1639,84 @@ class ImageViewer(ProcessImage):
         bottom_edge = self.cvimg['gray'].shape[0] - 1
         right_edge = self.cvimg['gray'].shape[1] - 1
 
-        # Exclude contours not in the specified size range.
-        # Exclude contours that have a coordinate point intersecting the img edge.
-        if contour_pointset:
-            flag = False
-            for _c in contour_pointset:
-                if not c_area_max > cv2.contourArea(_c) >= c_area_min:
-                    continue
+        if not contour_pointset:
+            utils.no_objects_found_msg()
+            return
 
-                # Skip contours that touch top or left edge.
-                if {0, 1}.intersection(set(_c.ravel())):
-                    continue
+        flag = False
+        for _c in contour_pointset:
 
-                # Skip contours that touch bottom or right edge.
-                # Break from inner loop when any touch is found.
-                for _p in _c:
-                    for coord in _p:
-                        _x, _y = tuple(coord)
-                        if _x == right_edge or _y == bottom_edge:
-                            flag = True
-                    if flag:
-                        break
+            # Exclude None elements (generated by multiprocessing.Pool).
+            # Exclude contours not in the specified size range.
+            # Exclude contours that have a coordinate point intersecting the img edge.
+            #  ... those that touch top or left edge or are background.
+            #  ... those that touch bottom or right edge.
+            if _c is None:
+                continue
+            if not c_area_max > cv2.contourArea(_c) >= c_area_min:
+                continue
+            if {0, 1}.intersection(set(_c.ravel())):
+                continue
+            # Break from inner loop when either edge touch is found.
+            for _p in _c:
+                for coord in _p:
+                    _x, _y = tuple(coord)
+                    if _x == right_edge or _y == bottom_edge:
+                        flag = True
                 if flag:
-                    flag = False
-                    continue
+                    break
+            if flag:
+                flag = False
+                continue
 
-                # Draw a circle enclosing the contour, measure its diameter,
-                #  and save each object_size measurement to a list for reporting.
-                ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
+            # Draw a circle enclosing the contour, measure its diameter,
+            #  and save each object_size measurement to a list for reporting.
+            ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
 
-                # Note: sizes are full-length floats.
-                object_size = _r * 2 * self.unit_per_px.get()
+            # Note: sizes are full-length floats.
+            object_size = _r * 2 * self.unit_per_px.get()
 
-                # Need to set sig. fig. to display sizes in annotated image.
-                #  num_sigfig value is determined in set_size_std().
-                size2display: str = to_p.to_precision(value=object_size,
-                                                      precision=self.num_sigfig)
+            # Need to set sig. fig. to display sizes in annotated image.
+            #  num_sigfig value is determined in set_size_std().
+            size2display: str = to_p.to_precision(value=object_size,
+                                                  precision=self.num_sigfig)
 
-                # Convert sizes to float on assumption that individual
-                #  sizes listed in the report will be used in a spreadsheet
-                #  or other statistical analysis.
-                selected_sizes.append(float(size2display))
+            # Convert sizes to float, assuming that individual sizes
+            #  listed in the report will be used in a spreadsheet or
+            #  other statistical analysis.
+            selected_sizes.append(float(size2display))
 
-                ((txt_width, _), baseline) = cv2.getTextSize(
-                    text=size2display,
-                    fontFace=const.FONT_TYPE,
-                    fontScale=font_scale,
-                    thickness=line_thickness)
-                offset_x = txt_width / 2
+            ((txt_width, _), baseline) = cv2.getTextSize(
+                text=size2display,
+                fontFace=const.FONT_TYPE,
+                fontScale=font_scale,
+                thickness=line_thickness)
+            offset_x = txt_width / 2
 
-                cv2.circle(img=self.cvimg['ws_circled'],
-                           center=(round(_x), round(_y)),
-                           radius=round(_r),
-                           color=preferred_color,
-                           thickness=line_thickness,
-                           lineType=cv2.LINE_AA,
-                           )
-                cv2.putText(img=self.cvimg['ws_circled'],
-                            text=size2display,
-                            org=(round(_x - offset_x), round(_y + baseline)),
-                            fontFace=const.FONT_TYPE,
-                            fontScale=font_scale,
-                            color=preferred_color,
-                            thickness=line_thickness,
-                            lineType=cv2.LINE_AA,
-                            )
+            cv2.circle(img=self.cvimg['ws_circled'],
+                       center=(round(_x), round(_y)),
+                       radius=round(_r),
+                       color=preferred_color,
+                       thickness=line_thickness,
+                       lineType=cv2.LINE_AA,
+                       )
+            cv2.putText(img=self.cvimg['ws_circled'],
+                        text=size2display,
+                        org=(round(_x - offset_x), round(_y + baseline)),
+                        fontFace=const.FONT_TYPE,
+                        fontScale=font_scale,
+                        color=preferred_color,
+                        thickness=line_thickness,
+                        lineType=cv2.LINE_AA,
+                        )
 
-            # The sorted size list is used for reporting individual sizes
-            #   and size summary metrics.
-            if selected_sizes:
-                self.sorted_size_list = sorted(selected_sizes)
-            else:
-                utils.no_objects_found_msg()
+        # The sorted size list is used for reporting individual sizes
+        #   and size summary metrics.
+        if selected_sizes:
+            self.sorted_size_list = sorted(selected_sizes)
         else:
             utils.no_objects_found_msg()
 
-        # Circled sized objects are in their own window.
         self.update_image(img_name='ws_circled',
                           img_array=self.cvimg['ws_circled'])
 
@@ -1788,7 +1810,7 @@ class ImageViewer(ProcessImage):
             f'{"   peak_local_max:".ljust(space)}min_distance={min_dist}\n'
             f'{tab}footprint=np.ones({p_kernel}, np.uint8\n'
             f'{"   watershed:".ljust(space)}connectivity={connections}\n'
-            f'{tab}compactness=0.03\n'  # NOTE: change if changed in watershed method.
+            f'{tab}compactness=1.0\n'  # NOTE: update if change in watershed method.
             f'{divider}\n'
             f'{"# distTrans segments:".ljust(space)}{self.num_dt_segments}\n'
             f'{"Selected size range:".ljust(space)}{circle_r_min}--{circle_r_max} pixels, diameter\n'
@@ -1819,7 +1841,7 @@ class ImageViewer(ProcessImage):
         self.filter_image()
         self.set_size_std()
         self.watershed_segmentation()
-        self.select_and_size(contour_pointset=self.ws_max_contours)
+        self.select_and_size(contour_pointset=self.largest_ws_contours)
         self.report_results()
 
         return event
@@ -1836,7 +1858,7 @@ class ImageViewer(ProcessImage):
             *event* as a formality; is functionally None.
         """
         self.set_size_std()
-        self.select_and_size(contour_pointset=self.ws_max_contours)
+        self.select_and_size(contour_pointset=self.largest_ws_contours)
         self.report_results()
 
         return event
