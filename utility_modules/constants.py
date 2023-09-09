@@ -17,11 +17,13 @@ FONT_TYPE
 LABEL_PARAMETERS
 MASTER_BG
 MY_OS
+NCPU
 PANEL_LEFT
 PANEL_RIGHT
 RADIO_PARAMETERS
 SCALE_PARAMETERS
 SIZE_STANDARDS
+SIZE_TO_WAIT
 STD_CONTOUR_COLOR
 STUB_ARRAY
 THRESH_TYPE
@@ -32,7 +34,8 @@ WIN_NAME
 
 # Standard library import
 import sys
-from multiprocessing import cpu_count
+# from multiprocessing import cpu_count
+from psutil import cpu_count
 
 # Third party import
 import cv2
@@ -285,10 +288,9 @@ SIZE_STANDARDS = {
 
 # The image dimension limit to issue a warning that processing may take
 #   a while to complete.
-SIZE_TO_WAIT = 3000
+SIZE_TO_WAIT = 2000
 
-# If you need to restrict to physical cores (exclude hyperthreads), then:
-# import psutil
-# ncpu = psutil.cpu_count(logical=False)
+# Restrict mp.Pool processes to physical cores (exclude hyperthreads) for best performance.
+NCPU = cpu_count(logical=False) - 1
 # The multiprocess cpu_count() will count hyperthreads as CPUs.
-NCPU = cpu_count()
+# NCPU = mp.cpu_count()

@@ -23,7 +23,7 @@ settings windows, or from command line with Ctrl-C.
 Save settings report and the annotated image with the "Save" button.
 
 Requires Python 3.7 or later and the packages opencv-python, numpy,
-scikit-image and scipy.
+scikit-image, scipy, and psutil.
 See this distribution's requirements.txt file for details.
 Developed in Python 3.8 and 3.9, tested up to 3.11.
 """
@@ -274,7 +274,6 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='redux',
                           img_array=self.cvimg['redux'])
 
-
     def filter_image(self) -> None:
         """
         Applies a filter selection to blur the reduced noise image
@@ -435,49 +434,11 @@ class ProcessImage(tk.Tk):
         if img_size > const.SIZE_TO_WAIT:
             print('Watershed completed; now finding contours...')
 
-        # TODO: find a way to parallel process watershed() to reduce time
-        #  for processing large images.
-
         self.largest_ws_contours.clear()
 
-        # This function needs to be scoped globally to avoid a Pool picking error.
-        # Not ideal to use global, but cannot figure out how to restructure otherwise.
-        global contour_the_labels
-        def contour_the_labels(label: int) -> np.ndarray:
-            """
-            Used in multiprocess.Pool to generate watershed contours.
-            Args:
-                label: an integer element from the list of marker indexes
-                       from the watershed image.
-            Returns:
-                The indexed ndarray element to add to the
-                largest_ws_contours list.
-            """
-
-            # There is no need to exclude the background label 0 here
-            #  because its contours will be excluded in select_and_size().
-
-            # Note: Do not move this statement out of the function.
-            lbl_mask = np.zeros(shape=watershed_img.shape, dtype="uint8")
-            lbl_mask[watershed_img == label] = 255
-
-            # Detect contours in the masked label and return the largest one.
-            contours, _ = cv2.findContours(image=lbl_mask,
-                                           mode=cv2.RETR_EXTERNAL,
-                                           method=cv2.CHAIN_APPROX_SIMPLE)
-            return max(contours, key=cv2.contourArea)
-
-        # Note: using multiprocessing to find ws contours takes ~1/2 to ~1/3
-        #  the time of finding serially with a for-loop.
-        # DON'T use concurrent.futures here because we don't want the
-        #  user doing concurrent things that may wreck the flow.
         # self.largest_ws_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of ws objects.
-        with Pool(processes=const.NCPU) as mpool:
-            self.largest_ws_contours: list = mpool.map(
-                func=contour_the_labels,
-                iterable=np.unique(ar=watershed_img)
-            )
+        self.largest_ws_contours: list = MP(watershed_img).pool_it
 
         # Convert from float32 to uint8 data type to find contours and
         #  make a PIL ImageTk.PhotoImage.
@@ -807,7 +768,7 @@ class ImageViewer(ProcessImage):
                                     text='No',
                                     value='no',
                                     variable=self.do_inverse_th,
-                                    ** const.RADIO_PARAMETERS)
+                                    **const.RADIO_PARAMETERS)
         inverse_no.select()
 
         process_now_button = ttk.Button(master=start_win,
@@ -834,7 +795,7 @@ class ImageViewer(ProcessImage):
         process_now_button.grid(row=3, column=1, **padding, sticky=tk.E)
 
         # Create menu instance and add pull-down menus.
-        menubar = tk.Menu(master=start_win,)
+        menubar = tk.Menu(master=start_win, )
         start_win.config(menu=menubar)
 
         os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
@@ -1168,24 +1129,24 @@ class ImageViewer(ProcessImage):
                                                **const.SCALE_PARAMETERS)
 
         self.slider['circle_r_min_lbl'].configure(text='Circled radius size\n'
-                                                  'minimum pixels:',
-                                             **const.LABEL_PARAMETERS)
+                                                       'minimum pixels:',
+                                                  **const.LABEL_PARAMETERS)
         self.slider['circle_r_max_lbl'].configure(text='Circled radius size\n'
-                                                  'maximum pixels:',
-                                             **const.LABEL_PARAMETERS)
+                                                       'maximum pixels:',
+                                                  **const.LABEL_PARAMETERS)
 
         # Note: may need to adjust c_lim scaling with image size b/c
         #   large contours cannot be selected if max limit is too small.
         circle_r_min = self.metrics['max_circle_r'] // 8
         circle_r_max = self.metrics['max_circle_r']
         self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
-                                         tickinterval=circle_r_min / 10,
-                                         variable=self.slider_val['circle_r_min'],
-                                         **const.SCALE_PARAMETERS)
+                                              tickinterval=circle_r_min / 10,
+                                              variable=self.slider_val['circle_r_min'],
+                                              **const.SCALE_PARAMETERS)
         self.slider['circle_r_max'].configure(from_=1, to=circle_r_max,
-                                         tickinterval=circle_r_max / 10,
-                                         variable=self.slider_val['circle_r_max'],
-                                         **const.SCALE_PARAMETERS)
+                                              tickinterval=circle_r_max / 10,
+                                              variable=self.slider_val['circle_r_max'],
+                                              **const.SCALE_PARAMETERS)
 
         # To avoid grabbing all the intermediate values between normal
         #  click and release movement, bind sliders to call the main
@@ -1202,7 +1163,6 @@ class ImageViewer(ProcessImage):
                 widget.bind('<ButtonRelease-1>', self.process_sizes)
             else:
                 widget.bind('<ButtonRelease-1>', self.process_all)
-
 
     def config_comboboxes(self) -> None:
         """
@@ -1405,38 +1365,38 @@ class ImageViewer(ProcessImage):
         self.size_cust_entry.grid(column=1, row=20, **east_grid_params)
 
         # Use update() because update_idletasks() doesn't always work to
-        #  get the gridded widgets' correct winfo_width.
+        #  get the gridded widgets' correct winfo_reqwidth.
         self.update()
 
         # Now grid widgets with relative padx values based on widths of
         #  their corresponding partner widgets. Works across platforms.
-        morphshape_padx = (0, self.cbox['morphshape'].winfo_width() + 10)
+        morphshape_padx = (0, self.cbox['morphshape'].winfo_reqwidth() + 10)
         self.cbox['morphshape_lbl'].grid(column=1, row=2,
                                          padx=morphshape_padx,
                                          **east_params_relative)
 
-        thtype_padx = (0, self.cbox['th_type'].winfo_width() + 10)
+        thtype_padx = (0, self.cbox['th_type'].winfo_reqwidth() + 10)
         self.cbox['th_type_lbl'].grid(column=1, row=6,
                                       padx=thtype_padx,
                                       **east_params_relative)
 
-        mask_lbl_padx = (self.cbox['dt_mask_size_lbl'].winfo_width() + 120, 0)
+        mask_lbl_padx = (self.cbox['dt_mask_size_lbl'].winfo_reqwidth() + 120, 0)
         self.cbox['dt_mask_size'].grid(column=1, row=10,
                                        padx=mask_lbl_padx,
                                        pady=(4, 0),
                                        sticky=tk.W)
 
-        ws_connect_padx = (0, self.cbox['ws_connect'].winfo_width() + 10)
+        ws_connect_padx = (0, self.cbox['ws_connect'].winfo_reqwidth() + 10)
         self.cbox['ws_connect_lbl'].grid(column=1, row=10,
                                          padx=ws_connect_padx,
                                          **east_params_relative)
 
-        size_std_padx = (0, self.cbox['size_std'].winfo_width() + 10)
+        size_std_padx = (0, self.cbox['size_std'].winfo_reqwidth() + 10)
         self.cbox['size_std_lbl'].grid(column=1, row=19,
                                        padx=size_std_padx,
                                        **east_params_relative)
 
-        custom_std_padx = (0, self.size_cust_entry.winfo_width() + 10)
+        custom_std_padx = (0, self.size_cust_entry.winfo_reqwidth() + 10)
         self.size_cust_label.grid(column=1, row=20,
                                   padx=custom_std_padx,
                                   **east_params_relative)
@@ -1864,6 +1824,62 @@ class ImageViewer(ProcessImage):
         return event
 
 
+class MultiProc:
+    """
+    A Class that handles image multiprocessing outside the tk.TK app Classes
+    so that pickling errors are avoided.
+    Methods:
+         contour_the_labels: the multiprocessing.Pool.map() func argument.
+         pool_it: handles multiprocessing.Pool.map().
+    """
+    def __init__(self, image):
+        self.image = image
+
+    def contour_the_labels(self, label) -> np.ndarray:
+        """
+        Used as func in multiprocess.Pool to generate watershed contours.
+        Args:
+            label: an integer element from the list of marker indexes
+                   from the labeled watershed image.
+        Returns:
+            The indexed (labeled) ndarray element of the largest watershed
+            contours to be added to a list of contours for object sizing.
+        """
+
+        lbl_mask = np.zeros(shape=self.image.shape, dtype="uint8")
+        lbl_mask[self.image == label] = 255
+
+        # Detect contours in the masked label and return the largest one.
+        contours, _ = cv2.findContours(image=lbl_mask,
+                                       mode=cv2.RETR_EXTERNAL,
+                                       method=cv2.CHAIN_APPROX_SIMPLE)
+        return max(contours, key=cv2.contourArea)
+
+    @property
+    def pool_it(self) -> list:
+        """
+        Parallel processing to find contours in the image specified by the
+        Class attribute. Calls MultiProc.contour_the_labels().
+        Called by ProcessImage.watershed_segmentation().
+        Use example: largest_contours = MP(watershed_img).pool_it
+
+        Returns:
+            List of watershed contours used for object sizing.
+         """
+        # Note: using multiprocessing to find ws contours takes ~1/2 to ~1/3
+        #  the time of finding serially with a for-loop.
+        # DON'T use concurrent.futures here because we don't want the
+        #  user doing concurrent things that may wreck the flow.
+        # Note that the number of CPUs is 1 less than physical cores.
+        # chunksize of 40 was empirically determined with the sample images.
+        with Pool(processes=const.NCPU) as mpool:
+            contours: list = mpool.map(func=self.contour_the_labels,
+                                       iterable=np.unique(ar=self.image),
+                                       chunksize=40)
+
+        return contours
+
+
 if __name__ == "__main__":
     # Program exits here if any of the module checks fail or if the
     #   argument --about is used, which prints info, then exits.
@@ -1871,6 +1887,7 @@ if __name__ == "__main__":
     vcheck.minversion('3.7')
     vcheck.maxversion('3.11')
     manage.arguments()
+    MP = MultiProc
     try:
         print(f'{Path(__file__).name} has launched...')
         app = ImageViewer()
