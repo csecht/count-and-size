@@ -3,9 +3,6 @@
 
 <sub>Image of the program's desktop icon</sub>
 
-## Note: the current version, 0.0.24, with multiprocessing seems to work only with Python 3.8 (on Ubuntu Linux), but not on Python 3.11 (on Windows 11). All earlier versions worked on various systems and Python versions. Debugging is in progress... 
-
-
 The interactive Python program, `size_it.py`, counts and sizes groups of similar objects from an image file. The main purpose is to obtain mean, range, and individual sizes from a sample population. Once invoked from the Terminal command line, a tkinter GUI controls all file and OpenCV-Python imaging parameters.
 
 Object identification is performed with a compact watershed algorithm while diameters of minimum enclosing circles of the objects determine object sizes. Image processing parameters are selected from slider bars and drop down menus (see screenshots, below). Multiple windows display each processing step with live updates as parameters change.
