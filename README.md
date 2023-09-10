@@ -3,9 +3,17 @@
 
 <sub>Image of the program's desktop icon</sub>
 
-The interactive Python program, `size_it.py`, counts and sizes groups of similar objects from an image file. The main purpose is to obtain mean, range, and individual sizes from a sample population. Once invoked from the Terminal command line, a tkinter GUI controls all file and OpenCV-Python imaging parameters.
+The interactive Python program, `size_it.py`, is a tkinter GUI for OpenCV processing of an image to obtain sizes, means,
+and ranges of objects in a sample population. The distance transform and
+watershed algorithms are used interactively by setting their parameter
+values with slide bars and pull-down menus. Related image processing
+factors like contrast, brightness, noise reduction, and filtering are 
+also adjusted interactively, with live updating of the resulting images.
 
-Object identification is performed with a compact watershed algorithm while diameters of minimum enclosing circles of the objects determine object sizes. Image processing parameters are selected from slider bars and drop down menus (see screenshots, below). Multiple windows display each processing step with live updates as parameters change.
+A report is provided of parameter settings, object count, individual
+object sizes, and sample size mean and range, along with an annotated
+image file of labeled objects.
+
 
 This Project was developed to sample oyster populations at various stages of aquaculture production, but can be used to measure any group of round or oblong objects on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can usually be segmented. While segmentation of objects in large or poorly contrasted overlapping clusters is unlikely, such clusters can be screened out by limiting the size range to provide fairly accurate metrics for the remaining individual objects.
 

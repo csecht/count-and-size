@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """
 A tkinter GUI for OpenCV processing of an image to obtain sizes, means,
-and ranges of objects in a sample population. The watershed algorithm
-is used interactively by setting parameter values with slide bars and
-pull-down menus. Related image processing factors like contrast,
-brightness, noise reduction, and filtering are also adjusted interactively.
+and ranges of objects in a sample population. The distance transform and
+watershed algorithms are used interactively by setting their parameter
+values with slide bars and pull-down menus. Related image processing
+factors like contrast, brightness, noise reduction, and filtering are
+also adjusted interactively, with live updating of the resulting images.
+
+A report is provided of parameter settings, object count, individual
+object sizes, and sample size mean and range, along with an annotated
+image file of labeled objects.
 
 USAGE
 For command line execution, from within the count-and-size-main folder:
