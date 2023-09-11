@@ -298,7 +298,13 @@ class ProcessImage(tk.Tk):
         #   but cv2.blur and cv2.bilateralFilter will shift image between
         #   even and odd kernels, so just make it odd for everything.
         _k = self.slider_val['filter_k'].get()
+
+        # If filter kernel slider is set to 0, then don't apply a filter.
+        if _k == 0:
+            return
+
         filter_k = _k + 1 if _k % 2 == 0 else _k
+        print('filter k', filter_k)
 
         # Apply a filter to blur edges:
         # Bilateral parameters:
