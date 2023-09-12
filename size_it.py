@@ -294,17 +294,16 @@ class ProcessImage(tk.Tk):
         filter_selected = self.cbox_val['filter'].get()
         border_type = cv2.BORDER_DEFAULT
 
-        # cv2.GaussianBlur and cv2.medianBlur need to have odd kernels,
-        #   but cv2.blur and cv2.bilateralFilter will shift image between
-        #   even and odd kernels, so just make it odd for everything.
         _k = self.slider_val['filter_k'].get()
 
         # If filter kernel slider is set to 0, then don't apply a filter.
         if _k == 0:
             return
 
+        # cv2.GaussianBlur and cv2.medianBlur need to have odd kernels,
+        #   but cv2.blur and cv2.bilateralFilter will shift image between
+        #   even and odd kernels, so just make it odd for everything.
         filter_k = _k + 1 if _k % 2 == 0 else _k
-        print('filter k', filter_k)
 
         # Apply a filter to blur edges:
         # Bilateral parameters:
@@ -445,10 +444,9 @@ class ProcessImage(tk.Tk):
         if img_size > const.SIZE_TO_WAIT:
             print('Watershed completed; now finding contours...')
 
-        self.largest_ws_contours.clear()
-
         # self.largest_ws_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of ws objects.
+        # self.largest_ws_contours.clear()
         self.largest_ws_contours = parallel.MultiProc(watershed_img).pool_it
 
         # Convert from float32 to uint8 data type to find contours and
