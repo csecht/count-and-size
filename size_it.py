@@ -34,6 +34,11 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 """
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License
 
+# There is a bug(?) in PyCharm that does not recognize cv2 memberships,
+#  so pylint and inspections flag every use of cv2.*.
+# Be aware that this disables all checks of (E1101): *%s %r has no %r member%s*
+# pylint: disable=no-member
+
 # Standard library imports.
 import sys
 from pathlib import Path
@@ -446,7 +451,6 @@ class ProcessImage(tk.Tk):
 
         # self.largest_ws_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of ws objects.
-        # self.largest_ws_contours.clear()
         self.largest_ws_contours = parallel.MultiProc(watershed_img).pool_it
 
         # Convert from float32 to uint8 data type to find contours and
@@ -1723,9 +1727,10 @@ class ImageViewer(ProcessImage):
 
         _fk = self.slider_val['filter_k'].get()
         if _fk == 0:
-            filter_k = _fk
+            filter_k = 'no filter applied'
         else:
             filter_k = _fk + 1 if _fk % 2 == 0 else _fk
+            filter_k = f'({filter_k}, {filter_k})'
 
         size_std = self.cbox_val['size_std'].get()
         if size_std == 'Custom':
@@ -1771,7 +1776,7 @@ class ImageViewer(ProcessImage):
             f'{tab}cv2.getStructuringElement shape={morph_shape}\n'
             f'{tab}cv2.morphologyEx iterations={noise_iter}\n'
             f'{tab}cv2.morphologyEx op={morph_op},\n'
-            f'{"Filter:".ljust(space)}{filter_selected} ksize=({filter_k},{filter_k})\n'
+            f'{"Filter:".ljust(space)}{filter_selected} ksize={filter_k}\n'
             f'{"cv2.threshold:".ljust(space)}type={th_type}\n'
             f'{"cv2.distanceTransform:".ljust(space)}'
             f'distanceType={dt_type}, maskSize={mask_size}\n'
