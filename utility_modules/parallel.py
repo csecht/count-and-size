@@ -1,14 +1,18 @@
 """A module to run parallel processes for image processing."""
 # Standard library imports.
-
 from multiprocessing.pool import Pool
 
 import cv2
 import numpy as np
 
 # Local application imports.
+# pylint: disable=import-error
 from utility_modules import constants as const
 
+# There is a bug(?) in PyCharm that does not recognize cv2 memberships,
+#  so pylint and inspections flag every use of cv2.*.
+# Be aware that this disables all checks of (E1101): *%s %r has no %r member%s*
+# pylint: disable=no-member
 
 class MultiProc:
     """
@@ -58,10 +62,10 @@ class MultiProc:
         #  time than finding them serially with a for-loop.
         # DON'T use concurrent.futures or async here because we don't
         #  want the user doing concurrent things that may wreck the flow.
-        # Note that the const.NCPU value is 1 less than then number of
+        # Note that the const.NCPU value is 1 less than the number of
         #  physical cores.
         # chunksize=40 was empirically optimized for speed using the
-        #  sample images on a 6-core HP Pavilion laptop.
+        #  sample images on a 6-core HP Pavilion Windows 11 laptop.
         with Pool(processes=const.NCPU) as mpool:
             contours: list = mpool.map(func=self.contour_the_basins,
                                        iterable=np.unique(ar=self.image),

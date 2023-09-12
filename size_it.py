@@ -34,11 +34,6 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 """
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License
 
-# There is a bug(?) in PyCharm that does not recognize cv2 memberships,
-#  so pylint and inspections flag every use of cv2.*.
-# Be aware that this disables all checks of (E1101): *%s %r has no %r member%s*
-# pylint: disable=no-member
-
 # Standard library imports.
 import sys
 from pathlib import Path
@@ -46,6 +41,7 @@ from statistics import mean, median
 from typing import List
 
 # Local application imports.
+# pylint: disable=import-error
 from utility_modules import (vcheck,
                              utils,
                              manage,
@@ -56,6 +52,10 @@ from utility_modules import (vcheck,
 # Third party imports.
 # tkinter(Tk/Tcl) is included with most Python3 distributions,
 #  but may sometimes need to be regarded as third-party.
+# There is a bug(?) in PyCharm that does not recognize cv2 memberships,
+#  so pylint and inspections flag every use of cv2.*.
+# Be aware that this disables all checks of (E1101): *%s %r has no %r member%s*
+# pylint: disable=no-member
 try:
     import cv2
     import numpy as np
@@ -539,6 +539,8 @@ class ImageViewer(ProcessImage):
         # Note: The matching control variable attributes for the
         #   following selector widgets are in ProcessImage __init__.
         self.slider = {
+            'trigger': tk.Scale(master=self.contour_selectors_frame),
+
             'alpha': tk.Scale(master=self.contour_selectors_frame),
             'alpha_lbl': tk.Label(master=self.contour_selectors_frame),
 
@@ -859,6 +861,9 @@ class ImageViewer(ProcessImage):
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
+        # Place process_all() and display_windows() here, in this sequence,
+        #  for best performance.
+        self.process_all()
         self.display_windows()
 
     def setup_image_windows(self) -> None:
@@ -1081,9 +1086,6 @@ class ImageViewer(ProcessImage):
         scale_len = int(self.winfo_screenwidth() * 0.25)
 
         # All Scales() use a mouse bind to call process_all() or process_sizes().
-        # Only the 'alpha' Scale() uses a command argument to initiate
-        #  processing through process_all(). This occurs at startup when
-        #  the 'alpha' slide bar is repositioned in set_defaults().
         self.slider['alpha_lbl'].configure(text='Contrast/gain/alpha:',
                                            **const.LABEL_PARAMETERS)
         self.slider['alpha'].configure(from_=0.0, to=4.0,
@@ -1091,7 +1093,6 @@ class ImageViewer(ProcessImage):
                                        resolution=0.1,
                                        tickinterval=0.5,
                                        variable=self.slider_val['alpha'],
-                                       command=self.process_all,
                                        **const.SCALE_PARAMETERS)
 
         self.slider['beta_lbl'].configure(text='Brightness/bias/beta:',
@@ -1176,6 +1177,7 @@ class ImageViewer(ProcessImage):
                 widget.bind('<ButtonRelease-1>', self.process_sizes)
             else:
                 widget.bind('<ButtonRelease-1>', self.process_all)
+
 
     def config_comboboxes(self) -> None:
         """
@@ -1468,7 +1470,7 @@ class ImageViewer(ProcessImage):
 
         # Now is time to show the mainloop (app) settings window that was
         #   hidden in manage_main_window.
-        #   Deiconifying here stacks it on top of all windows.
+        #   Deiconifying here stacks it on top of all windows at startup.
         self.wm_deiconify()
 
     def set_defaults(self) -> None:
@@ -1478,15 +1480,10 @@ class ImageViewer(ProcessImage):
         Returns:
             None
         """
-        # Settings are optimized for the default sample1.jpg input.
+        # Default settings are optimized for a sample1.jpg input.
 
         # Set/Reset Scale widgets.
-        # Repositioning the 'alpha' slide from zero calls its command
-        #  argument process_all() at startup. Only the 'alpha' Scale()
-        #  uses a 'command' argument. All Scales() use a mouse bind to
-        #  call process_all() or process_sizes() for subsequent processing.
-        self.slider['alpha'].set(1.0)
-
+        self.slider_val['alpha'].set(1.0)
         self.slider_val['beta'].set(0)
         self.slider_val['noise_k'].set(5)
         self.slider_val['noise_iter'].set(3)
@@ -1659,6 +1656,7 @@ class ImageViewer(ProcessImage):
             #  other statistical analysis.
             selected_sizes.append(float(size2display))
 
+            # Need to properly center size text in circled object.
             ((txt_width, _), baseline) = cv2.getTextSize(
                 text=size2display,
                 fontFace=const.FONT_TYPE,
