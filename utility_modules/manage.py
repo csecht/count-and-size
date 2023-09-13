@@ -15,6 +15,9 @@ import sys
 import tkinter as tk
 from tkinter import ttk
 
+# noinspection PyCompatibility
+from __main__ import __doc__
+
 # Third party imports.
 import cv2
 import numpy as np
@@ -22,8 +25,6 @@ from PIL import Image, ImageTk
 from PIL.ImageTk import PhotoImage
 
 # Local application imports.
-# noinspection PyCompatibility
-from __main__ import __doc__
 import utility_modules
 from utility_modules import constants as const
 
@@ -193,11 +194,12 @@ def ttk_styles(mainloop: tk.Tk) -> None:
 
 def info_message(widget: tk.Label, toplevel: tk.Tk, infotxt: str) -> None:
     """
-    Updates informational message in *toplevel* window.
+    Updates informational message in the *toplevel* *widget.
     Args:
-        widget: The tk Label() that needs its text changed.
-        toplevel: The parent tk.Tk window reference, e.g., the mainloop.
-        infotxt: The test string to be displayed.
+        widget: The tk.Label attribute reference that will have its text
+                changed.
+        toplevel: The parent/mainloop tk.Tk window reference; e.g., app.
+        infotxt: The new text string to display in the *widget*.
     Returns:
          None
     """
