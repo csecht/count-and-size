@@ -933,6 +933,8 @@ class ImageViewer(ProcessImage):
 
         # Need an image to replace blank tk desktop icon for each window.
         #   Set correct path to the local 'images' directory and icon file.
+        # Withdraw all windows here for clean transition; all are deiconified
+        #  in display_windows().
         # Need to disable default window Exit in display windows b/c
         #  subsequent calls to them need a valid path name.
         # Allow image label panels in image windows to resize with window.
@@ -942,12 +944,15 @@ class ImageViewer(ProcessImage):
         #  border when it has focus and light grey when being dragged.
         icon_path = None
         try:
-            icon_path = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
+            icon_path = tk.PhotoImage(file=utils.valid_path_to('image/sizeit_icon_512.png'))
             # Provide icon for mainloop (settings&report) window here.
             app.iconphoto(True, icon_path)
         except tk.TclError as _msg:
-            print('Cannot display program icon, so it will be left blank or tk default.')
-            print(f'tk error message: {_msg}')
+            pass
+            # print('Cannot display program icon, so it will be left blank or tk default.')
+            # print(f'tk error message: {_msg}')
+            # Note that this goes to Terminal, not to manage.info_message()
+            # b/c it disrupts startup sequence and doesn't show anyway..
 
         for _name, toplevel in self.img_window.items():
             toplevel.wm_withdraw()
@@ -976,7 +981,7 @@ class ImageViewer(ProcessImage):
             None
         """
 
-        # Color in all of main (app) window and use a yellow border;
+        # Color in the main (app) window and give it a yellow border;
         #   border highlightcolor changes to grey with loss of focus.
         app.config(
             bg=const.MASTER_BG,
