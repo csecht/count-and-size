@@ -12,7 +12,7 @@ ttk_styles: configures platform-specific ttk.Style for Buttons and Comboboxes.
 # Standard library imports.
 import argparse
 import sys
-import tkinter
+import tkinter as tk
 from tkinter import ttk
 
 # Third party imports.
@@ -80,12 +80,6 @@ def input_metrics(img: np.ndarray) -> dict:
     gray_img = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
     fig_width: int = gray_img.shape[1]
 
-    if fig_width > const.SIZE_TO_WAIT:
-        print(f'Images over {const.SIZE_TO_WAIT} pixels wide will take longer to process...'
-              ' patience Grasshopper.\n  If the threshold image shows up as'
-              ' black-on-white, then use the inverse option.\n'
-              'If the displayed image is too large, reduce the scaling factor.')
-
     # Set maximum enclosing circle radius to 1/2 the shortest image dimension.
     max_circle_r: int = round(min(gray_img.shape) / 2)
 
@@ -145,7 +139,7 @@ def tk_image(image: np.ndarray, scale_coef: float) -> PhotoImage:
     return tk_img
 
 
-def ttk_styles(mainloop: tkinter.Tk) -> None:
+def ttk_styles(mainloop: tk.Tk) -> None:
     """
     Configure platform-specific ttk.Style for Buttons and Comboboxes.
     Font and color values need to be edited as appropriate for the
@@ -195,3 +189,19 @@ def ttk_styles(mainloop: tkinter.Tk) -> None:
                    background=[('pressed', 'gray30'),
                                ('active', const.COLORS_TK['vermilion'])],
                    )
+
+
+def info_message(widget: tk.Label, toplevel: tk.Tk, infotxt: str) -> None:
+    """
+    Updates informational message in *toplevel* window.
+    Args:
+        widget: The tk Label() that needs its text changed.
+        toplevel: The parent tk.Tk window reference, e.g., the mainloop.
+        infotxt: The test string to be displayed.
+    Returns:
+         None
+    """
+    widget.grid_remove()
+    widget.config(text=infotxt)
+    widget.grid()
+    toplevel.update_idletasks()

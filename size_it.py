@@ -189,6 +189,7 @@ class ProcessImage(tk.Tk):
         self.sorted_size_list = []
         self.unit_per_px = tk.DoubleVar()
         self.num_sigfig = 0
+        self.info_label = tk.Label(self)
 
     def update_image(self,
                      img_name: str,
@@ -409,7 +410,9 @@ class ProcessImage(tk.Tk):
             maskSize=mask_size)
 
         if img_size > const.SIZE_TO_WAIT:
-            print('Have completed distance transform; looking for peaks...')
+            info = 'Have completed distance transform; looking for peaks...\n\n\n'
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=info)
 
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         local_max: ndimage = peak_local_max(
@@ -425,7 +428,9 @@ class ProcessImage(tk.Tk):
         )
 
         if img_size > const.SIZE_TO_WAIT:
-            print('Found peaks; running skimage.segmentation watershed algorithm...')
+            info = 'Found peaks; running watershed algorithm...\n\n\n'
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=info)
 
         mask = np.zeros(shape=distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
@@ -447,7 +452,9 @@ class ProcessImage(tk.Tk):
                                               compactness=1.0,
                                               watershed_line=True)
         if img_size > const.SIZE_TO_WAIT:
-            print('Watershed completed; now finding contours...')
+            info = 'Watershed completed; now finding contours...\n\n\n'
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=info)
 
         # self.largest_ws_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of ws objects.
@@ -479,9 +486,12 @@ class ProcessImage(tk.Tk):
                           img_array=watershed_gray)
 
         if img_size > const.SIZE_TO_WAIT:
-            print('Found contours. Segmentation completed. Report ready.\n')
+            info = 'Found contours. Segmentation completed. Report ready.\n\n\n'
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=info)
 
-        # Now draw enclosing circles around watershed segments to get sizes.
+        # Now draw enclosing circles around watershed segments and
+        #  annotate with object sizes in select_and_size().
 
 
 class ImageViewer(ProcessImage):
@@ -494,7 +504,7 @@ class ImageViewer(ProcessImage):
     start_now
     setup_image_windows
     configure_main_window
-    setup_sizing_info
+    setup_info_messages
     setup_buttons
     config_sliders
     config_comboboxes
@@ -853,7 +863,7 @@ class ImageViewer(ProcessImage):
         self.setup_image_windows()
         self.configure_main_window()
         utils.wait4it_msg(img=self.cvimg['gray'])
-        self.setup_sizing_info()
+        self.setup_info_messages()
         self.setup_buttons()
         self.config_sliders()
         self.config_comboboxes()
@@ -861,7 +871,7 @@ class ImageViewer(ProcessImage):
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
-        # Place process_all() and display_windows() here, in this sequence,
+        # Place process_all() and display_windows() last, in this sequence,
         #  for best performance.
         self.process_all()
         self.display_windows()
@@ -877,13 +887,19 @@ class ImageViewer(ProcessImage):
 
         def _window_info():
             """
-            Provide a notice in Terminal.
-            Called from .protocol() in setup_image_windows().
+            Provide a notice in settings (mainloop, app) window.
+            Called locally from .protocol().
             """
-            print('Image windows cannot be closed from the window bar.\n'
-                  'They can be minimized if they are in the way.\n'
-                  'You can quit the program from the Count & Size Settings Report'
-                  ' window bar or with the Esc or Ctrl-Q keys.')
+            info = ('That window cannot be closed from its window bar.\n'
+                  'Minimize it if it is in the way.\n'
+                  'Esc or Ctrl-Q keys will Quit the program.')
+            self.info_label.config(fg='red',
+                                   font=cv2.FONT_HERSHEY_SIMPLEX)
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=info)
+            # Give user time to read the message before resetting it.
+            app.after(3000, self.setup_info_messages)
+
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
         # Dictionary item order determines stack order of windows.
@@ -999,25 +1015,28 @@ class ImageViewer(ProcessImage):
         #  display_windows() after all image windows so that it
         #  initially stacks on top.
 
-    @staticmethod
-    def setup_sizing_info() -> None:
+    def setup_info_messages(self) -> None:
         """
         Informative note at bottom of settings (mainloop) window about
-        the displayed size units.
-        Called from __init__.
+        the displayed size units. The Label text is also re-configured
+        to display other informational messages.
+        Called from __init__, but label is conditionally reconfigured in
+        PI.watershed_segmentation()
+
         Returns:
             None
         """
 
-        explain_label = tk.Label(
+        self.info_label.config(
             text='When the entered pixel size is 1 and the selected size\n'
                  'standard is None, then circled diameters are pixels.\n'
                  'Diameters are millimeters for any pre-set size standard,\n'
                  'and whatever you want for custom standards.',
             font=const.WIDGET_FONT,
-            bg=const.MASTER_BG)
-        explain_label.grid(column=1, row=2, rowspan=2,
-                           padx=10, sticky=tk.EW)
+            bg=const.MASTER_BG,
+            fg='black')
+        self.info_label.grid(column=1, row=2, rowspan=2,
+                             padx=10, sticky=tk.EW)
 
     def setup_buttons(self) -> None:
         """
@@ -1064,11 +1083,11 @@ class ImageViewer(ProcessImage):
         reset_btn.grid(column=0, row=2,
                        padx=10,
                        pady=5,
-                       sticky=tk.EW)
+                       sticky=tk.W)
         save_btn.grid(column=0, row=3,
                       padx=10,
                       pady=(0, 5),
-                      sticky=tk.EW)
+                      sticky=tk.W)
 
     def config_sliders(self) -> None:
         """
@@ -1690,6 +1709,12 @@ class ImageViewer(ProcessImage):
 
         self.update_image(img_name='ws_circled',
                           img_array=self.cvimg['ws_circled'])
+
+        # Cycle back to the starting info about size std units.
+        # Give user time to read the final progress msg before cycling
+        #  back to starting size unit msg.
+        app.after(1000)
+        self.setup_info_messages()
 
     def report_results(self) -> None:
         """
