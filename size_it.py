@@ -663,16 +663,25 @@ class ImageViewer(ProcessImage):
         # Need style of the ttk.Button to match main window button style.
         manage.ttk_styles(mainloop=self)
 
+        process_btn_txt = tk.StringVar(value='Process now')
+
         def _call_start(event=None) -> None:
             """Remove this start window, then call the suite of methods
-            to get things going.
+            to get things going. For larger images, show new toplevel
+            info msg and change process_now_button text to a wait msg.
             Called from process_now_button and Return/Enter keys.
             Args:
                 event: The implicit key action event, when used.
-            Returns: *event* as a formality; is functionally None.
+            Returns:
+                 *event* as a formality; is functionally None.
             """
-            start_win.destroy()
+            # Provide some info to user for why the start screen appears
+            #  frozen when processing larger images.
+            if max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT:
+                process_btn_txt.set('Processing started, wait...')
+
             self.start_now()
+            start_win.destroy()
             return event
 
         # Window basics:
@@ -776,7 +785,7 @@ class ImageViewer(ProcessImage):
         inverse_no.select()
 
         process_now_button = ttk.Button(master=start_win,
-                                        text='Process now',
+                                        textvariable=process_btn_txt,
                                         style='My.TButton',
                                         width=0,
                                         command=_call_start)
@@ -844,7 +853,7 @@ class ImageViewer(ProcessImage):
         #  simultaneously for a visually cleaner start.
         self.setup_image_windows()
         self.configure_main_window()
-        utils.wait4it_msg(img=self.cvimg['gray'])
+        utils.wait4it_msg(size_limit=max(self.cvimg['gray'].shape))
         self.setup_info_messages()
         self.setup_buttons()
         self.config_sliders()

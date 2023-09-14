@@ -281,17 +281,21 @@ def no_objects_found_msg():
           'Also, "Contour radius size" sliders may need adjusting.')
     messagebox.showinfo(detail=_m)
 
-def wait4it_msg(img):
-    """Pop up info for larger input image files."""
+def wait4it_msg(size_limit: int):
+    """
+    Pop up info for larger input image files.
+    Args:
+        size_limit: the pixel size of the input images longest dimension.
+    """
     # It is probably desirable to have this size limit match that used for
     #  the img_size_for_msg local var in size_it watershed_segmentation().
-    if max(img.shape) > const.SIZE_TO_WAIT:
-        msg = ('Larger images will take longer to process.\n'
-               'A large number of objects take longer to process.\n'
+    if size_limit > const.SIZE_TO_WAIT:
+        msg = (f'Images larger than {const.SIZE_TO_WAIT} px take longer to process.\n'
+               'A large number of found objects also take longer to process.\n'
                'So, patience Grasshopper.\n'
-               'Resist the urge to start clicking away if things seem stalled.\n'
-               'If the threshold image shows up as black-on-white, then use\n'
-               'the INVERSE option at start or in the Threshold type menu.')
+               '"OK" or Enter resumes image processing.\n'
+               'If the threshold image shows up as black-on-white, then use'
+               ' the INVERSE threshold type.')
         messagebox.showinfo(title='Wait for it...',
                             detail=msg)
 
