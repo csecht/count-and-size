@@ -105,21 +105,6 @@ class ProcessImage(tk.Tk):
     update_image
     """
 
-    __slots__ = (
-        'cbox_val',
-        'cvimg',
-        'img_label',
-        'num_dt_segments',
-        'num_sigfig',
-        'metrics',
-        'slider_val',
-        'sorted_size_list',
-        'tkimg',
-        'unit_per_px',
-        'largest_ws_contours',
-        'tk',
-    )
-
     def __init__(self):
         super().__init__()
 
@@ -522,23 +507,6 @@ class ImageViewer(ProcessImage):
     process_sizes
     """
 
-    __slots__ = (
-        'cbox',
-        'contour_report_frame',
-        'contour_selectors_frame',
-        'custom_size_entry',
-        'do_inverse_th',
-        'img_window',
-        'input_file',
-        'size_cust_entry',
-        'size_cust_label',
-        'size_settings_txt',
-        'size_std_px',
-        'size_std_px_entry',
-        'size_std_px_label',
-        'slider',
-    )
-
     def __init__(self):
         super().__init__()
 
@@ -843,11 +811,11 @@ class ImageViewer(ProcessImage):
         help_menu.add_cascade(label='Tips...', menu=tips)
         # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
         tips.add_command(label='• Larger image files need a smaller scale factor')
-        tips.add_command(label='     ...to fit image windows on the screen.')
+        tips.add_command(label='     to fit image windows on the screen.')
         tips.add_command(label='• Use a lighter font color with darker objects.')
-        tips.add_command(label='• Use the INVERSE threshold type for')
-        tips.add_command(label='     ...dark objects on a light background.')
-        tips.add_command(label='• Enter or Return key starts processing.')
+        tips.add_command(label='• Use the INVERSE threshold type for dark')
+        tips.add_command(label='     objects on a light background.')
+        tips.add_command(label='• Enter or Return key also starts processing.')
         tips.add_command(label='• More Tips are in the README file.')
         tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.')
         help_menu.add_command(label='About',
@@ -862,6 +830,9 @@ class ImageViewer(ProcessImage):
             None
         """
 
+        # This calling sequence produces a slight delay (longer for larger files)
+        #  before anything is displayed, but assures that everything displays
+        #  simultaneously for a visually cleaner start.
         self.setup_image_windows()
         self.configure_main_window()
         utils.wait4it_msg(img=self.cvimg['gray'])
@@ -1718,10 +1689,11 @@ class ImageViewer(ProcessImage):
                           img_array=self.cvimg['ws_circled'])
 
         # Cycle back to the starting info about size std units.
-        # Give user time to read the final progress msg before cycling
+        # Give user time to see the final progress msg before cycling
         #  back to starting size unit msg.
-        app.after(1000)
-        self.setup_info_messages()
+        if max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT:
+            app.after(100)
+            self.setup_info_messages()
 
     def report_results(self) -> None:
         """

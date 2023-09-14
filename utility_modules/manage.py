@@ -203,7 +203,9 @@ def ttk_styles(mainloop: tk.Tk) -> None:
                    )
 
 
-def info_message(widget: tk.Label, toplevel: tk.Tk, infotxt: str) -> None:
+def info_message(widget: tk.Label,
+                 toplevel: tk.Tk,
+                 infotxt: str) -> None:
     """
     Updates informational message in the *toplevel* *widget.
     Args:
