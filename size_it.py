@@ -397,7 +397,16 @@ class ProcessImage(tk.Tk):
             maskSize=mask_size)
 
         if img_size > const.SIZE_TO_WAIT:
-            info = 'Have completed distance transform; looking for peaks...\n\n\n'
+            info = 'Completed distance transform; looking for peaks...\n\n\n'
+            if self.slider_val['plm_footprint'] == 1:
+                info = ('Completed distance transform; looking for peaks...\n'
+                        'A peak_local max footprint of 1 may take a while.\n\n')
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=info)
+        elif self.slider_val['plm_footprint'].get() == 1:
+            # Need to run self.setup_info_messages() at end of select_and_size()
+            #  to cycle back to default size std units message.
+            info = 'A peak_local max footprint of 1 may take a while...\n\n\n'
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=info)
 
@@ -1125,7 +1134,7 @@ class ImageViewer(ProcessImage):
 
         self.slider['plm_mindist_lbl'].configure(text='peak_local_max min_distance:',
                                                  **const.LABEL_PARAMETERS)
-        self.slider['plm_mindist'].configure(from_=1, to=200,
+        self.slider['plm_mindist'].configure(from_=1, to=220,
                                              length=scale_len,
                                              tickinterval=20,
                                              variable=self.slider_val['plm_mindist'],
@@ -1133,7 +1142,7 @@ class ImageViewer(ProcessImage):
 
         self.slider['plm_footprint_lbl'].configure(text='peak_local_max footprint:',
                                                    **const.LABEL_PARAMETERS)
-        self.slider['plm_footprint'].configure(from_=1, to=20,
+        self.slider['plm_footprint'].configure(from_=1, to=40,
                                                length=scale_len,
                                                tickinterval=2,
                                                variable=self.slider_val['plm_footprint'],
@@ -1466,7 +1475,7 @@ class ImageViewer(ProcessImage):
                           img_array=self.cvimg['input'])
 
         # Now is time to show the mainloop (app) settings window that was
-        #   hidden in manage_main_window.
+        #   hidden in manage_main_window().
         #   Deiconifying here stacks it on top of all windows at startup.
         self.wm_deiconify()
 
@@ -1477,7 +1486,7 @@ class ImageViewer(ProcessImage):
         Returns:
             None
         """
-        # Default settings are optimized for a sample1.jpg input.
+        # Default settings are optimized for sample1.jpg input.
 
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
@@ -1687,11 +1696,13 @@ class ImageViewer(ProcessImage):
         self.update_image(img_name='ws_circled',
                           img_array=self.cvimg['ws_circled'])
 
-        # Cycle back to the starting info about size std units.
+        # Cycle back to the starting info about size std units after
+        #   progress messaging in watershed_segmentation().
         # Give user time to see the final progress msg before cycling
         #  back to starting size unit msg.
-        if max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT:
-            app.after(100)
+        if (max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT or
+                self.slider_val['plm_footprint'].get() == 1):
+            app.after(150)
             self.setup_info_messages()
 
     def report_results(self) -> None:
