@@ -150,8 +150,9 @@ def save_settings_and_img(inputpath: str,
     else:
         print('The specified image needs to be a np.ndarray or ImageTk.PhotoImage ')
 
-    print(f'Result image and its settings were saved to files.'
-          f'{data2save}')
+    if manage.arguments()['terminal']:
+        print(f'Result image and its settings were saved to files.'
+              f'{data2save}')
 
 
 def display_report(frame: tk.Frame, report: str) -> None:
@@ -295,7 +296,7 @@ def wait4it_msg(img):
                             detail=msg)
 
 
-def about(parent: tk.Toplevel) -> None:
+def about_win(parent: tk.Toplevel) -> None:
     """
     Basic information about the package in scrolling text in a new
     Toplevel window. Closes when the calling *parent* closes.
@@ -323,5 +324,5 @@ def about(parent: tk.Toplevel) -> None:
 
     # The text returned from manage.arguments is that used for the --about arg.
     abouttext.insert(index=tk.INSERT,
-                     chars=f'{manage.arguments()}')
+                     chars=f'{manage.arguments()["about"]}')
     abouttext.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)

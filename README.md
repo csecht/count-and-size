@@ -39,6 +39,8 @@ From within the downloaded repository folder, recommended command line invocatio
 
 To view basic information, author, version, license, etc.: `python3 -m size_it --about`
 
+To have the settings and size report print to the Terminal in addition to saving to file: `python3 -m size_it --terminal` (or can use -t).
+
 As with any Python downloads, running within a virtual environment is recommended.
 
 On Windows systems, you may need to replace 'python3' with 'python' or 'py'.

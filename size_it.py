@@ -14,7 +14,9 @@ image file of labeled objects.
 USAGE
 For command line execution, from within the count-and-size-main folder:
 python3 -m size_it --about
+python3 -m size_it --help
 python3 -m size_it
+python3 -m size_it --terminal
 Windows systems may need to substitute 'python3' with 'py' or 'python'.
 
 Note that from the initial "Set run settings" window, the file, scale
@@ -849,7 +851,7 @@ class ImageViewer(ProcessImage):
         tips.add_command(label='• More Tips are in the README file.')
         tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.')
         help_menu.add_command(label='About',
-                              command=lambda: utils.about(parent=start_win))
+                              command=lambda: utils.about_win(parent=start_win))
 
     def start_now(self) -> None:
         """

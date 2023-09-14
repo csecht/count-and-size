@@ -29,7 +29,7 @@ import utility_modules
 from utility_modules import constants as const
 
 
-def arguments() -> str:
+def arguments() -> dict:
     """
     Handle command line arguments.
     Returns:
@@ -39,6 +39,10 @@ def arguments() -> str:
     parser = argparse.ArgumentParser(description='Image Processing to Size Objects.')
     parser.add_argument('--about',
                         help='Provide description, version, GNU license',
+                        action='store_true',
+                        default=False)
+    parser.add_argument('--terminal', '-t',
+                        help='Prints to Terminal the report that is also saved to file.',
                         action='store_true',
                         default=False)
 
@@ -58,8 +62,15 @@ def arguments() -> str:
         print(about_text)
         print('====================== ABOUT END ====================')
         sys.exit(0)
-    else:  # is called from a widget command for utils.about().
-        return about_text
+
+    # The 'about' key is called from setup_start_window() Help menu.
+    #  The 'terminal' key is called from utils.save_settings_and_img().
+    arg_dict = {
+        'about': about_text,
+        'terminal': args.terminal,
+    }
+
+    return arg_dict
 
 
 def input_metrics(img: np.ndarray) -> dict:
