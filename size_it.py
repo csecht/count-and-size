@@ -473,7 +473,7 @@ class ProcessImage(tk.Tk):
                           img_array=watershed_gray)
 
         if img_size > const.SIZE_TO_WAIT:
-            info = 'Found contours. Segmentation completed. Report ready.\n\n\n'
+            info = 'Report ready.\n\n\n'
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=info)
 
@@ -1588,7 +1588,6 @@ class ImageViewer(ProcessImage):
         # Note that cvimg['ws_circled'] is an instance attribute because
         #  it is the image also used for utils.save_settings_and_img().
         self.cvimg['ws_circled'] = self.cvimg['input'].copy()
-        self.sorted_size_list.clear()
 
         selected_sizes: List[float] = []
         preferred_color: tuple = const.COLORS_CV[self.cbox_val['color'].get()]
