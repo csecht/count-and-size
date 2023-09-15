@@ -3,7 +3,7 @@
 Simple check of current Python version.
 Functions:
 minversion() - Exit program if not minimum required version.
-maxversion() - Notify if newer than tested versions.
+maxversion() - Notify if running a newer than tested version.
 """
 # Copyright (C) 2021-2023 C. Echt under GNU General Public License'
 
@@ -22,23 +22,22 @@ def minversion(req_version: str) -> None:
     curr_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
     if version.parse(curr_ver) < version.parse(req_version):
         print(f'Sorry, but this program requires Python {req_version} or later.\n'
-              'Current Python version:'
-              f' {sys.version_info.major}.{sys.version_info.minor}\n'
-              'Python downloads are available from https://docs.python.org/')
+              f'Current Python version: {curr_ver}\n'
+              'Python updates are available from https://docs.python.org/')
         sys.exit(0)
 
 
-def maxversion(req_version: str) -> None:
+def maxversion(tested_version: str) -> None:
     """
     Check current Python version against maximum version required.
     Issue warning if current version is more than *req_version*.
 
-    :param req_version: The required maximum major and minor version;
+    :param tested_version: The required maximum major and minor version;
         example, '3.9'.
     """
 
     curr_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
-    if version.parse(curr_ver) > version.parse(req_version):
+    if version.parse(curr_ver) > version.parse(tested_version):
         print(f'NOTICE: this program has not yet been tested with'
-              f' Python versions newer than {req_version}.\n'
+              f' Python versions newer than {tested_version}.\n'
               f'Python version now running: {curr_ver}\n')
