@@ -398,7 +398,7 @@ class ProcessImage(tk.Tk):
 
         if img_size > const.SIZE_TO_WAIT:
             info = 'Completed distance transform; looking for peaks...\n\n\n'
-            if self.slider_val['plm_footprint'] == 1:
+            if self.slider_val['plm_footprint'].get() == 1:
                 info = ('Completed distance transform; looking for peaks...\n'
                         'A peak_local max footprint of 1 may take a while.\n\n')
             manage.info_message(widget=self.info_label,
@@ -710,8 +710,8 @@ class ImageViewer(ProcessImage):
 
         # Take a break in configuring the window to grab the input.
         # For macOS, need to have the filedialog be a child of start_win.
-        #  Otherwise, this filedialog should be a separate method, but
-        #   didn't want to create a self.start_win attribute just for mac.
+        #  Otherwise, this filedialog could be a separate method, but
+        #   no need to create a self.start_win attribute just for mac.
         self.input_file = filedialog.askopenfilename(
             parent=start_win,
             title='Select input image',
@@ -940,10 +940,6 @@ class ImageViewer(ProcessImage):
             app.iconphoto(True, icon_path)
         except tk.TclError as _msg:
             pass
-            # print('Cannot display program icon, so it will be left blank or tk default.')
-            # print(f'tk error message: {_msg}')
-            # Note that this goes to Terminal, not to manage.info_message()
-            # b/c it disrupts startup sequence and doesn't show anyway..
 
         for _name, toplevel in self.img_window.items():
             toplevel.wm_withdraw()
@@ -1007,9 +1003,9 @@ class ImageViewer(ProcessImage):
                                           ipadx=4, ipady=4,
                                           sticky=tk.EW)
 
-        # Note: the settings window (app) is deiconified in
-        #  display_windows() after all image windows so that it
-        #  initially stacks on top.
+        # Note: the settings window (mainloop, app) is deiconified in
+        #  display_windows() after all image windows so that it stacks
+        #  on top at startup.
 
     def setup_info_messages(self) -> None:
         """
@@ -1075,7 +1071,7 @@ class ImageViewer(ProcessImage):
                               command=_save_results,
                               **button_params)
 
-        # Widget grid in the mainloop window.
+        # Widget griding in the mainloop window.
         reset_btn.grid(column=0, row=2,
                        padx=10,
                        pady=5,
@@ -1100,7 +1096,7 @@ class ImageViewer(ProcessImage):
         #  for one Scale() in each Toplevel().
         scale_len = int(self.winfo_screenwidth() * 0.25)
 
-        # All Scales() use a mouse bind to call process_all() or process_sizes().
+        # All Scale widgets use a mouse bind to call process_all() or process_sizes().
         self.slider['alpha_lbl'].configure(text='Contrast/gain/alpha:',
                                            **const.LABEL_PARAMETERS)
         self.slider['alpha'].configure(from_=0.0, to=4.0,
@@ -1178,8 +1174,8 @@ class ImageViewer(ProcessImage):
                                               **const.SCALE_PARAMETERS)
 
         # To avoid grabbing all the intermediate values between normal
-        #  click and release movement, bind sliders to call the main
-        #  processing and reporting function only on left button release.
+        #  click and release movements, bind sliders to call processing
+        #  functions only on left button release.
         # Most are bound to process_all(), but to speed program
         # responsiveness when changing the size range, only call the
         # sizing method to avoid image processing overhead.
@@ -1192,7 +1188,6 @@ class ImageViewer(ProcessImage):
                 widget.bind('<ButtonRelease-1>', self.process_sizes)
             else:
                 widget.bind('<ButtonRelease-1>', self.process_all)
-
 
     def config_comboboxes(self) -> None:
         """
@@ -1707,8 +1702,7 @@ class ImageViewer(ProcessImage):
 
         # Cycle back to the starting info about size std units after
         #   progress messaging in watershed_segmentation().
-        # Give user time to see the final progress msg before cycling
-        #  back to starting size unit msg.
+        # Give user time to see the final progress msg before cycling back.
         if (max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT or
                 self.slider_val['plm_footprint'].get() == 1):
             app.after(150)
@@ -1762,7 +1756,7 @@ class ImageViewer(ProcessImage):
         # Size units are mm for the preset size standards.
         unit = 'unknown unit' if size_std in 'None, Custom' else 'mm'
 
-        # Work up some summary metrics.
+        # Work up some summary metrics with correct number of sig. fig.
         if self.sorted_size_list:
             num_selected: int = len(self.sorted_size_list)
             unit_per_px: str = to_p.to_precision(value=self.unit_per_px.get(),
