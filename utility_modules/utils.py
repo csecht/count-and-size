@@ -1,14 +1,15 @@
 """
 General housekeeping utilities.
 Functions:
+about_win: a toplevel window for the Help>About menu selection.
 check_platform - Exit if not Linux, Windows, or macOS.
 valid_path_to - Get correct path to program's files.
 save_settings_and_img- Save files of result image and its settings.
 display_report - Place a formatted text string into a specified Frame.
 count_sig_fig - Count number of significant figures in a number.
-text_array - Generate an image array of text.
-quit_keys -  Error-free and informative exit from the program.
-no_objects_found - A simple message box when a contour pointset is empty.
+quit_gui -  Error-free and informative exit from the program.
+no_objects_found - A simple messagebox when a contour pointset is empty.
+wait4it_msg - A messagebox explaining large images can take a long time.
 """
 # Copyright (C) 2022-2023 C.S. Echt, under GNU General Public License'
 
@@ -34,23 +35,55 @@ from utility_modules import manage, constants as const
 if const.MY_OS == 'win':
     from ctypes import windll
 
+
+def about_win(parent: tk.Toplevel) -> None:
+    """
+    Basic information about the package in scrolling text in a new
+    Toplevel window. Closes when the calling *parent* closes.
+    Called from Start window "About" button.
+
+    Args:
+        parent: The Toplevel name that is calling.
+    Returns:
+        None
+    """
+    aboutwin = tk.Toplevel(master=parent)
+    aboutwin.title('About Count & Size')
+    aboutwin.minsize(width=400, height=200)
+    aboutwin.focus_set()
+    abouttext = ScrolledText(master=aboutwin,
+                             width=60,
+                             bg=const.MASTER_BG,  # light gray
+                             relief='groove',
+                             borderwidth=8,
+                             padx=30, pady=10,
+                             wrap=tk.WORD,
+                             # font=const.WIDGET_FONT,
+                             font=cv2.FONT_HERSHEY_PLAIN,
+                             )
+
+    # The text returned from manage.arguments is that used for the --about arg.
+    abouttext.insert(index=tk.INSERT,
+                     chars=f'{manage.arguments()["about"]}')
+    abouttext.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+
+
 def check_platform() -> None:
     """
     Run check for various platforms to optimize displays.
     Intended to be called at startup.
     """
-    if const.MY_OS == 'dar':
-        print('Developed in macOS 13; earlier versions may not work.\n')
-
-    # Need to account for scaling in Windows10 and earlier releases.
-    elif const.MY_OS == 'win':
-
+    if const.MY_OS not in 'win, lin, dar':
+        print('Only Windows, Linux, and macOS platforms are supported.\n')
+        sys.exit(0)
+    # Need to account for Windows scaling in different releases.
+    if const.MY_OS == 'win':
         if platform.release() < '10':
             windll.user32.SetProcessDPIAware()
         else:
             windll.shcore.SetProcessDpiAwareness(2)
 
-    print('To quit, use Esc or Ctrl-Q. From the Terminal, use Ctrl-C.')
+    # print('To quit, use Esc or Ctrl-Q. From the Terminal, use Ctrl-C.')
 
 
 def valid_path_to(input_path: str) -> Path:
@@ -278,7 +311,7 @@ def no_objects_found_msg():
     _m = ('No objects were found to size. Try changing threshold type.\n'
           'Use threshold type *_INVERSE for light-on-dark, not for'
           ' dark-on-light contrasts.\n'
-          'Also, "Contour radius size" sliders may need adjusting.')
+          'Also, "Circled radius size" sliders may need adjusting.')
     messagebox.showinfo(detail=_m)
 
 def wait4it_msg(size_limit: int):
@@ -298,35 +331,3 @@ def wait4it_msg(size_limit: int):
                ' the INVERSE threshold type.')
         messagebox.showinfo(title='Wait for it...',
                             detail=msg)
-
-
-def about_win(parent: tk.Toplevel) -> None:
-    """
-    Basic information about the package in scrolling text in a new
-    Toplevel window. Closes when the calling *parent* closes.
-    Called from Start window "About" button.
-
-    Args:
-        parent: The Toplevel name that is calling.
-    Returns:
-        None
-    """
-    aboutwin = tk.Toplevel(master=parent)
-    aboutwin.title('About Count & Size')
-    aboutwin.minsize(width=400, height=200)
-    aboutwin.focus_set()
-    abouttext = ScrolledText(master=aboutwin,
-                             width=60,
-                             bg=const.MASTER_BG,  # light gray
-                             relief='groove',
-                             borderwidth=8,
-                             padx=30, pady=10,
-                             wrap=tk.WORD,
-                             # font=const.WIDGET_FONT,
-                             font=cv2.FONT_HERSHEY_PLAIN,
-                             )
-
-    # The text returned from manage.arguments is that used for the --about arg.
-    abouttext.insert(index=tk.INSERT,
-                     chars=f'{manage.arguments()["about"]}')
-    abouttext.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
