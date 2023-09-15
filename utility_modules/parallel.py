@@ -1,4 +1,6 @@
-"""A module to run parallel processes for image processing."""
+"""A module to run parallel processes for contouring watershed basins."""
+# Copyright (C) 2021-2023 C. Echt under GNU General Public License'
+
 # Standard library imports.
 from multiprocessing.pool import Pool
 
