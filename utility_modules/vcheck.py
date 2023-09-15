@@ -8,6 +8,7 @@ maxversion() - Notify if newer than tested versions.
 # Copyright (C) 2021-2023 C. Echt under GNU General Public License'
 
 import sys
+from packaging import version
 
 
 def minversion(req_version: str) -> None:
@@ -18,8 +19,8 @@ def minversion(req_version: str) -> None:
     :param req_version: The required minimum major and minor version;
         example, '3.6'.
     """
-    ver = tuple(map(int, req_version.split('.')))
-    if sys.version_info < ver:
+    curr_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
+    if version.parse(curr_ver) < version.parse(req_version):
         print(f'Sorry, but this program requires Python {req_version} or later.\n'
               'Current Python version:'
               f' {sys.version_info.major}.{sys.version_info.minor}\n'
@@ -35,8 +36,9 @@ def maxversion(req_version: str) -> None:
     :param req_version: The required maximum major and minor version;
         example, '3.9'.
     """
+
     curr_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
-    if int(curr_ver) > int(req_version):
+    if version.parse(curr_ver) > version.parse(req_version):
         print(f'NOTICE: this program has not yet been tested with'
               f' Python versions newer than {req_version}.\n'
               f'Python version now running: {curr_ver}\n')
