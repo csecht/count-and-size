@@ -35,8 +35,8 @@ def maxversion(req_version: str) -> None:
     :param req_version: The required maximum major and minor version;
         example, '3.9'.
     """
-    curr_ver = f' {sys.version_info.major}.{sys.version_info.minor}'
-    if curr_ver > req_version:
+    curr_ver = f'{sys.version_info.major}.{sys.version_info.minor}'
+    if int(curr_ver) > int(req_version):
         print(f'NOTICE: this program has not yet been tested with'
               f' Python versions newer than {req_version}.\n'
               f'Python version now running: {curr_ver}\n')
