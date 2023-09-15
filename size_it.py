@@ -882,15 +882,14 @@ class ImageViewer(ProcessImage):
             Called locally from .protocol().
             """
             info = ('That window cannot be closed from its window bar.\n'
-                  'Minimize it if it is in the way.\n'
-                  'Esc or Ctrl-Q keys will Quit the program.')
+                    'Minimize it if it is in the way.\n'
+                    'Esc or Ctrl-Q keys will Quit the program.')
             self.info_label.config(fg='red',
                                    font=cv2.FONT_HERSHEY_SIMPLEX)
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=info)
             # Give user time to read the message before resetting it.
             app.after(3000, self.setup_info_messages)
-
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
         # Dictionary item order determines stack order of windows.
@@ -1851,7 +1850,6 @@ class ImageViewer(ProcessImage):
         self.report_results()
 
         return event
-
 
 
 if __name__ == "__main__":
