@@ -884,7 +884,7 @@ class ImageViewer(ProcessImage):
             info = ('That window cannot be closed from its window bar.\n'
                     'Minimize it if it is in the way.\n'
                     'Esc or Ctrl-Q keys will Quit the program.')
-            self.info_label.config(fg='red',
+            self.info_label.config(fg=const.COLORS_TK['vermilion'],
                                    font=cv2.FONT_HERSHEY_SIMPLEX)
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=info)
@@ -1049,6 +1049,15 @@ class ImageViewer(ProcessImage):
                 img2save=self.cvimg['ws_circled'],
                 txt2save=self.size_settings_txt + sizes,
                 caller='sizeit')
+
+            info = ('Settings report and result image have been saved to:\n'
+                    f'{Path(Path(self.input_file).parent)}')
+            self.info_label.config(fg=const.COLORS_TK['dark blue'],
+                                   font=const.WIDGET_FONT)
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=info)
+            app.after(4000, self.setup_info_messages)
+
 
         def _do_reset():
             """
@@ -1816,7 +1825,8 @@ class ImageViewer(ProcessImage):
 
     def process_all(self, event=None) -> None:
         """
-        Runs all image processing methods from ProcessImage().
+        Runs all image processing methods from ProcessImage(), plus
+        sizing and reporting methods.
 
         Args:
             event: The implicit mouse button event.

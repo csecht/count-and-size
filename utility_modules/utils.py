@@ -149,24 +149,29 @@ def save_settings_and_img(inputpath: str,
 
     img_ext = Path(Path(inputpath).suffix)
     img_stem = Path(Path(inputpath).stem)
+    img_folder = Path(Path(inputpath).parent)
+    saved_settings_name = f'{img_stem}_{caller}_settings.txt'
+    saved_img_name = f'{img_stem}_{caller}_{curr_time}{img_ext}'
+    settings_file_path = Path(f'{img_folder}/{saved_settings_name}')
+    image_file_path = f'{img_folder}/{saved_img_name}'
 
     data2save = (f'\n\nTime saved: {time2print}\n'
-                 f'Saved image file: {img_stem}_{caller}_{curr_time}{img_ext}\n'
-                 f'Saved settings file: {img_stem}_{caller}_settings.txt\n'
+                 f'Saved image file: {saved_img_name}\n'
+                 f'Saved settings file: {saved_settings_name}\n'
                  f'{txt2save}')
 
     # Use this Path function for saving individual settings files:
-    # Path(f'{img_stem}_clahe_settings{curr_time}.txt').write_text(data2save)
+    # Path(f'{img_stem}_{caller}_settings{curr_time}.txt').write_text(data2save)
     # Use this for appending multiple settings to single file:
-    with Path(f'{img_stem}_{caller}_settings.txt').open('a', encoding='utf-8') as _fp:
+    with settings_file_path.open('a', encoding='utf-8') as _fp:
         _fp.write(data2save)
 
     # Contour images are np.ndarray direct from cv2 functions, while
     #   other images are those displayed as ImageTk.PhotoImage.
     if isinstance(img2save, np.ndarray):
         # if first_word == 'Image:':  # text is from contoured_txt
-        file_name = f'{img_stem}_{caller}_{curr_time}{img_ext}'
-        cv2.imwrite(file_name, img2save)
+        # file_name = f'{img_stem}_{caller}_{curr_time}{img_ext}'
+        cv2.imwrite(image_file_path, img2save)
     elif isinstance(img2save, ImageTk.PhotoImage):
         # Need to get the ImageTK image into a format that can be saved to file.
         # source: https://stackoverflow.com/questions/45440746/
@@ -178,8 +183,7 @@ def save_settings_and_img(inputpath: str,
         if imgpil.mode in ("RGBA", "P"):
             imgpil = imgpil.convert("RGB")
 
-        img_name = Path(f'{img_stem}_{caller}_{curr_time}{img_ext}')
-        imgpil.save(img_name)
+        imgpil.save(image_file_path)
     else:
         print('The specified image needs to be a np.ndarray or ImageTk.PhotoImage ')
 
