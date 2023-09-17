@@ -132,10 +132,11 @@ Saved files are written to the folder of the input image.
 2. Before setting the size standard, adjust parameters to achieve the best separation and counts, then enter the resulting pixel diameter for your selected size standard to convert pixels to units measure. Units are millimeters for the pre-set standards, and whatever you want for custom standards.
 3. Once you select "Custom" for a size standard, an entry field pops up for you to fill in the known size.
 4. Large files can take a while to process, so don't immediately start mashing buttons if things seem to be stalled.
-5. Coin size standards that are shiny can be pre-processed to solid white or black. Or just use a flat black or flat white object as a standard.
+5. Size standards that are shiny can be pre-processed to solid white or black. Or just use a flat black or flat white object as a standard.
 6. Fill in the pixel diameter and type of size standard once segmentation and counts are optimized. In addition to making the size ranges (as radii) easier to navigate, it will also provide the most accurate size metrics.
 7. Size metrics are most accurate when the size standard is excluded from analysis. The easiest way to do that is to use a standard that is the largest or smallest object in the sample, then adjust the "Contour area size" sliders until just the standard's diameter is excluded.
 8. Note that when a custom size standard is used, the displayed object sizes and their summary metrics are presented with the same number of significant figures as the entered size value. See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained. Depending on the magnitude of the entered size, displayed values may be in power notation. Saved individual size lists, however, are converted to decimal numbers. When a preset standard is used, sizes are displayed as integers, but saved individual sizes will have one decimal precision.
+9. Right-click on an image in one of the windows to save it to file. The image, saved to original image's folder, image will be at the specified scale, not the original resolution. To save the annotated result image (sized & circled) at its original resolution, use the 'Save settings...' button.
 
 ### Known Issues:
 Waiting for user feedback.
