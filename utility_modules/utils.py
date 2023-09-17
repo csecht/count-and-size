@@ -4,7 +4,7 @@ Functions:
 about_win: a toplevel window for the Help>About menu selection.
 check_platform - Exit if not Linux, Windows, or macOS.
 valid_path_to - Get correct path to program's files.
-save_settings_and_img- Save files of result image and its settings.
+save_settings_and_img- Save files of result image and its report.
 display_report - Place a formatted text string into a specified Frame.
 count_sig_fig - Count number of significant figures in a number.
 quit_gui -  Error-free and informative exit from the program.
@@ -121,16 +121,16 @@ def save_settings_and_img(inputpath: str,
                           txt2save: str,
                           caller: str) -> None:
     """
-    Print to terminal/console and to file current settings and
-    calculated image processing values. Save current result image.
+    Write to file the current report of calculated image processing
+    values. Save current result image or selected displayed image.
 
     Args:
         inputpath: The input image file path, as string.
         img2save: The current resulting image array; can be a np.ndarray
             from cv2 or an ImageTk.PhotoImage from tkinter/PIL
-        txt2save: The current image processing settings.
-        caller: Descriptive name of the calling app to insert in the
-                file names, e.g. 'sizeit'.
+        txt2save: The current image processing report.
+        caller: Descriptive name of the calling function or widget to
+                insert in the file name, e.g. 'report', 'contrast', etc.
 
     Returns: None
     """
@@ -150,19 +150,24 @@ def save_settings_and_img(inputpath: str,
     img_ext = Path(Path(inputpath).suffix)
     img_stem = Path(Path(inputpath).stem)
     img_folder = Path(Path(inputpath).parent)
-    saved_settings_name = f'{img_stem}_{caller}_settings.txt'
+    saved_settings_name = f'{img_stem}_{caller}_Report.txt'
     saved_img_name = f'{img_stem}_{caller}_{curr_time}{img_ext}'
     settings_file_path = Path(f'{img_folder}/{saved_settings_name}')
     image_file_path = f'{img_folder}/{saved_img_name}'
 
-    data2save = (f'\n\nTime saved: {time2print}\n'
-                 f'Saved image file: {saved_img_name}\n'
-                 f'Saved settings file: {saved_settings_name}\n'
-                 f'{txt2save}')
+    if manage.arguments()['terminal']:
+        data2save = (f'\n\nTime saved: {time2print}\n'
+                     f'Saved image file: {saved_img_name}\n'
+                     f'Saved report file: {saved_settings_name}\n'
+                     f'{txt2save}')
+    else:
+        data2save = (f'\n\nTime saved: {time2print}\n'
+                     f'Saved image file: {saved_img_name}\n'
+                     f'{txt2save}')
 
-    # Use this Path function for saving individual settings files:
+    # Use this Path function for saving individual report files:
     # Path(f'{img_stem}_{caller}_settings{curr_time}.txt').write_text(data2save)
-    # Use this for appending multiple settings to single file:
+    # Use this for appending multiple reports to single file:
     with settings_file_path.open('a', encoding='utf-8') as _fp:
         _fp.write(data2save)
 
@@ -188,7 +193,7 @@ def save_settings_and_img(inputpath: str,
         print('The specified image needs to be a np.ndarray or ImageTk.PhotoImage ')
 
     if manage.arguments()['terminal']:
-        print(f'Result image and its settings were saved to files.'
+        print(f'Result image and its report were saved to files.'
               f'{data2save}')
 
 

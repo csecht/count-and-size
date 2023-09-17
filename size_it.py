@@ -153,6 +153,8 @@ class ProcessImage(tk.Tk):
             'filter': tk.PhotoImage(),
             'watershed': tk.PhotoImage(),
             'dist_trans': tk.PhotoImage(),
+            'thresh': tk.PhotoImage(),
+            'ws_circled': tk.PhotoImage(),
         }
 
         self.cvimg = {
@@ -161,6 +163,9 @@ class ProcessImage(tk.Tk):
             'contrast': const.STUB_ARRAY,
             'redux': const.STUB_ARRAY,
             'filter': const.STUB_ARRAY,
+            'watershed': const.STUB_ARRAY,
+            'dist_trans': const.STUB_ARRAY,
+            'thresh': const.STUB_ARRAY,
             'ws_circled': const.STUB_ARRAY,
         }
 
@@ -473,6 +478,7 @@ class ProcessImage(tk.Tk):
                          color=(120, 120, 120),  # is mid-gray
                          thickness=-1,  # is filled
                          lineType=cv2.LINE_AA)
+
 
         self.update_image(img_name='thresh',
                           img_array=thresh_img)
@@ -878,7 +884,7 @@ class ImageViewer(ProcessImage):
 
         def _window_info():
             """
-            Provide a notice in settings (mainloop, app) window.
+            Provide a notice in report (mainloop, app) window.
             Called locally from .protocol().
             """
             info = ('That window cannot be closed from its window bar.\n'
@@ -956,7 +962,6 @@ class ImageViewer(ProcessImage):
                             highlightbackground=const.DRAG_GRAY)
             toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(app))
             toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
-            # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
     def configure_main_window(self) -> None:
         """
@@ -1048,12 +1053,11 @@ class ImageViewer(ProcessImage):
                 inputpath=self.input_file,
                 img2save=self.cvimg['ws_circled'],
                 txt2save=self.size_settings_txt + sizes,
-                caller='sizeit')
+                caller='result')
 
             info = ('Settings report and result image have been saved to:\n'
                     f'{Path(Path(self.input_file).parent)}')
-            self.info_label.config(fg=const.COLORS_TK['dark blue'],
-                                   font=const.WIDGET_FONT)
+            self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=info)
             app.after(4000, self.setup_info_messages)
@@ -1189,10 +1193,10 @@ class ImageViewer(ProcessImage):
         # sizing method to avoid image processing overhead.
         # Note that the <if '_lbl'> condition doesn't improve performance,
         #  but is there for clarity's sake.
-        for name, widget in self.slider.items():
-            if '_lbl' in name:
+        for _name, widget in self.slider.items():
+            if '_lbl' in _name:
                 continue
-            if 'circle_r' in name:
+            if 'circle_r' in _name:
                 widget.bind('<ButtonRelease-1>', self.process_sizes)
             else:
                 widget.bind('<ButtonRelease-1>', self.process_all)
@@ -1273,10 +1277,10 @@ class ImageViewer(ProcessImage):
         # Now bind functions to all Comboboxes.
         # Note that the  <if '_lbl'> condition doesn't seem to be needed for
         # performance; it just clarifies the bind intention.
-        for name, widget in self.cbox.items():
-            if '_lbl' in name:
+        for _name, widget in self.cbox.items():
+            if '_lbl' in _name:
                 continue
-            if 'size_' in name:
+            if 'size_' in _name:
                 widget.bind('<<ComboboxSelected>>', func=self.process_sizes)
             else:
                 widget.bind('<<ComboboxSelected>>', func=self.process_all)
@@ -1485,6 +1489,34 @@ class ImageViewer(ProcessImage):
         #  not display because of garbage collection.
         self.update_image(img_name='input',
                           img_array=self.cvimg['input'])
+
+        def _save_img(img, image_name):
+            utils.save_settings_and_img(inputpath=self.input_file,
+                                        img2save=img,
+                                        txt2save='The displayed image',
+                                        caller=image_name)
+
+            # Provide user with a notice that a file was created.
+            info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
+                    f'{Path(Path(self.input_file).parent)}\n'
+                    'with a timestamp.')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=info)
+            # Give user time to read the message before resetting it.
+            app.after(4000, self.setup_info_messages)
+
+
+        if const.MY_OS in 'lin, win':
+            rt_click = '<Button-3>'
+        else: # MY_OS == 'dar':
+            rt_click = '<Button-2>'
+
+        for img_name, label in self.img_label.items():
+            tkimg = self.tkimg[img_name]
+            # cvimg = self.cvimg[img_name]
+            label.bind(rt_click,
+                        lambda _, i=tkimg, n=img_name: _save_img(i, n))
 
         # Now is time to show the mainloop (app) settings window that was
         #   hidden in manage_main_window().
