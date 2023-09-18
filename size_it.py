@@ -1047,13 +1047,13 @@ class ImageViewer(ProcessImage):
             """
             sizes = ', '.join(str(i) for i in self.sorted_size_list)
             utils.save_settings_and_img(
-                inputpath=self.input_file,
+                input_path=self.input_file,
                 img2save=self.cvimg['ws_circled'],
                 txt2save=self.size_settings_txt + sizes,
                 caller='result')
 
             info = ('Settings report and result image have been saved to:\n'
-                    f'{Path(Path(self.input_file).parent)}')
+                    f'{Path(self.input_file).parent}')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=info)
@@ -1489,14 +1489,14 @@ class ImageViewer(ProcessImage):
                           img_array=self.cvimg['input'])
 
         def _save_img(img, image_name):
-            utils.save_settings_and_img(inputpath=self.input_file,
+            utils.save_settings_and_img(input_path=self.input_file,
                                         img2save=img,
                                         txt2save='The displayed image',
                                         caller=image_name)
 
             # Provide user with a notice that a file was created.
             info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
-                    f'{Path(Path(self.input_file).parent)}\n'
+                    f'{Path(self.input_file).parent}\n'
                     'with a timestamp.')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,

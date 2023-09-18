@@ -116,7 +116,7 @@ def valid_path_to(input_path: str) -> Path:
     return valid_path
 
 
-def save_settings_and_img(inputpath: str,
+def save_settings_and_img(input_path: str,
                           img2save,
                           txt2save: str,
                           caller: str) -> None:
@@ -125,7 +125,7 @@ def save_settings_and_img(inputpath: str,
     values. Save current result image or selected displayed image.
 
     Args:
-        inputpath: The input image file path, as string.
+        input_path: The input image file path, as string.
         img2save: The current resulting image array; can be a np.ndarray
             from cv2 or an ImageTk.PhotoImage from tkinter/PIL
         txt2save: The current image processing report.
@@ -147,9 +147,9 @@ def save_settings_and_img(inputpath: str,
     # the default being 3. The higher value does high compression of the
     # image resulting in a smaller file size but a longer compression time.
 
-    img_ext = Path(Path(inputpath).suffix)
-    img_stem = Path(Path(inputpath).stem)
-    img_folder = Path(Path(inputpath).parent)
+    img_ext = Path(input_path).suffix
+    img_stem = Path(input_path).stem
+    img_folder = Path(input_path).parent
     saved_settings_name = f'{img_stem}_{caller}_Report.txt'
     saved_img_name = f'{img_stem}_{caller}_{curr_time}{img_ext}'
     settings_file_path = Path(f'{img_folder}/{saved_settings_name}')
