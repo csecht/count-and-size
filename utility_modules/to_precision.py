@@ -319,7 +319,7 @@ def _place_dot(digits: str, power: int, strip_zeros=False) -> str:
         precision = len(digits)
 
         if power < precision:
-          out = digits[:-power] + '.' + digits[-power:]
+            out = digits[:-power] + '.' + digits[-power:]
 
         else:
             out = '0.' + '0' * (power - precision) + digits
@@ -360,10 +360,10 @@ def _number_profile(value, precision: int) -> tuple:
 
     else:
         if value < 0:
-              value = abs(value)
-              is_neg = True
+            value = abs(value)
+            is_neg = True
         else:
-              is_neg = False
+            is_neg = False
 
         power = -1 * floor(log10(value)) + precision - 1
         sig_digits = str(int(round(abs(value) * 10.0**power)))

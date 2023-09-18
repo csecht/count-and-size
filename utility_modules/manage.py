@@ -128,7 +128,6 @@ def tk_image(image: np.ndarray, scale_coef: float) -> PhotoImage:
     """
 
     # Need to scale images for display; images for processing are left raw.
-
     scale_coef = 1 if scale_coef == 0 else scale_coef
 
     # Provide the best interpolation method for slight improvement of
@@ -166,8 +165,8 @@ def ttk_styles(mainloop: tk.Tk) -> None:
 
     ttk.Style().theme_use('alt')
 
-    # Use fancy buttons for Linux;
-    #   standard theme for Windows and macOS, but with custom font.
+    # Use fancy buttons for Linux and Windows, standard theme for macOS,
+    #   but with a custom font.
     bstyle = ttk.Style()
     combo_style = ttk.Style()
 
