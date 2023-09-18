@@ -50,7 +50,7 @@ WIN_NAME = {
     'contrast': 'Adjusted contrast <- | -> Reduced noise',
     'filter': 'Filtered <- | -> Thresholded',
     'dist_trans': 'Distances transformed <- | -> Watershed segments',
-    'ws_contours': 'Size-selected objects, circled with diameters.',
+    'sized': 'Size-selected objects, circled with diameters.',
 }
 
 # Set ranges for trackbars used to adjust contrast and brightness for

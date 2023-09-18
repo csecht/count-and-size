@@ -154,7 +154,7 @@ class ProcessImage(tk.Tk):
             'watershed': tk.PhotoImage(),
             'dist_trans': tk.PhotoImage(),
             'thresh': tk.PhotoImage(),
-            'ws_circled': tk.PhotoImage(),
+            'sized': tk.PhotoImage(),
         }
 
         self.cvimg = {
@@ -166,7 +166,7 @@ class ProcessImage(tk.Tk):
             'watershed': const.STUB_ARRAY,
             'dist_trans': const.STUB_ARRAY,
             'thresh': const.STUB_ARRAY,
-            'ws_circled': const.STUB_ARRAY,
+            'sized': const.STUB_ARRAY,
         }
 
         # img_label dictionary is set up in ImageViewer.setup_image_windows(),
@@ -468,12 +468,12 @@ class ProcessImage(tk.Tk):
 
         # Draw all watershed objects in 1 gray shade instead of each object
         #  decremented by 1 gray value in series; ws boundaries will be black.
-        ws_contours, _ = cv2.findContours(image=watershed_gray,
-                                          mode=cv2.RETR_EXTERNAL,
-                                          method=cv2.CHAIN_APPROX_SIMPLE)
+        sized, _ = cv2.findContours(image=watershed_gray,
+                                    mode=cv2.RETR_EXTERNAL,
+                                    method=cv2.CHAIN_APPROX_SIMPLE)
 
         cv2.drawContours(image=watershed_gray,
-                         contours=ws_contours,
+                         contours=sized,
                          contourIdx=-1,  # do all contours
                          color=(120, 120, 120),  # is mid-gray
                          thickness=-1,  # is filled
@@ -901,7 +901,7 @@ class ImageViewer(ProcessImage):
             'contrast': tk.Toplevel(),
             'filter': tk.Toplevel(),
             'dist_trans': tk.Toplevel(),
-            'ws_contours': tk.Toplevel(),
+            'sized': tk.Toplevel(),
         }
 
         # Labels to display scaled images, which are updated using
@@ -921,7 +921,7 @@ class ImageViewer(ProcessImage):
             'dist_trans': tk.Label(self.img_window['dist_trans']),
             'watershed': tk.Label(self.img_window['dist_trans']),
 
-            'ws_circled': tk.Label(self.img_window['ws_contours']),
+            'sized': tk.Label(self.img_window['sized']),
         }
 
         # Need an image to replace blank tk desktop icon for each window.
@@ -1048,7 +1048,7 @@ class ImageViewer(ProcessImage):
             sizes = ', '.join(str(i) for i in self.sorted_size_list)
             utils.save_settings_and_img(
                 input_path=self.input_file,
-                img2save=self.cvimg['ws_circled'],
+                img2save=self.cvimg['sized'],
                 txt2save=self.size_settings_txt + sizes,
                 caller='result')
 
@@ -1459,7 +1459,7 @@ class ImageViewer(ProcessImage):
         self.img_label['dist_trans'].grid(**const.PANEL_LEFT)
         self.img_label['watershed'].grid(**const.PANEL_RIGHT)
 
-        self.img_label['ws_circled'].grid(**const.PANEL_LEFT)
+        self.img_label['sized'].grid(**const.PANEL_LEFT)
 
     def display_windows(self) -> None:
         """
@@ -1633,9 +1633,8 @@ class ImageViewer(ProcessImage):
         Returns:
             None
         """
-        # Note that cvimg['ws_circled'] is an instance attribute because
-        #  it is the image also used for utils.save_settings_and_img().
-        self.cvimg['ws_circled'] = self.cvimg['input'].copy()
+
+        self.cvimg['sized'] = self.cvimg['input'].copy()
 
         selected_sizes: List[float] = []
         preferred_color: tuple = const.COLORS_CV[self.cbox_val['color'].get()]
@@ -1708,14 +1707,14 @@ class ImageViewer(ProcessImage):
                 thickness=line_thickness)
             offset_x = txt_width / 2
 
-            cv2.circle(img=self.cvimg['ws_circled'],
+            cv2.circle(img=self.cvimg['sized'],
                        center=(round(_x), round(_y)),
                        radius=round(_r),
                        color=preferred_color,
                        thickness=line_thickness,
                        lineType=cv2.LINE_AA,
                        )
-            cv2.putText(img=self.cvimg['ws_circled'],
+            cv2.putText(img=self.cvimg['sized'],
                         text=size2display,
                         org=(round(_x - offset_x), round(_y + baseline)),
                         fontFace=const.FONT_TYPE,
@@ -1732,8 +1731,8 @@ class ImageViewer(ProcessImage):
         else:
             utils.no_objects_found_msg()
 
-        self.update_image(img_name='ws_circled',
-                          img_array=self.cvimg['ws_circled'])
+        self.update_image(img_name='sized',
+                          img_array=self.cvimg['sized'])
 
         # Cycle back to the starting info about size std units after
         #   progress messaging in watershed_segmentation().
