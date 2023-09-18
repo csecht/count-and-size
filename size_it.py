@@ -495,7 +495,6 @@ class ProcessImage(tk.Tk):
         # Now draw enclosing circles around watershed segments and
         #  annotate with object sizes in select_and_size().
 
-
 class ImageViewer(ProcessImage):
     """
     A suite of methods to display cv contours based on chosen settings
@@ -534,8 +533,6 @@ class ImageViewer(ProcessImage):
         # Note: The matching control variable attributes for the
         #   following selector widgets are in ProcessImage __init__.
         self.slider = {
-            'trigger': tk.Scale(master=self.contour_selectors_frame),
-
             'alpha': tk.Scale(master=self.contour_selectors_frame),
             'alpha_lbl': tk.Label(master=self.contour_selectors_frame),
 
@@ -636,6 +633,9 @@ class ImageViewer(ProcessImage):
             None
         """
 
+        # Deiconify in display_windows(), but hide for now.
+        self.wm_withdraw()
+
         # Make geometry offset a function of the screen width.
         #  This is needed b/c of the way different platforms' window
         #  managers position windows.
@@ -650,9 +650,6 @@ class ImageViewer(ProcessImage):
         self.bind('<Escape>', func=lambda _: utils.quit_gui(app))
         self.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
-
-        # Deiconify in display_windows(), but hide for now.
-        self.wm_withdraw()
 
     def setup_start_window(self) -> None:
         """
@@ -715,9 +712,9 @@ class ImageViewer(ProcessImage):
         start_win.bind('<KP_Enter>', func=_call_start)
 
         # Take a break in configuring the window to grab the input.
-        # For macOS, need to have the filedialog be a child of start_win.
-        #  Otherwise, this filedialog could be a separate method, but
-        #   no need to create a self.start_win attribute just for mac.
+        # For macOS: Need to have the filedialog be a child of
+        #   start_win and need update() here.
+        self.update()
         self.input_file = filedialog.askopenfilename(
             parent=start_win,
             title='Select input image',
@@ -822,7 +819,7 @@ class ImageViewer(ProcessImage):
         menubar.add_cascade(label=f'{Path(__file__).stem}', menu=file)
         file.add_command(label='Process now',
                          command=_call_start,
-                         accelerator='Enter/Return')
+                         accelerator='Return') # macOS doesn't recognize 'Enter'
         file.add_command(label='Quit',
                          command=lambda: utils.quit_gui(app),
                          # macOS doesn't recognize 'Command+Q' as an accelerator
@@ -1061,7 +1058,6 @@ class ImageViewer(ProcessImage):
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=info)
             app.after(4000, self.setup_info_messages)
-
 
         def _do_reset():
             """
@@ -1467,9 +1463,11 @@ class ImageViewer(ProcessImage):
 
     def display_windows(self) -> None:
         """
-        Show the input image in its window.
-        Ready all image window for display.
+        Ready all image window for display. Show the input image in its window.
+        Bind rt-click to save any displayed image.
         Called from __init__.
+        Calls update_image(), utils.save_settings_and_img().
+
         Returns:
             None
         """
@@ -1506,17 +1504,14 @@ class ImageViewer(ProcessImage):
             # Give user time to read the message before resetting it.
             app.after(4000, self.setup_info_messages)
 
-
-        if const.MY_OS in 'lin, win':
-            rt_click = '<Button-3>'
-        else: # MY_OS == 'dar':
-            rt_click = '<Button-2>'
+        # macOS right mouse button had a different ID.
+        rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
 
         for img_name, label in self.img_label.items():
             tkimg = self.tkimg[img_name]
             # cvimg = self.cvimg[img_name]
             label.bind(rt_click,
-                        lambda _, i=tkimg, n=img_name: _save_img(i, n))
+                       lambda _, i=tkimg, n=img_name: _save_img(i, n))
 
         # Now is time to show the mainloop (app) settings window that was
         #   hidden in manage_main_window().
