@@ -1488,9 +1488,13 @@ class ImageViewer(ProcessImage):
         self.update_image(img_name='input',
                           img_array=self.cvimg['input'])
 
-        def _save_img(img, image_name):
+        def _save_img(image_name):
+            """Save the current window image (Label) that was rt-clicked."""
+            tkimg = self.tkimg[img_name]
+            # cvimg = self.cvimg[img_name]
+
             utils.save_settings_and_img(input_path=self.input_file,
-                                        img2save=img,
+                                        img2save=tkimg,
                                         txt2save='The displayed image',
                                         caller=image_name)
 
@@ -1507,11 +1511,13 @@ class ImageViewer(ProcessImage):
         # macOS right mouse button had a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
 
+        # Do not specify the image array in this binding, but instead
+        #  specify in _save_img() function so that the current image
+        #  is saved. Need to first update the window graphic.
         for img_name, label in self.img_label.items():
-            tkimg = self.tkimg[img_name]
-            # cvimg = self.cvimg[img_name]
+            self.update_idletasks()
             label.bind(rt_click,
-                       lambda _, i=tkimg, n=img_name: _save_img(i, n))
+                       lambda _, n=img_name: _save_img(image_name=n))
 
         # Now is time to show the mainloop (app) settings window that was
         #   hidden in manage_main_window().
