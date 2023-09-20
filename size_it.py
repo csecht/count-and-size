@@ -1490,8 +1490,7 @@ class ImageViewer(ProcessImage):
 
         def _save_img(image_name):
             """Save the current window image (Label) that was rt-clicked."""
-            tkimg = self.tkimg[img_name]
-            # cvimg = self.cvimg[img_name]
+            tkimg = self.tkimg[image_name]
 
             utils.save_settings_and_img(input_path=self.input_file,
                                         img2save=tkimg,
