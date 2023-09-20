@@ -1488,7 +1488,7 @@ class ImageViewer(ProcessImage):
         self.update_image(img_name='input',
                           img_array=self.cvimg['input'])
 
-        def _save_img(image_name):
+        def _on_click_save_img(image_name):
             """Save the current window image (Label) that was rt-clicked."""
             tkimg = self.tkimg[image_name]
 
@@ -1507,16 +1507,16 @@ class ImageViewer(ProcessImage):
             # Give user time to read the message before resetting it.
             app.after(4000, self.setup_info_messages)
 
-        # macOS right mouse button had a different ID.
+        # macOS right mouse button has a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
 
         # Do not specify the image array in this binding, but instead
-        #  specify in _save_img() function so that the current image
-        #  is saved. Need to first update the window graphic.
+        #  specify in _on_click_save_img() function so that the current image
+        #  is saved. Use update() to ensure that the label image is current.
         for img_name, label in self.img_label.items():
-            self.update_idletasks()
+            app.update()
             label.bind(rt_click,
-                       lambda _, n=img_name: _save_img(image_name=n))
+                       lambda _, n=img_name: _on_click_save_img(image_name=n))
 
         # Now is time to show the mainloop (app) settings window that was
         #   hidden in manage_main_window().
@@ -1744,7 +1744,7 @@ class ImageViewer(ProcessImage):
         # Give user time to see the final progress msg before cycling back.
         if (max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT or
                 self.slider_val['plm_footprint'].get() == 1):
-            app.after(150)
+            app.after(200)
             self.setup_info_messages()
 
     def report_results(self) -> None:
