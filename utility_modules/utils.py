@@ -117,7 +117,7 @@ def valid_path_to(input_path: str) -> Path:
 
 
 def save_settings_and_img(input_path: str,
-                          img2save,
+                          img2save: Union[np.ndarray, ImageTk],
                           txt2save: str,
                           caller: str) -> None:
     """
@@ -265,8 +265,8 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
     # See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained
     number_str = str(entry_number).lower()
 
-    # Remove non-numeric characters
-    sigfig_str = ''
+    # Grab only numeric characters from *entry_number*
+    sigfig_str: str = ''
     sigfig_str = ''.join([sigfig_str + _c for _c in number_str if _c.isnumeric()])
 
     # If scientific notation, remove the trailing exponent value.

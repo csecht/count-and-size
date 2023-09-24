@@ -171,16 +171,16 @@ class ProcessImage(tk.Tk):
 
         # img_label dictionary is set up in ImageViewer.setup_image_windows(),
         #  but is used in all Class methods here.
-        self.img_label = {}
+        self.img_label: dict = {}
 
         # metrics dict is populated in ImageViewer.setup_start_window()
-        self.metrics = {}
+        self.metrics: dict = {}
 
-        self.num_dt_segments = 0
-        self.largest_ws_contours = []
-        self.sorted_size_list = []
+        self.num_dt_segments: int = 0
+        self.largest_ws_contours: list = []
+        self.sorted_size_list: list = []
         self.unit_per_px = tk.DoubleVar()
-        self.num_sigfig = 0
+        self.num_sigfig: int = 0
         self.info_label = tk.Label(self)
 
     def update_image(self,
@@ -606,17 +606,17 @@ class ImageViewer(ProcessImage):
 
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
-        self.img_window = {}
+        self.img_window: dict = {}
 
         # Is an instance attribute here only because it is used in call
         #  to utils.save_settings_and_img() from the Save button.
-        self.size_settings_txt = ''
+        self.size_settings_txt: str = ''
 
         # Manage the starting windows, grab the input and run settings,
         #  then proceed with image processing and sizing.
         # This order of events allows macOS implementation to flow well.
         self.manage_main_window()
-        self.input_file = ''
+        self.input_file: str = ''
         self.setup_start_window()
 
     def manage_main_window(self):

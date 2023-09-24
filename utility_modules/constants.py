@@ -41,9 +41,9 @@ from psutil import cpu_count
 import cv2
 import numpy as np
 
-MY_OS = sys.platform[:3]
+MY_OS: str = sys.platform[:3]
 
-STUB_ARRAY = np.ones(shape=(5, 5), dtype='uint8')
+STUB_ARRAY: np.ndarray = np.ones(shape=(5, 5), dtype='uint8')
 
 WIN_NAME = {
     'input': 'Input image',

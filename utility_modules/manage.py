@@ -85,11 +85,11 @@ def input_metrics(img: np.ndarray) -> dict:
     """
 
     # Scaling factors for contours, circles, and text; empirically determined.
-    size_factor = 5.5e-4
-    line_thickness_factor = 1.5e-3
+    size_factor: float = 5.5e-4
+    line_thickness_factor: float = 1.5e-3
     # line_thickness_factor = 2e-03.
 
-    gray_img = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
+    gray_img: np.ndarray = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
     fig_width: int = gray_img.shape[1]
 
     # Set maximum enclosing circle radius to 1/2 the shortest image dimension.
@@ -143,7 +143,7 @@ def tk_image(image: np.ndarray, scale_coef: float) -> PhotoImage:
     scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
 
     scaled_img = Image.fromarray(scaled_img)
-    tk_img = ImageTk.PhotoImage(scaled_img)
+    tk_img: PhotoImage = ImageTk.PhotoImage(scaled_img)
     # Need to prevent garbage collection to show image in tk.Label, etc.
     tk_img.image = tk_img
 
