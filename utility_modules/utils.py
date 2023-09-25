@@ -117,7 +117,7 @@ def valid_path_to(input_path: str) -> Path:
 
 
 def save_settings_and_img(input_path: str,
-                          img2save: Union[np.ndarray, ImageTk],
+                          img2save: Union[np.ndarray, ImageTk.PhotoImage],
                           txt2save: str,
                           caller: str) -> None:
     """
