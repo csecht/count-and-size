@@ -1692,7 +1692,7 @@ class ImageViewer(ProcessImage):
             ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
 
             # Note: sizes are full-length floats.
-            object_size = _r * 2 * self.unit_per_px.get()
+            object_size: float = _r * 2 * self.unit_per_px.get()
 
             # Need to set sig. fig. to display sizes in annotated image.
             #  num_sigfig value is determined in set_size_std().
@@ -1759,38 +1759,38 @@ class ImageViewer(ProcessImage):
 
         # Note: recall that *_val dict are inherited from ProcessImage().
         px_w, px_h = self.cvimg['gray'].shape
-        alpha = self.slider_val['alpha'].get()
-        beta = self.slider_val['beta'].get()
-        noise_iter = self.slider_val['noise_iter'].get()
-        morph_op = self.cbox_val['morphop'].get()
-        morph_shape = self.cbox_val['morphshape'].get()
-        filter_selected = self.cbox_val['filter'].get()
-        th_type = self.cbox_val['th_type'].get()
-        circle_r_min = self.slider_val['circle_r_min'].get()
-        circle_r_max = self.slider_val['circle_r_max'].get()
-        min_dist = self.slider_val['plm_mindist'].get()
-        connections = int(self.cbox_val['ws_connect'].get())
-        dt_type = self.cbox_val['dt_type'].get()
-        mask_size = int(self.cbox_val['dt_mask_size'].get())
-        p_kernel = (self.slider_val['plm_footprint'].get(),
-                    self.slider_val['plm_footprint'].get())
+        alpha: float = self.slider_val['alpha'].get()
+        beta:int = self.slider_val['beta'].get()
+        noise_iter: int = self.slider_val['noise_iter'].get()
+        morph_op: str = self.cbox_val['morphop'].get()
+        morph_shape: str = self.cbox_val['morphshape'].get()
+        filter_selected: str = self.cbox_val['filter'].get()
+        th_type: str = self.cbox_val['th_type'].get()
+        circle_r_min: int = self.slider_val['circle_r_min'].get()
+        circle_r_max: int = self.slider_val['circle_r_max'].get()
+        min_dist: int = self.slider_val['plm_mindist'].get()
+        connections: int = int(self.cbox_val['ws_connect'].get())
+        dt_type: str = self.cbox_val['dt_type'].get()
+        mask_size: int = int(self.cbox_val['dt_mask_size'].get())
+        p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
+                           self.slider_val['plm_footprint'].get())
 
         # Only odd kernel integers are used for processing.
-        _nk = self.slider_val['noise_k'].get()
-        noise_k = _nk + 1 if _nk % 2 == 0 else _nk
+        _nk: int = self.slider_val['noise_k'].get()
+        noise_k: int = _nk + 1 if _nk % 2 == 0 else _nk
 
-        _fk = self.slider_val['filter_k'].get()
+        _fk: int = self.slider_val['filter_k'].get()
         if _fk == 0:
             filter_k = 'no filter applied'
         else:
             filter_k = _fk + 1 if _fk % 2 == 0 else _fk
             filter_k = f'({filter_k}, {filter_k})'
 
-        size_std = self.cbox_val['size_std'].get()
+        size_std: str = self.cbox_val['size_std'].get()
         if size_std == 'Custom':
-            size_std_size = self.custom_size_entry.get()
+            size_std_size: str = self.custom_size_entry.get()
         else:
-            size_std_size = const.SIZE_STANDARDS[size_std]
+            size_std_size: str = const.SIZE_STANDARDS[size_std]
 
         # Size units are mm for the preset size standards.
         unit = 'unknown unit' if size_std in 'None, Custom' else 'mm'
@@ -1824,7 +1824,7 @@ class ImageViewer(ProcessImage):
         divider = "═" * 20  # divider's unicode_escape: u'\u2550\'
 
         self.size_settings_txt = (
-            f'Image: {self.input_file} {px_h}x{px_w}\n\n'
+            f'Image: {self.input_file} {px_w}x{px_h}\n\n'
             f'{"Contrast:".ljust(space)}convertScaleAbs alpha={alpha}, beta={beta}\n'
             f'{"Noise reduction:".ljust(space)}cv2.getStructuringElement ksize={noise_k},\n'
             f'{tab}cv2.getStructuringElement shape={morph_shape}\n'
@@ -1836,7 +1836,7 @@ class ImageViewer(ProcessImage):
             f'distanceType={dt_type}, maskSize={mask_size}\n'
             f'skimage functions:\n'
             f'{"   peak_local_max:".ljust(space)}min_distance={min_dist}\n'
-            f'{tab}footprint=np.ones({p_kernel}, np.uint8\n'
+            f'{tab}footprint=np.ones{p_kernel}, np.uint8\n'
             f'{"   watershed:".ljust(space)}connectivity={connections}\n'
             f'{tab}compactness=1.0\n'  # NOTE: update if change in watershed method.
             f'{divider}\n'
