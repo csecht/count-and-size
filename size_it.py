@@ -510,14 +510,13 @@ class ImageViewer(ProcessImage):
     config_sliders
     config_comboboxes
     config_entries
+    config_annotations
     grid_widgets
     grid_img_labels
     display_input_and_others
     set_defaults
     set_size_std
     select_and_size
-    increase_font_size
-    decrease_font_size
     report_results
     process_all
     process_sizes
@@ -652,13 +651,6 @@ class ImageViewer(ProcessImage):
         self.bind('<Escape>', func=lambda _: utils.quit_gui(app))
         self.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
-
-        # Set a platform-specific modifier key for changing annotation font size.
-        #  Bindings are needed only for the settings and sized img windows, but
-        #  is simpler to use bind_all().
-        cmdkey = 'Command' if const.MY_OS == 'dar' else 'Control'
-        self.bind_all(f'<{f"{cmdkey}"}-equal>', lambda _: self.increase_font_size())
-        self.bind_all(f'<{f"{cmdkey}"}-minus>', lambda _: self.decrease_font_size())
 
     def setup_start_window(self) -> None:
         """
@@ -871,6 +863,7 @@ class ImageViewer(ProcessImage):
         self.config_sliders()
         self.config_comboboxes()
         self.config_entries()
+        self.config_annotations()
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
@@ -1316,6 +1309,57 @@ class ImageViewer(ProcessImage):
         self.size_cust_entry.bind('<Return>', func=self.process_sizes)
         self.size_cust_entry.bind('<KP_Enter>', func=self.process_sizes)
 
+    def config_annotations(self) -> None:
+        """
+        Set key bindings to change font size and line thickness of
+        annotations in the 'sized' cv2 image.
+
+        Returns: None
+        """
+
+        # Set a platform-specific modifier key for bindings.
+        cmdkey = 'Command' if const.MY_OS == 'dar' else 'Control'
+
+        def increase_font_size() -> None:
+            self.metrics['font_scale'] *= 1.1
+            self.process_sizes()
+
+        def decrease_font_size() -> None:
+            self.metrics['font_scale'] *= 0.9
+            self.process_sizes()
+
+        def increase_line_thickness():
+            self.metrics['line_thickness'] += 1
+            self.process_sizes()
+
+        def decrease_line_thickness():
+            self.metrics['line_thickness'] -= 1
+            if self.metrics['line_thickness'] == 0:
+                self.metrics['line_thickness'] = 1
+            self.process_sizes()
+
+        # Bindings are needed only for the settings and sized img windows,
+        #  but is simpler to use bind_all().
+        self.bind_all(
+            f'<{f"{cmdkey}"}-equal>', lambda _: increase_font_size())
+        self.bind_all(
+            f'<{f"{cmdkey}"}-KP_Add>', lambda _: increase_font_size())
+
+        self.bind_all(
+            f'<{f"{cmdkey}"}-minus>', lambda _: decrease_font_size())
+        self.bind_all(
+            f'<{f"{cmdkey}"}-KP_Subtract>', lambda _: decrease_font_size())
+
+        self.bind_all(
+            f'<Shift-{f"{cmdkey}"}-plus>', lambda _: increase_line_thickness())
+        self.bind_all(
+            f'<Shift-{f"{cmdkey}"}-KP_Add>', lambda _: increase_line_thickness())
+
+        self.bind_all(
+            f'<Shift-{f"{cmdkey}"}-underscore>', lambda _: decrease_line_thickness())
+        self.bind_all(
+            f'<Shift-{f"{cmdkey}"}-KP_Subtract>', lambda _: decrease_line_thickness())
+
     def grid_widgets(self) -> None:
         """
         Developer: Grid as a method to clarify spatial relationships.
@@ -1630,26 +1674,6 @@ class ImageViewer(ProcessImage):
             preset_std_size = const.SIZE_STANDARDS[size_std]
             self.unit_per_px.set(preset_std_size / int(size_std_px))
             self.num_sigfig = utils.count_sig_fig(preset_std_size)
-
-    def increase_font_size(self) -> None:
-        """
-        Increase annotation font size by 10% in the annotated 'sized'
-        image. Called from key binding. Calls process_sizes.
-
-        Returns: None
-        """
-        self.metrics['font_scale'] *= 1.1
-        self.process_sizes()
-
-    def decrease_font_size(self) -> None:
-        """
-        Decrease annotation font size by 10% in the annotated 'sized'
-        image. Called from key binding. Calls process_sizes.
-
-        Returns: None
-        """
-        self.metrics['font_scale'] *= 0.9
-        self.process_sizes()
 
     def select_and_size(self, contour_pointset: list) -> None:
         """
