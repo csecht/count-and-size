@@ -58,6 +58,11 @@ WIN_NAME = {
 ALPHA_MAX = 400
 BETA_MAX = 254  # Provides a range of [-127 -- 127].
 
+# Scaling factors for contours, circles, and text; empirically determined.
+#  Used in manage.py input_metrics().
+SIZE_FACTOR: float = 5.5e-4
+LINE_THICKNESS_FACTOR: float = 1.5e-3
+
 # CV dict values are cv2 constants' (key) returned integers.
 # Some of these dictionaries are used only to populate Combobox lists.
 CV_BORDER = {
