@@ -1326,6 +1326,8 @@ class ImageViewer(ProcessImage):
 
         def decrease_font_size() -> None:
             self.metrics['font_scale'] *= 0.9
+            if self.metrics['font_scale'] < 0.1:
+                self.metrics['font_scale'] = 0.1
             self.process_sizes()
 
         def increase_line_thickness():
