@@ -1317,9 +1317,6 @@ class ImageViewer(ProcessImage):
         Returns: None
         """
 
-        # Set a platform-specific modifier key for bindings.
-        cmdkey = 'Command' if const.MY_OS == 'dar' else 'Control'
-
         def increase_font_size() -> None:
             self.metrics['font_scale'] *= 1.1
             self.process_sizes()
@@ -1344,34 +1341,34 @@ class ImageViewer(ProcessImage):
         #  but is simpler to use bind_all() which does not depend on widget focus.
         # NOTE: On Windows, KP_* is not a recognized keysym string; works on Linux.
         self.bind_all(
-            f'<{f"{cmdkey}"}-equal>', lambda _: increase_font_size())
+            f'<Control-equal>', lambda _: increase_font_size())
         # Need platform-specific keypad keysym.
         if const.MY_OS == 'win':
             self.bind_all(
-                f'<{f"{cmdkey}"}-plus>', lambda _: increase_font_size())
+                f'<Control-plus>', lambda _: increase_font_size())
         else:
             self.bind_all(
-                f'<{f"{cmdkey}"}-KP_Add>', lambda _: increase_font_size())
+                f'<Control-KP_Add>', lambda _: increase_font_size())
 
         self.bind_all(
-            f'<{f"{cmdkey}"}-minus>', lambda _: decrease_font_size())
+            f'<Control-minus>', lambda _: decrease_font_size())
         self.bind_all(
-            f'<{f"{cmdkey}"}-KP_Subtract>', lambda _: decrease_font_size())
+            f'<Control-KP_Subtract>', lambda _: decrease_font_size())
 
         self.bind_all(
-            f'<Shift-{f"{cmdkey}"}-plus>', lambda _: increase_line_thickness())
+            f'<Shift-Control-plus>', lambda _: increase_line_thickness())
         self.bind_all(
-            f'<Shift-{f"{cmdkey}"}-KP_Add>', lambda _: increase_line_thickness())
+            f'<Shift-Control-KP_Add>', lambda _: increase_line_thickness())
 
         self.bind_all(
-            f'<Shift-{f"{cmdkey}"}-underscore>', lambda _: decrease_line_thickness())
+            f'<Shift-Control-underscore>', lambda _: decrease_line_thickness())
         # Need platform-specific keypad keysym.
         if const.MY_OS == 'win':
             self.bind_all(
-                f'<Shift-{f"{cmdkey}"}-minus>', lambda _: decrease_line_thickness())
+                f'<Shift-Control-minus>', lambda _: decrease_line_thickness())
         else:
             self.bind_all(
-                f'<Shift-{f"{cmdkey}"}-KP_Subtract>', lambda _: decrease_line_thickness())
+                f'<Shift-Control-KP_Subtract>', lambda _: decrease_line_thickness())
 
     def grid_widgets(self) -> None:
         """
