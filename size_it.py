@@ -1339,11 +1339,17 @@ class ImageViewer(ProcessImage):
             self.process_sizes()
 
         # Bindings are needed only for the settings and sized img windows,
-        #  but is simpler to use bind_all().
+        #  but is simpler to use bind_all() which does not depend on widget focus.
+        # NOTE: On Windows, KP_* is not a recognized keysym string; works on Linux.
         self.bind_all(
             f'<{f"{cmdkey}"}-equal>', lambda _: increase_font_size())
-        self.bind_all(
-            f'<{f"{cmdkey}"}-KP_Add>', lambda _: increase_font_size())
+        # Need platform-specific keypad keysym.
+        if const.MY_OS == 'win':
+            self.bind_all(
+                f'<{f"{cmdkey}"}-plus>', lambda _: increase_font_size())
+        else:
+            self.bind_all(
+                f'<{f"{cmdkey}"}-KP_Add>', lambda _: increase_font_size())
 
         self.bind_all(
             f'<{f"{cmdkey}"}-minus>', lambda _: decrease_font_size())
@@ -1357,8 +1363,13 @@ class ImageViewer(ProcessImage):
 
         self.bind_all(
             f'<Shift-{f"{cmdkey}"}-underscore>', lambda _: decrease_line_thickness())
-        self.bind_all(
-            f'<Shift-{f"{cmdkey}"}-KP_Subtract>', lambda _: decrease_line_thickness())
+        # Need platform-specific keypad keysym.
+        if const.MY_OS == 'win':
+            self.bind_all(
+                f'<Shift-{f"{cmdkey}"}-minus>', lambda _: decrease_line_thickness())
+        else:
+            self.bind_all(
+                f'<Shift-{f"{cmdkey}"}-KP_Subtract>', lambda _: decrease_line_thickness())
 
     def grid_widgets(self) -> None:
         """
