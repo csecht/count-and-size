@@ -199,6 +199,7 @@ class ProcessImage(tk.Tk):
         Returns:
             None
         """
+
         # Use .configure to update images.
         self.tkimg[img_name] = manage.tk_image(
             image=img_array,
@@ -367,14 +368,14 @@ class ProcessImage(tk.Tk):
         # see also: http://scipy-lectures.org/packages/scikit-image/index.html
 
         # Help user know what is happening with large image processing.
-        img_size = max(self.cvimg['gray'].shape)
+        img_size: int = max(self.cvimg['gray'].shape)
 
         connections = int(self.cbox_val['ws_connect'].get())  # 1, 4 or 8.
-        th_type = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
-        dt_type = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
+        th_type: str = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
+        dt_type: str = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
         mask_size = int(self.cbox_val['dt_mask_size'].get())
-        min_dist = self.slider_val['plm_mindist'].get()
-        p_kernel = (self.slider_val['plm_footprint'].get(),
+        min_dist: int = self.slider_val['plm_mindist'].get()
+        p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
         plm_kernel = np.ones(p_kernel, np.uint8)
 
@@ -459,26 +460,32 @@ class ProcessImage(tk.Tk):
 
         # self.largest_ws_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of ws objects.
+        # This step and watershed take the longest times, but watershed
+        #  cannot be parallelized. Subsequent contouring steps for the
+        #  watershed_gray image do not take long to process.
         self.largest_ws_contours = parallel.MultiProc(watershed_img).pool_it
 
         # Convert from float32 to uint8 data type to find contours and
         #  make a PIL ImageTk.PhotoImage.
         distances_img = np.uint8(distances_img)
-        watershed_gray = np.uint8(watershed_img)
+        watershed_gray = np.uint8(watershed_img)  # == cv2.convertScaleAbs(watershed_img)
 
-        # Draw all watershed objects in 1 gray shade instead of each object
-        #  decremented by 1 gray value in series; ws boundaries will be black.
-        sized, _ = cv2.findContours(image=watershed_gray,
-                                    mode=cv2.RETR_EXTERNAL,
-                                    method=cv2.CHAIN_APPROX_SIMPLE)
+        basins, _ = cv2.findContours(image=watershed_gray,
+                                     mode=cv2.RETR_EXTERNAL,
+                                     method=cv2.CHAIN_APPROX_SIMPLE)
 
+        # Note: using watershed_gray instead of watershed_img allows all
+        #  contours to be filled one shade of gray when cv2.FILLED is used
+        #  for thickness. When not used, as below, a 256 gradient series
+        #  fills the basins which are outlined with the specified gray shade.
+        #  Note that non-gray colors cannot be used b/c of the array's
+        #   uint8 data type. (?)
         cv2.drawContours(image=watershed_gray,
-                         contours=sized,
+                         contours=basins,
                          contourIdx=-1,  # do all contours
-                         color=(120, 120, 120),  # is mid-gray
-                         thickness=-1,  # is filled
+                         color=const.COLORS_CV['white'],
+                         thickness=self.metrics['line_thickness'], #cv2.FILLED,  # -1,
                          lineType=cv2.LINE_AA)
-
 
         self.update_image(img_name='thresh',
                           img_array=thresh_img)
@@ -1327,11 +1334,11 @@ class ImageViewer(ProcessImage):
                 self.metrics['font_scale'] = 0.1
             self.process_sizes()
 
-        def increase_line_thickness():
+        def increase_line_thickness() -> None:
             self.metrics['line_thickness'] += 1
             self.process_sizes()
 
-        def decrease_line_thickness():
+        def decrease_line_thickness() -> None:
             self.metrics['line_thickness'] -= 1
             if self.metrics['line_thickness'] == 0:
                 self.metrics['line_thickness'] = 1
