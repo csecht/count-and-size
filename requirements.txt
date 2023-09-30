@@ -6,7 +6,7 @@ scipy
 psutil
 packaging
 
-#opencv-python~=4.8.0.74
+#opencv-python~=4.5.5.62
 #Pillow~=10.0.0
 #numpy~=1.25.2
 #scikit-image~=0.21.0
