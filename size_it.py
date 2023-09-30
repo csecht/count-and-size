@@ -417,6 +417,8 @@ class ProcessImage(tk.Tk):
                                 toplevel=app, infotxt=info)
 
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
+        # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
+        # Generate the markers as local maxima of the distance to the background.
         local_max: ndimage = peak_local_max(
             image=distances_img,
             min_distance=min_dist,
@@ -437,14 +439,15 @@ class ProcessImage(tk.Tk):
         mask = np.zeros(shape=distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
         mask[tuple(local_max.T)] = True
-        # Note that markers are single px, colored in gray series?
-        labeled_array, self.num_dt_segments = ndimage.label(input=mask)
+        # Note that markers are single px, colored in gray series by label index?
+        labeled_array, self.num_dt_segments = ndimage.label(input=mask,)
+                                                            # structure=[[1,0,1], [0,1,0], [1,0,1]])
 
         # WHY minus sign? It separates objects much better than without it,
         #  minus symbol turns distances into threshold.
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
-        # Need watershed_line to show boundaries on displayed watershed_img contours.
+        # Need watershed_line to show boundaries on displayed watershed contours.
         # compactness=1.0 based on: DOI:10.1109/ICPR.2014.181
         #   https://www.tu-chemnitz.de/etit/proaut/publications/cws_pSLIC_ICPR.pdf
         watershed_img: np.ndarray = watershed(image=-distances_img,
@@ -465,10 +468,9 @@ class ProcessImage(tk.Tk):
         #  watershed_gray image do not take long to process.
         self.largest_ws_contours = parallel.MultiProc(watershed_img).pool_it
 
-        # Convert from float32 to uint8 data type to find contours and
-        #  make a PIL ImageTk.PhotoImage.
-        distances_img = np.uint8(distances_img)
-        watershed_gray = np.uint8(watershed_img)  # == cv2.convertScaleAbs(watershed_img)
+        # Convert from float32 to uint8 data type to find contours.
+        # Alternative:  cv2.convertScaleAbs(img)
+        watershed_gray = np.uint8(watershed_img)
 
         basins, _ = cv2.findContours(image=watershed_gray,
                                      mode=cv2.RETR_EXTERNAL,
@@ -478,14 +480,36 @@ class ProcessImage(tk.Tk):
         #  contours to be filled one shade of gray when cv2.FILLED is used
         #  for thickness. When not used, as below, a 256 gradient series
         #  fills the basins which are outlined with the specified gray shade.
-        #  Note that non-gray colors cannot be used b/c of the array's
-        #   uint8 data type. (?)
+        # Need to convert watershed array data to allow colored contours.
+        watershed_gray = cv2.cvtColor(watershed_gray, cv2.COLOR_GRAY2BGR)
+
+        # Need to prevent a thickness value of 0, yet have it be a function
+        #  if image size so that it looks good in scaled images. Because the
+        #  watershed_gray img has a black background, the contour lines are
+        #  easier to see and look better if they are thinner than in the
+        #  annotated 'sized' image were metrics['line_thickness'] is used.
+        if self.metrics['line_thickness'] == 1:
+            line_thickness = 1
+        else:
+            line_thickness = self.metrics['line_thickness'] // 2
+
+        # Need to prevent black contours because they won't show on the
+        #  black background of the watershed_gray image.
+        if self.cbox_val['color'].get() == 'black':
+            line_color = const.COLORS_CV['blue']
+        else:
+            line_color = const.COLORS_CV[self.cbox_val['color'].get()]
+
         cv2.drawContours(image=watershed_gray,
                          contours=basins,
                          contourIdx=-1,  # do all contours
-                         color=const.COLORS_CV['white'],
-                         thickness=self.metrics['line_thickness'], #cv2.FILLED,  # -1,
+                         color=line_color,
+                         thickness=line_thickness,
                          lineType=cv2.LINE_AA)
+
+        # Convert from float32 to uint8 data type to make a PIL
+        # ImageTk.PhotoImage. Alternative: cv2.convertScaleAbs(img)
+        distances_img = np.uint8(distances_img)
 
         self.update_image(img_name='thresh',
                           img_array=thresh_img)
@@ -738,7 +762,8 @@ class ImageViewer(ProcessImage):
 
         if self.input_file:
             self.cvimg['input'] = cv2.imread(self.input_file)
-            self.cvimg['gray'] = cv2.cvtColor(self.cvimg['input'], cv2.COLOR_RGBA2GRAY)
+            self.cvimg['gray'] = cv2.cvtColor(self.cvimg['input'],
+                                              cv2.COLOR_RGBA2GRAY)
             self.metrics = manage.input_metrics(self.cvimg['input'])
         else:  # User has closed the filedialog window instead of selecting a file.
             utils.quit_gui(self)
