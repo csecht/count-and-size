@@ -377,7 +377,7 @@ class ProcessImage(tk.Tk):
         min_dist: int = self.slider_val['plm_mindist'].get()
         p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
-        plm_kernel = np.ones(p_kernel, np.uint8)
+        plm_kernel = np.ones(shape=p_kernel, dtype=np.uint8)
 
         # Note from doc: Currently, the Otsu's and Triangle methods
         #   are implemented only for 8-bit single-channel images.
@@ -439,7 +439,7 @@ class ProcessImage(tk.Tk):
         mask = np.zeros(shape=distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
         mask[tuple(local_max.T)] = True
-        # Note that markers are single px, colored in grayscale series by label index?
+        # Note that markers are single px, colored in grayscale by their label index?
         labeled_array, self.num_dt_segments = ndimage.label(input=mask)
 
         # WHY minus sign? It separates objects much better than without it,
@@ -464,23 +464,21 @@ class ProcessImage(tk.Tk):
         #   enclosing circles and calculate sizes of ws objects.
         # This step and watershed take the longest times, but watershed
         #  cannot be parallelized. Subsequent contouring steps for the
-        #  watershed_gray image do not take long to process.
+        #  watershed image do not take long to process.
         self.largest_ws_contours = parallel.MultiProc(watershed_img).pool_it
 
-        # Convert from int32 to uint8 data type to find contours.
-        # Conversion with cv2.convertScaleAbs(watershed_img) is same.
-        watershed_gray = np.uint8(watershed_img)
-
-        basins, _ = cv2.findContours(image=watershed_gray,
+        # Convert watershed array from int32 to uint8 data type to find contours.
+        # Conversion with cv2.convertScaleAbs(watershed_img) also works.
+        basins, _ = cv2.findContours(image=np.uint8(watershed_img),
                                      mode=cv2.RETR_EXTERNAL,
                                      method=cv2.CHAIN_APPROX_SIMPLE)
 
-        # Need to convert watershed array data to allow colored contours.
-        watershed_color = cv2.cvtColor(watershed_gray, cv2.COLOR_GRAY2BGR)
+        # Convert watershed array data from int32 to allow colored contours.
+        watershed_img = cv2.cvtColor(np.uint8(watershed_img), cv2.COLOR_GRAY2BGR)
 
         # Need to prevent a thickness value of 0, yet have it be a function
-        #  if image size so that it looks good in scaled display. Because the
-        #  watershed_gray img has a black background, the contour lines are
+        #  of image size so that it looks good in scaled display. Because the
+        #  watershed_img has a black background, the contour lines are
         #  easier to see and look better if they are thinner than in the
         #  annotated 'sized' image were metrics['line_thickness'] is used.
         #  When user changes line thickness with + & - keys, only the 'sized'
@@ -491,13 +489,13 @@ class ProcessImage(tk.Tk):
             line_thickness = self.metrics['line_thickness'] // 2
 
         # Need to prevent black contours because they won't show on the
-        #  black background of the watershed_gray image.
+        #  black background of the watershed_img image.
         if self.cbox_val['color'].get() == 'black':
             line_color = const.COLORS_CV['blue']
         else:
             line_color = const.COLORS_CV[self.cbox_val['color'].get()]
 
-        cv2.drawContours(image=watershed_color,
+        cv2.drawContours(image=watershed_img,
                          contours=basins,
                          contourIdx=-1,  # do all contours
                          color=line_color,
@@ -505,7 +503,8 @@ class ProcessImage(tk.Tk):
                          lineType=cv2.LINE_AA)
 
         # Convert from float32 to uint8 data type to make a PIL
-        #  ImageTk.PhotoImage. Alternative: cv2.convertScaleAbs(img)
+        #  ImageTk.PhotoImage.
+        # Also works: cv2.convertScaleAbs(img), img.astype(np.uint8)
         distances_img = np.uint8(distances_img)
 
         self.update_image(img_name='thresh',
@@ -513,7 +512,7 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='dist_trans',
                           img_array=distances_img)
         self.update_image(img_name='watershed',
-                          img_array=watershed_color)
+                          img_array=watershed_img)
 
         if img_size > const.SIZE_TO_WAIT:
             info = 'Report ready.\n\n\n'
@@ -1828,7 +1827,7 @@ class ImageViewer(ProcessImage):
         # Give user time to see the final progress msg before cycling back.
         if (max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT or
                 self.slider_val['plm_footprint'].get() == 1):
-            app.after(200)
+            app.after(250)
             self.setup_info_messages()
 
     def report_results(self) -> None:
