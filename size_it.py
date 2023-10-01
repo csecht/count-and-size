@@ -95,14 +95,15 @@ except (ImportError, ModuleNotFoundError) as import_err:
 class ProcessImage(tk.Tk):
     """
     A suite of OpenCV methods for applying various image processing
-    functions involved in identifying objects from an image file.
+    functions involved in segmenting objects from an image file.
 
     Class methods:
+    update_image
     adjust_contrast
     reduce_noise
     filter_image
     watershed_segmentation
-    update_image
+    contour_ws_segments
     """
 
     def __init__(self):
@@ -352,13 +353,15 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='filter',
                           img_array=self.cvimg['filter'])
 
-    def watershed_segmentation(self) -> None:
+    @property
+    def watershed_segmentation(self) -> np.ndarray:
         """
         Identify object contours with cv2.threshold(), cv2.distanceTransform,
         and skimage.segmentation.watershed. Threshold types limited to
         Otsu and Triangle. For larger images, progress notifications are
         printed to Terminal.
-        Called by process_all(). Calls select_and_size() and update_image().
+        Called by process_all().
+        Calls select_and_size() and update_image().
 
         Returns:
             None
@@ -455,6 +458,30 @@ class ProcessImage(tk.Tk):
                                               mask=thresh_img,
                                               compactness=1.0,
                                               watershed_line=True)
+
+        distances_img = np.uint8(distances_img)
+
+        self.update_image(img_name='thresh',
+                          img_array=thresh_img)
+        self.update_image(img_name='dist_trans',
+                          img_array=distances_img)
+
+        return watershed_img
+
+    def contour_ws_segments(self, img: np.ndarray) -> None:
+        """
+        Find and draw contours for watershed basins.
+        Called from process_all() with a watershed_segmentation() arg.
+        Calls update_image().
+
+        Args:
+            img: A labeled ndarray of watershed basins.
+
+        Returns: None
+        """
+
+        # Help user know what is happening with large image processing.
+        img_size: int = max(self.cvimg['gray'].shape)
         if img_size > const.SIZE_TO_WAIT:
             info = 'Watershed completed; now finding contours...\n\n\n'
             manage.info_message(widget=self.info_label,
@@ -465,16 +492,16 @@ class ProcessImage(tk.Tk):
         # This step and watershed take the longest times, but watershed
         #  cannot be parallelized. Subsequent contouring steps for the
         #  watershed image do not take long to process.
-        self.largest_ws_contours = parallel.MultiProc(watershed_img).pool_it
+        self.largest_ws_contours: list = parallel.MultiProc(img).pool_it
 
         # Convert watershed array from int32 to uint8 data type to find contours.
         # Conversion with cv2.convertScaleAbs(watershed_img) also works.
-        basins, _ = cv2.findContours(image=np.uint8(watershed_img),
+        basins, _ = cv2.findContours(image=np.uint8(img),
                                      mode=cv2.RETR_EXTERNAL,
                                      method=cv2.CHAIN_APPROX_SIMPLE)
 
         # Convert watershed array data from int32 to allow colored contours.
-        watershed_img = cv2.cvtColor(np.uint8(watershed_img), cv2.COLOR_GRAY2BGR)
+        watershed_img = cv2.cvtColor(np.uint8(img), cv2.COLOR_GRAY2BGR)
 
         # Need to prevent a thickness value of 0, yet have it be a function
         #  of image size so that it looks good in scaled display. Because the
@@ -502,25 +529,18 @@ class ProcessImage(tk.Tk):
                          thickness=line_thickness,
                          lineType=cv2.LINE_AA)
 
-        # Convert from float32 to uint8 data type to make a PIL
-        #  ImageTk.PhotoImage.
-        # Also works: cv2.convertScaleAbs(img), img.astype(np.uint8)
-        distances_img = np.uint8(distances_img)
-
-        self.update_image(img_name='thresh',
-                          img_array=thresh_img)
-        self.update_image(img_name='dist_trans',
-                          img_array=distances_img)
         self.update_image(img_name='watershed',
                           img_array=watershed_img)
 
         if img_size > const.SIZE_TO_WAIT:
-            info = 'Report ready.\n\n\n'
+            info = 'Contours found. Report ready.\n\n\n'
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=info)
 
         # Now draw enclosing circles around watershed segments and
-        #  annotate with object sizes in select_and_size().
+        #  annotate with object sizes in ImageViewer.select_and_size().
+        #  The report isn't updated until select_and_size() runs, but
+        #  that doesn't take long, so it makes sense to post message here.
 
 class ImageViewer(ProcessImage):
     """
@@ -1716,7 +1736,7 @@ class ImageViewer(ProcessImage):
 
         Args:
             contour_pointset: List of selected contours from
-             cv2.findContours in ProcessImage.watershed_segmentation().
+             cv2.findContours in ProcessImage.contour_ws_segments().
 
         Returns:
             None
@@ -1827,7 +1847,7 @@ class ImageViewer(ProcessImage):
         # Give user time to see the final progress msg before cycling back.
         if (max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT or
                 self.slider_val['plm_footprint'].get() == 1):
-            app.after(250)
+            app.after(500)
             self.setup_info_messages()
 
     def report_results(self) -> None:
@@ -1907,7 +1927,7 @@ class ImageViewer(ProcessImage):
         divider = "═" * 20  # divider's unicode_escape: u'\u2550\'
 
         self.size_settings_txt = (
-            f'Image: {self.input_file} {px_w}x{px_h}\n\n'
+            f'Image: {self.input_file}\nImage size: {px_w}x{px_h}\n'
             f'{"Contrast:".ljust(space)}convertScaleAbs alpha={alpha}, beta={beta}\n'
             f'{"Noise reduction:".ljust(space)}cv2.getStructuringElement ksize={noise_k},\n'
             f'{tab}cv2.getStructuringElement shape={morph_shape}\n'
@@ -1952,7 +1972,7 @@ class ImageViewer(ProcessImage):
         self.reduce_noise()
         self.filter_image()
         self.set_size_std()
-        self.watershed_segmentation()
+        self.contour_ws_segments(img=self.watershed_segmentation)
         self.select_and_size(contour_pointset=self.largest_ws_contours)
         self.report_results()
 
