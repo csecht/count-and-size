@@ -1807,7 +1807,7 @@ class ImageViewer(ProcessImage):
             #  other statistical analysis.
             selected_sizes.append(float(size2display))
 
-            # Need to properly center size text in circled object.
+            # Need to properly center text in circled object.
             ((txt_width, _), baseline) = cv2.getTextSize(
                 text=size2display,
                 fontFace=const.FONT_TYPE,
@@ -1843,12 +1843,12 @@ class ImageViewer(ProcessImage):
                           img_array=self.cvimg['sized'])
 
         # Cycle back to the starting info about size std units after
-        #   progress messaging in watershed_segmentation().
+        #   last progress message in contour_ws_segments().
         # Give user time to see the final progress msg before cycling back.
+        # Note that the after time used here delays execution of this method.
         if (max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT or
                 self.slider_val['plm_footprint'].get() == 1):
-            app.after(500)
-            self.setup_info_messages()
+            app.after(2000, self.setup_info_messages)
 
     def report_results(self) -> None:
         """
