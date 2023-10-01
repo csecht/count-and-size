@@ -439,9 +439,8 @@ class ProcessImage(tk.Tk):
         mask = np.zeros(shape=distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
         mask[tuple(local_max.T)] = True
-        # Note that markers are single px, colored in gray series by label index?
-        labeled_array, self.num_dt_segments = ndimage.label(input=mask,)
-                                                            # structure=[[1,0,1], [0,1,0], [1,0,1]])
+        # Note that markers are single px, colored in grayscale series by label index?
+        labeled_array, self.num_dt_segments = ndimage.label(input=mask)
 
         # WHY minus sign? It separates objects much better than without it,
         #  minus symbol turns distances into threshold.
@@ -468,26 +467,24 @@ class ProcessImage(tk.Tk):
         #  watershed_gray image do not take long to process.
         self.largest_ws_contours = parallel.MultiProc(watershed_img).pool_it
 
-        # Convert from float32 to uint8 data type to find contours.
-        # Alternative:  cv2.convertScaleAbs(img)
+        # Convert from int32 to uint8 data type to find contours.
+        # Conversion with cv2.convertScaleAbs(watershed_img) is same.
         watershed_gray = np.uint8(watershed_img)
 
         basins, _ = cv2.findContours(image=watershed_gray,
                                      mode=cv2.RETR_EXTERNAL,
                                      method=cv2.CHAIN_APPROX_SIMPLE)
 
-        # Note: using watershed_gray instead of watershed_img allows all
-        #  contours to be filled one shade of gray when cv2.FILLED is used
-        #  for thickness. When not used, as below, a 256 gradient series
-        #  fills the basins which are outlined with the specified gray shade.
         # Need to convert watershed array data to allow colored contours.
-        watershed_gray = cv2.cvtColor(watershed_gray, cv2.COLOR_GRAY2BGR)
+        watershed_color = cv2.cvtColor(watershed_gray, cv2.COLOR_GRAY2BGR)
 
         # Need to prevent a thickness value of 0, yet have it be a function
-        #  if image size so that it looks good in scaled images. Because the
+        #  if image size so that it looks good in scaled display. Because the
         #  watershed_gray img has a black background, the contour lines are
         #  easier to see and look better if they are thinner than in the
         #  annotated 'sized' image were metrics['line_thickness'] is used.
+        #  When user changes line thickness with + & - keys, only the 'sized'
+        #  image updates; the watershed image displays the original thickness.
         if self.metrics['line_thickness'] == 1:
             line_thickness = 1
         else:
@@ -500,7 +497,7 @@ class ProcessImage(tk.Tk):
         else:
             line_color = const.COLORS_CV[self.cbox_val['color'].get()]
 
-        cv2.drawContours(image=watershed_gray,
+        cv2.drawContours(image=watershed_color,
                          contours=basins,
                          contourIdx=-1,  # do all contours
                          color=line_color,
@@ -508,7 +505,7 @@ class ProcessImage(tk.Tk):
                          lineType=cv2.LINE_AA)
 
         # Convert from float32 to uint8 data type to make a PIL
-        # ImageTk.PhotoImage. Alternative: cv2.convertScaleAbs(img)
+        #  ImageTk.PhotoImage. Alternative: cv2.convertScaleAbs(img)
         distances_img = np.uint8(distances_img)
 
         self.update_image(img_name='thresh',
@@ -516,7 +513,7 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='dist_trans',
                           img_array=distances_img)
         self.update_image(img_name='watershed',
-                          img_array=watershed_gray)
+                          img_array=watershed_color)
 
         if img_size > const.SIZE_TO_WAIT:
             info = 'Report ready.\n\n\n'
