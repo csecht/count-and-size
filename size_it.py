@@ -356,8 +356,8 @@ class ProcessImage(tk.Tk):
     @property
     def watershed_segmentation(self) -> np.ndarray:
         """
-        Identify object contours with cv2.threshold(), cv2.distanceTransform,
-        and skimage.segmentation.watershed. Threshold types limited to
+        Segment objects with cv2.threshold(), cv2.distanceTransform,
+        and skimage.segmentation._watershed. Threshold types limited to
         Otsu and Triangle. For larger images, progress notifications are
         printed to Terminal.
         Called by process_all().
@@ -405,6 +405,7 @@ class ProcessImage(tk.Tk):
             distanceType=dt_type,
             maskSize=mask_size)
 
+        # Inform user of progress when processing large images.
         if img_size > const.SIZE_TO_WAIT:
             info = 'Completed distance transform; looking for peaks...\n\n\n'
             if self.slider_val['plm_footprint'].get() == 1:
@@ -422,16 +423,17 @@ class ProcessImage(tk.Tk):
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Generate the markers as local maxima of the distance to the background.
-        local_max: ndimage = peak_local_max(
-            image=distances_img,
-            min_distance=min_dist,
-            exclude_border=True,  # is min_dist
-            num_peaks=np.inf,
-            footprint=plm_kernel,
-            labels=thresh_img,
-            num_peaks_per_label=np.inf,
-            p_norm=np.inf,  # for Chebyshev distance
-            # p_norm=2,  # for Euclidean distance
+        # Don't use exclude_border; objects touching image border will be excluded
+        #   in ImageViewer.select_and_size().
+        local_max: ndimage = peak_local_max(image=distances_img,
+                                            min_distance=min_dist,
+                                            exclude_border=False, # True is min_dist
+                                            num_peaks=np.inf,
+                                            footprint=plm_kernel,
+                                            labels=thresh_img,
+                                            num_peaks_per_label=np.inf,
+                                            p_norm=np.inf,  # Chebyshev distance
+                                            # p_norm=2,  # Euclidean distance
         )
 
         if img_size > const.SIZE_TO_WAIT:
@@ -459,12 +461,10 @@ class ProcessImage(tk.Tk):
                                               compactness=1.0,
                                               watershed_line=True)
 
-        distances_img = np.uint8(distances_img)
-
         self.update_image(img_name='thresh',
                           img_array=thresh_img)
         self.update_image(img_name='dist_trans',
-                          img_array=distances_img)
+                          img_array=np.uint8(distances_img))
 
         return watershed_img
 
@@ -480,8 +480,8 @@ class ProcessImage(tk.Tk):
         Returns: None
         """
 
-        # Help user know what is happening with large image processing.
-        img_size: int = max(self.cvimg['gray'].shape)
+        # Inform user of progress when processing large images.
+        img_size: int = max(self.cvimg['gray'].shape)  # same shape as *img*.
         if img_size > const.SIZE_TO_WAIT:
             info = 'Watershed completed; now finding contours...\n\n\n'
             manage.info_message(widget=self.info_label,
@@ -491,7 +491,8 @@ class ProcessImage(tk.Tk):
         #   enclosing circles and calculate sizes of ws objects.
         # This step and watershed take the longest times, but watershed
         #  cannot be parallelized. Subsequent contouring steps for the
-        #  watershed image do not take long to process.
+        #  watershed image do not take long to process, so do not need
+        #  to be parallelized.
         self.largest_ws_contours: list = parallel.MultiProc(img).pool_it
 
         # Convert watershed array from int32 to uint8 data type to find contours.
@@ -1802,12 +1803,12 @@ class ImageViewer(ProcessImage):
             size2display: str = to_p.to_precision(value=object_size,
                                                   precision=self.num_sigfig)
 
-            # Convert sizes to float, assuming that individual sizes
-            #  listed in the report will be used in a spreadsheet or
-            #  other statistical analysis.
+            # Convert size strings to float, assuming that individual
+            #  sizes listed in the report will be used in a spreadsheet
+            #  or other statistical analysis.
             selected_sizes.append(float(size2display))
 
-            # Need to properly center text in circled object.
+            # Need to properly center text in the circled object.
             ((txt_width, _), baseline) = cv2.getTextSize(
                 text=size2display,
                 fontFace=const.FONT_TYPE,
@@ -1939,7 +1940,7 @@ class ImageViewer(ProcessImage):
             f'distanceType={dt_type}, maskSize={mask_size}\n'
             f'skimage functions:\n'
             f'{"   peak_local_max:".ljust(space)}min_distance={min_dist}\n'
-            f'{tab}footprint=np.ones{p_kernel}, np.uint8\n'
+            f'{tab}footprint=np.ones({p_kernel}, np.uint8)\n'
             f'{"   watershed:".ljust(space)}connectivity={connections}\n'
             f'{tab}compactness=1.0\n'  # NOTE: update if change in watershed method.
             f'{divider}\n'
