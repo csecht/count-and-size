@@ -103,7 +103,7 @@ class ProcessImage(tk.Tk):
     reduce_noise
     filter_image
     watershed_segmentation
-    contour_ws_segments
+    contour_rw_segments
     """
 
     def __init__(self):
@@ -1737,7 +1737,7 @@ class ImageViewer(ProcessImage):
 
         Args:
             contour_pointset: List of selected contours from
-             cv2.findContours in ProcessImage.contour_ws_segments().
+             cv2.findContours in ProcessImage.contour_rw_segments().
 
         Returns:
             None
@@ -2004,10 +2004,17 @@ if __name__ == "__main__":
     vcheck.minversion('3.7')
     vcheck.maxversion('3.11')
     manage.arguments()
+
     try:
         print(f'{Path(__file__).name} has launched...')
         app = ImageViewer()
         app.title('Count & Size Settings Report')
+        try:
+            icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
+            app.wm_iconphoto(True, icon)
+        except tk.TclError as err:
+            print('Cannot display program icon, so it will be blank or the tk default.')
+            print(f'tk error message: {err}')
         app.mainloop()
     except KeyboardInterrupt:
         print('*** User quit the program from Terminal command line. ***\n')
