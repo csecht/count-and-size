@@ -14,8 +14,9 @@ A report is provided of parameter settings, object count, individual
 object sizes, and sample size mean and range, along with an annotated
 image file of labeled objects.
 
+The program `size_it_RW.py` accomplishes object segmentation with skimage.segmentation.random_walker instead of skimage.segmentation.watershed that is used in `size_it.py`. While the random walker algorithm may provide better object discrimination for some images, as implemented here it increases processing times by about 8-fold. Large images with many objects can take well over a minute to process. The main difference in using `size_it_RW.py` is that interactive processing is triggered from a Button command instead of the action of individual sliders and pull-downs. This allows any number of parameter changes to be executed as a set.
 
-This Project was developed to sample oyster populations at various stages of aquaculture production, but can be used to measure any group of round or oblong objects on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can usually be segmented. While segmentation of objects in large or poorly contrasted overlapping clusters is unlikely, such clusters can be screened out by limiting the size range to provide fairly accurate metrics for the remaining individual objects.
+This Project was developed to sample oyster populations at various stages of aquaculture production, but can be used to measure any group of round or oblong objects on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can usually be segmented. While segmentation of objects in large or poorly contrasted overlapping clusters is unlikely, such clusters may be screened out by limiting the size range to provide fairly accurate metrics for the remaining individually segmented objects.
 
 Sizing standards are chosen from a pull-down menu. Pre-set standards include a 3-inch hockey puck and various U.S. coins. Sizing units are millimeters when one of the pre-set size standards is used, pixels when not, or determined by the user when using a custom standard. If "None" is chosen as a standard and the pixel diameter entry is kept as 1 (default settings), then displayed sizes are in pixel units. Users have an option for a custom size standard that requires entry of the known size in whatever units are needed.
 
@@ -32,10 +33,10 @@ https://pyimagesearch.com/2015/11/02/watershed-opencv/
 https://github.com/BebeSparkelSparkel/to-precision/releases/tag/0.0.0
 </sub>
 
-Development environment was Linux Ubuntu 20.04, Windows 11, and macOS 13.2, with Python 3.8.
+Development environment was Linux Ubuntu 20.04 (Python 3.8), Windows 11 (Python 3.11), and macOS 13.2 (Python 3.9).
 
 ### Usage examples:
-From within the downloaded repository folder, recommended command line invocation of the size_it.py module: `python3 -m size_it`
+From within the downloaded repository folder, recommended command line invocation is : `python3 -m size_it` or `python3 -m size_it_RW`.
 
 To view basic information, author, version, license, etc.: `python3 -m size_it --about`
 
@@ -69,6 +70,8 @@ Alternative commands (system dependent):
     python3 -m pip install -r requirements.txt (Linux and macOS)
     py -m pip install -r requirements.txt (Windows)
     python -m pip install -r requirements.txt (Windows)
+
+Note that the PyAMG package listed in requirements.txt is used only with `size_it_RW.py` and is not required for `size_it.py`. See https://pypi.org/project/pyamg/ for information.
 
 As with all repository downloads, it is a good idea to install the requirements in a Python virtual environment to avoid undesired changes in your system's Python library.
 
