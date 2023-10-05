@@ -5,6 +5,7 @@ scikit-image
 scipy
 psutil
 packaging
+pyamg
 
 #opencv-python~=4.5.5.62
 #Pillow~=10.0.0
@@ -13,7 +14,9 @@ packaging
 #scipy~=1.11.1
 #psutil~=5.9.5
 #packaging~=23.0
+#pyamg~=5.0.1
 # ^^ Development environment, as of June 2023, Linux Ubuntu 20.04, Windows 11, macOS 13.4
+# pyamg is used only with size_it_RW.py for run random_walker
 
 # Note that for PyCharm 2023, to get opencv documentation working, the interpreter
 #  needs to use opencv-python 4.5.5.62. Higher versions with PIP installation
