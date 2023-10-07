@@ -405,20 +405,25 @@ class ProcessImage(tk.Tk):
             distanceType=dt_type,
             maskSize=mask_size)
 
+        self.update_image(img_name='thresh',
+                          img_array=thresh_img)
+        self.update_image(img_name='dist_trans',
+                          img_array=np.uint8(distances_img))
+
         # Inform user of progress when processing large images.
         if img_size > const.SIZE_TO_WAIT:
-            info = 'Completed distance transform; looking for peaks...\n\n\n'
+            _info = 'Completed distance transform; looking for peaks...\n\n\n'
             if self.slider_val['plm_footprint'].get() == 1:
-                info = ('Completed distance transform; looking for peaks...\n'
+                _info = ('Completed distance transform; looking for peaks...\n'
                         'A peak_local max footprint of 1 may take a while.\n\n')
             manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=info)
+                                toplevel=app, infotxt=_info)
         elif self.slider_val['plm_footprint'].get() == 1:
             # Need to run self.setup_info_messages() at end of select_and_size()
             #  to cycle back to default size std units message.
-            info = 'A peak_local max footprint of 1 may take a while...\n\n\n'
+            _info = 'A peak_local max footprint of 1 may take a while...\n\n\n'
             manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=info)
+                                toplevel=app, infotxt=_info)
 
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
@@ -432,14 +437,13 @@ class ProcessImage(tk.Tk):
                                             footprint=plm_kernel,
                                             labels=thresh_img,
                                             num_peaks_per_label=np.inf,
-                                            p_norm=np.inf,  # Chebyshev distance
+                                            p_norm=np.inf)  # Chebyshev distance
                                             # p_norm=2,  # Euclidean distance
-        )
 
         if img_size > const.SIZE_TO_WAIT:
-            info = 'Found peaks; running watershed algorithm...\n\n\n'
+            _info = 'Found peaks; running watershed algorithm...\n\n\n'
             manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=info)
+                                toplevel=app, infotxt=_info)
 
         mask = np.zeros(shape=distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
@@ -461,11 +465,6 @@ class ProcessImage(tk.Tk):
                                               compactness=1.0,
                                               watershed_line=True)
 
-        self.update_image(img_name='thresh',
-                          img_array=thresh_img)
-        self.update_image(img_name='dist_trans',
-                          img_array=np.uint8(distances_img))
-
         return watershed_img
 
     def contour_ws_segments(self, img: np.ndarray) -> None:
@@ -483,9 +482,9 @@ class ProcessImage(tk.Tk):
         # Inform user of progress when processing large images.
         img_size: int = max(self.cvimg['gray'].shape)  # same shape as *img*.
         if img_size > const.SIZE_TO_WAIT:
-            info = 'Watershed completed; now finding contours...\n\n\n'
+            _info = 'Watershed completed; now finding contours...\n\n\n'
             manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=info)
+                                toplevel=app, infotxt=_info)
 
         # self.largest_ws_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of ws objects.
@@ -534,9 +533,9 @@ class ProcessImage(tk.Tk):
                           img_array=watershed_img)
 
         if img_size > const.SIZE_TO_WAIT:
-            info = 'Contours found. Report ready.\n\n\n'
+            _info = 'Contours found. Report ready.\n\n\n'
             manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=info)
+                                toplevel=app, infotxt=_info)
 
         # Now draw enclosing circles around watershed segments and
         #  annotate with object sizes in ImageViewer.select_and_size().
@@ -935,13 +934,13 @@ class ImageViewer(ProcessImage):
             Provide a notice in report (mainloop, app) window.
             Called locally from .protocol().
             """
-            info = ('That window cannot be closed from its window bar.\n'
+            _info = ('That window cannot be closed from its window bar.\n'
                     'Minimize it if it is in the way.\n'
                     'Esc or Ctrl-Q keys will Quit the program.')
             self.info_label.config(fg=const.COLORS_TK['vermilion'],
                                    font=cv2.FONT_HERSHEY_SIMPLEX)
             manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=info)
+                                toplevel=app, infotxt=_info)
             # Give user time to read the message before resetting it.
             app.after(3000, self.setup_info_messages)
 
@@ -1103,11 +1102,11 @@ class ImageViewer(ProcessImage):
                 txt2save=self.size_settings_txt + sizes,
                 caller='result')
 
-            info = ('Settings report and result image have been saved to:\n'
+            _info = ('Settings report and result image have been saved to:\n'
                     f'{Path(self.input_file).parent}')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=info)
+                                toplevel=app, infotxt=_info)
             app.after(4000, self.setup_info_messages)
 
         def _do_reset():
@@ -1602,12 +1601,12 @@ class ImageViewer(ProcessImage):
                                         caller=image_name)
 
             # Provide user with a notice that a file was created.
-            info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
+            _info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
                     f'{Path(self.input_file).parent}\n'
                     'with a timestamp.')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=info)
+                                toplevel=app, infotxt=_info)
             # Give user time to read the message before resetting it.
             app.after(4000, self.setup_info_messages)
 
