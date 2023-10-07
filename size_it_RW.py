@@ -218,7 +218,7 @@ class ProcessImage(tk.Tk):
         Adjust contrast of the input self.cvimg['gray'] image.
         Updates contrast and brightness via alpha and beta sliders.
         Displays contrasted and redux noise images.
-        Called by process_all(). Calls update_image().
+        Called by process_rw_and_sizes(). Calls update_image().
 
         Returns:
             None
@@ -246,7 +246,7 @@ class ProcessImage(tk.Tk):
         """
         Reduce noise in the contrast adjust image erode and dilate actions
         of cv2.morphologyEx operations.
-        Called by process_all(). Calls update_image().
+        Called by process_rw_and_sizes(). Calls update_image().
 
         Returns:
             None
@@ -292,7 +292,7 @@ class ProcessImage(tk.Tk):
         Applies a filter selection to blur the reduced noise image
         to prepare for threshold segmentation. Can also serve as a
         specialized noise reduction step.
-        Called from randomwalk_segmentation() and process_all().
+        Called from randomwalk_segmentation() and process_rw_and_sizes().
         Calls update_image().
 
         Returns:
@@ -361,37 +361,49 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='filter',
                           img_array=self.cvimg['filter'])
 
+    def threshold_image(self) -> None:
+        """
+        Produces a threshold image from the filtered image. This image
+        is used for masking in randomwalk_segmentation(). It is separate
+        here so that its display can be updated independently of running
+        randomwalk_segmentation().
+        Returns:
+            None
+        """
+        th_type: str = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
+
+        # Note from doc: Currently, the Otsu's and Triangle methods
+        #   are implemented only for 8-bit single-channel images.
+        #   For other cv2.THRESH_*, thresh needs to be manually provided.
+        # Convert values above thresh to a maxval of 255, white.
+        # The thresh parameter is determined automatically (0 is placeholder).
+        # Need to use type *_INVERSE for black on white images.
+        _, self.cvimg['thresh'] = cv2.threshold(src=self.cvimg['filter'],
+                                      thresh=0,
+                                      maxval=255,
+                                      type=th_type)
+
+        self.update_image(img_name='thresh',
+                          img_array=self.cvimg['thresh'])
+
     @property
     def randomwalk_segmentation(self) -> list:
         """
-        Segment objects with cv2.threshold(), cv2.distanceTransform,
-        and skimage.segmentation._watershed. Threshold types limited to
-        Otsu and Triangle. For larger images, progress notifications are
-        printed to Terminal.
-        Called by process_all().
-        Calls select_and_size() and update_image().
+        Segment objects with cv2.distanceTransform, skimage
+        peak_local_max and skimage.segmentation.random_walker.
+        Called as arg for select_and_size() from process_rw_and_sizes().
+        Calls update_image().
 
         Returns:
             The contour pointset list from parallel.MultiProc(rw_img).pool_it
         """
 
-        th_type: str = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
         dt_type: str = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
         mask_size = int(self.cbox_val['dt_mask_size'].get())
         min_dist: int = self.slider_val['plm_mindist'].get()
         p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
         plm_kernel = np.ones(shape=p_kernel, dtype=np.uint8)
-
-        # Note from doc: Currently, the Otsu's and Triangle methods
-        #   are implemented only for 8-bit single-channel images.
-        #   For other cv2.THRESH_*, thresh needs to be manually provided.
-        # Convert values above thresh to a maxval of 255, white.
-        # Need to use type *_INVERSE for black on white images.
-        _, thresh_img = cv2.threshold(src=self.cvimg['filter'],
-                                      thresh=0,
-                                      maxval=255,
-                                      type=th_type)
 
         # Now we want to segment objects in the image.
         # Generate the markers as local maxima of the distance to the background.
@@ -402,23 +414,22 @@ class ProcessImage(tk.Tk):
         # Note that maskSize=0 calculates the precise mask size only for
         #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
         distances_img: np.ndarray = cv2.distanceTransform(
-            src=thresh_img,
+            src=self.cvimg['thresh'],
             distanceType=dt_type,
             maskSize=mask_size)
+
+        self.update_image(img_name='dist_trans',
+                          img_array=np.uint8(distances_img))
 
         # Inform user of progress when processing large images.
         _info = 'Completed distance transform. Looking for peaks...\n\n\n\n'
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
+
         if self.slider_val['plm_footprint'].get() == 1:
             _info = 'A peak_local_max footprint of 1 will take longer...\n\n\n\n'
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-
-        self.update_image(img_name='thresh',
-                          img_array=thresh_img)
-        self.update_image(img_name='dist_trans',
-                          img_array=np.uint8(distances_img))
 
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
@@ -430,7 +441,7 @@ class ProcessImage(tk.Tk):
                                             exclude_border=False, # True is min_dist
                                             num_peaks=np.inf,
                                             footprint=plm_kernel,
-                                            labels=thresh_img,
+                                            labels=self.cvimg['thresh'],
                                             num_peaks_per_label=np.inf,
                                             p_norm=np.inf)  # Chebyshev distance
                                             # p_norm=2,  # Euclidean distance
@@ -454,12 +465,12 @@ class ProcessImage(tk.Tk):
         #  account (they are removed from the graph).
 
         # Replace thresh_img background with -1 to ignore those pixels.
-        labeled_array[labeled_array == thresh_img] = -1
+        labeled_array[labeled_array == self.cvimg['thresh']] = -1
 
         # NOTE: beta and tolerances were empirically determined for best
         #  performance with the sample images running an Intel i9600k @ 4.8 GHz.
         #  Default beta & tol take ~8x longer to process for similar results.
-        rw_img = random_walker(data=thresh_img,
+        rw_img = random_walker(data=self.cvimg['thresh'],
                                labels=labeled_array,
                                beta=5, # default: 130,
                                mode='cg_mg',  # Need pyamg installed. Default: 'cg_j'.
@@ -510,7 +521,7 @@ class ImageViewer(ProcessImage):
     set_size_std
     select_and_size
     report_results
-    process_all
+    process_rw_and_sizes
     process_sizes
     """
 
@@ -634,7 +645,7 @@ class ImageViewer(ProcessImage):
         #  managers position windows.
         w_offset = int(self.winfo_screenwidth() * 0.55)
         self.geometry(f'+{w_offset}+0')
-        self.resizable(width=True, height=False)
+        self.resizable(width=True, height=True)
 
         # Need to provide exit info msg to Terminal.
         self.protocol(name='WM_DELETE_WINDOW',
@@ -673,8 +684,7 @@ class ImageViewer(ProcessImage):
             """
             # Provide some info to user for why the start screen appears
             #  frozen when processing larger images.
-            if max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT:
-                process_btn_txt.set('Processing started, wait...')
+            process_btn_txt.set('Processing started, wait...')
 
             self.start_now()
             start_win.destroy()
@@ -860,9 +870,10 @@ class ImageViewer(ProcessImage):
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
-        # Place process_all() and display_windows() last, in this sequence,
-        #  for best performance.
-        self.process_all()
+        # Place preprocess(), process_rw_and_sizes() and display_windows(),
+        # in this sequence, to be called last for best performance.
+        self.preprocess()
+        self.process_rw_and_sizes()
         self.display_windows()
 
     def setup_image_windows(self) -> None:
@@ -994,6 +1005,7 @@ class ImageViewer(ProcessImage):
         self.contour_report_frame.columnconfigure(0, weight=1)
         self.contour_selectors_frame.columnconfigure(1, weight=2)
 
+
         self.contour_report_frame.grid(column=0, row=0,
                                        columnspan=2,
                                        padx=(5, 5), pady=(5, 5),
@@ -1067,7 +1079,7 @@ class ImageViewer(ProcessImage):
             startup, thus shortening startup time.
             """
             self.set_defaults()
-            self.process_all()
+            self.process_rw_and_sizes()
 
         button_params = dict(
             style='My.TButton',
@@ -1081,8 +1093,8 @@ class ImageViewer(ProcessImage):
                               command=_save_results,
                               **button_params)
 
-        process_btn = ttk.Button(text='Process settings',
-                                 command=self.process_all,
+        process_btn = ttk.Button(text='Run Random Walker',
+                                 command=self.process_rw_and_sizes,
                                  **button_params)
 
         # Widget griding in the mainloop window.
@@ -1119,7 +1131,10 @@ class ImageViewer(ProcessImage):
         #  for one Scale() in each Toplevel().
         scale_len = int(self.winfo_screenwidth() * 0.25)
 
-        # All Scale widgets use a mouse bind to call process_all() or process_sizes().
+        # Scale widgets that are pre-random_walker (contrast, noise,
+        # filter and threshold) and size max/min are called with mouse
+        # button release.
+        # Peak-local-max params and select_and_size() are called with Button.
         self.slider['alpha_lbl'].configure(text='Contrast/gain/alpha:',
                                            **const.LABEL_PARAMETERS)
         self.slider['alpha'].configure(from_=0.0, to=4.0,
@@ -1205,7 +1220,19 @@ class ImageViewer(ProcessImage):
         #  are called on mouse button release.
         # Note that the <if '_lbl'> condition doesn't improve performance,
         #  but is there for clarity's sake.
-        def _do_nothing(event=None):
+
+        def _need_to_click(event=None):
+            """
+            Post notice when selecting peak_local_max, because plm slider
+            values are used in randomwalk_segmentation(), which is called
+            only from a Button().
+            """
+            _info = ('Click "Run Random Walker" to update counts and sizes.\n'
+                     f'{Path(self.input_file).parent}')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+
             return event
 
         for _name, widget in self.slider.items():
@@ -1213,8 +1240,10 @@ class ImageViewer(ProcessImage):
                 continue
             if 'circle_r' in _name:
                 widget.bind('<ButtonRelease-1>', self.process_sizes)
+            elif 'plm_' in _name:
+                widget.bind('<ButtonRelease-1>', _need_to_click)
             else:
-                widget.bind('<ButtonRelease-1>', _do_nothing)
+                widget.bind('<ButtonRelease-1>', self.preprocess)
 
     def config_comboboxes(self) -> None:
         """
@@ -1230,8 +1259,9 @@ class ImageViewer(ProcessImage):
         #  and padding in different systems.
         width_correction = 2 if const.MY_OS == 'win' else 0  # is Linux or macOS
 
-        # Note: functions are bound to Combobox actions at the end of this method.
-        #   Combobox styles are set in manage.ttk_styles(), called in setup_buttons().
+        # Comboboxes that are pre-random_walker (morphology, filter, threshold)
+        #  and size standards are bound with mouse button release.
+        # Combobox styles are set in manage.ttk_styles(), called in setup_buttons().
         self.cbox['morphop_lbl'].config(text='Reduce noise, morphology operator:',
                                         **const.LABEL_PARAMETERS)
         self.cbox['morphop'].config(textvariable=self.cbox_val['morphop'],
@@ -1285,16 +1315,28 @@ class ImageViewer(ProcessImage):
         # Now bind functions to all Comboboxes.
         # Note that the  <if '_lbl'> condition doesn't seem to be needed for
         # performance; it just clarifies the bind intention.
-        def _do_nothing(event=None):
-            return event
+
+        def _need_to_click(event=None):
+            """
+            Post notice when selecting peak_local_max, because dt slider
+            values are used in randomwalk_segmentation(), which is called
+            only from a Button().
+            """
+            _info = ('Click "Run Random Walker" to update counts and sizes.\n'
+                     f'{Path(self.input_file).parent}')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
 
         for _name, widget in self.cbox.items():
             if '_lbl' in _name:
                 continue
             if 'size_' in _name:
                 widget.bind('<<ComboboxSelected>>', func=self.process_sizes)
+            elif 'dt_' in _name:
+                widget.bind('<ButtonRelease-1>', _need_to_click)
             else:
-                widget.bind('<<ComboboxSelected>>', func=_do_nothing)
+                widget.bind('<<ComboboxSelected>>', func=self.preprocess)
 
     def config_entries(self) -> None:
         """
@@ -1487,11 +1529,6 @@ class ImageViewer(ProcessImage):
                                        pady=(4, 0),
                                        sticky=tk.W)
 
-        # ws_connect_padx = (0, self.cbox['ws_connect'].winfo_reqwidth() + 10)
-        # self.cbox['ws_connect_lbl'].grid(column=1, row=10,
-        #                                  padx=ws_connect_padx,
-        #                                  **east_params_relative)
-
         size_std_padx = (0, self.cbox['size_std'].winfo_reqwidth() + 10)
         self.cbox['size_std_lbl'].grid(column=1, row=19,
                                        padx=size_std_padx,
@@ -1635,7 +1672,7 @@ class ImageViewer(ProcessImage):
         Assign a unit conversion factor to the observed pixel diameter
         of the chosen size standard and calculate the number of significant
         figure in any custom size entry.
-        Called from process_all(), process_sizes(), __init__.
+        Called from process_rw_and_sizes(), process_sizes(), __init__.
 
         Returns:
             None
@@ -1694,7 +1731,7 @@ class ImageViewer(ProcessImage):
         draw an enclosing circle around contours, then display them
         on the input image. Objects are expected to be oblong so that
         circle diameter can represent the object's length.
-        Called by process_all(), process_sizes().
+        Called by process_rw_and_sizes(), process_sizes().
         Calls update_image().
 
         Args:
@@ -1817,7 +1854,7 @@ class ImageViewer(ProcessImage):
         Write the current settings and cv metrics in a Text widget of
         the report_frame. Same text is printed in Terminal from "Save"
         button.
-        Called from process_all(), process_sizes(), __init__.
+        Called from process_rw_and_sizes(), process_sizes(), __init__.
         Returns:
             None
         """
@@ -1917,7 +1954,33 @@ class ImageViewer(ProcessImage):
         utils.display_report(frame=self.contour_report_frame,
                              report=self.size_settings_txt)
 
-    def process_all(self, event=None) -> None:
+    def preprocess(self, event=None) -> None:
+        """
+        Run processing functions prior to randomwalk_segmentation() to
+        allow calling them and updating their images indepently of the
+        lengthy processing time of randomwalk_segmentation().
+        Args:
+            event: Implicit widget event.
+
+        Returns:
+            *event* as a formality; functionally None.
+        """
+        self.adjust_contrast()
+        self.reduce_noise()
+        self.filter_image()
+        self.threshold_image()
+        self.set_size_std()
+        self.report_results()
+        _info = ('Preprocessing completed.\n'
+                 'Click "Run Random Walker" to update counts and sizes.\n'
+                 f'{Path(self.input_file).parent}')
+        self.info_label.config(fg=const.COLORS_TK['blue'])
+        manage.info_message(widget=self.info_label,
+                            toplevel=app, infotxt=_info)
+
+        return event
+
+    def process_rw_and_sizes(self, event=None) -> None:
         """
         Runs all image processing methods from ProcessImage(), plus
         sizing and reporting methods.
@@ -1928,10 +1991,6 @@ class ImageViewer(ProcessImage):
         Returns:
             *event* as a formality; is functionally None.
         """
-        self.adjust_contrast()
-        self.reduce_noise()
-        self.filter_image()
-        self.set_size_std()
         self.select_and_size(contour_pointset=self.randomwalk_segmentation)
         self.report_results()
 
