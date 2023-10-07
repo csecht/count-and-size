@@ -223,17 +223,17 @@ def display_report(frame: tk.Frame, report: str) -> None:
     #  font=('Courier', 10) should also work, if need to set font size.
     #  Smaller fonts are needed to shorten the window as lines & rows are added.
     #  With smaller font, need better fg font contrast, e.g. yellow, not MASTER_BG.
-    reporttxt = tk.Text(frame,
-                        # font='TkFixedFont',
+    reporttxt = ScrolledText(master=frame,
                         font=txt_font,
                         bg=const.DARK_BG,
-                        # fg=const.MASTER_BG,  # gray80 matches master self bg.
                         fg=const.COLORS_TK['yellow'],  # Matches slider labels.
                         width=max_line,
                         height=report.count('\n'),
                         relief='flat',
                         padx=8, pady=8,
+                        wrap=tk.WORD,
                         )
+
     # Replace prior Text with current text;
     #   hide cursor in Text; (re-)grid in-place.
     reporttxt.delete(index1='1.0', index2=tk.END)
