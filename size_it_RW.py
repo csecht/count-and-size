@@ -860,7 +860,6 @@ class ImageViewer(ProcessImage):
         #  simultaneously for a visually cleaner start.
         self.setup_image_windows()
         self.configure_main_window()
-        # utils.wait4it_msg(size_limit=max(self.cvimg['gray'].shape))
         self.setup_info_messages()
         self.setup_buttons()
         self.config_sliders()
@@ -1071,7 +1070,7 @@ class ImageViewer(ProcessImage):
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(4000, self.setup_info_messages)
+            app.after(5000, self.setup_info_messages)
 
         def _do_reset():
             """
@@ -1847,7 +1846,7 @@ class ImageViewer(ProcessImage):
         # Cycle back to the starting info about size std units after
         #   last progress message in contour_rw_segments().
         # Give user time to see the final progress msg before cycling back.
-        app.after(2000, self.setup_info_messages)
+        app.after(3000, self.setup_info_messages)
 
     def report_results(self) -> None:
         """
@@ -1871,7 +1870,6 @@ class ImageViewer(ProcessImage):
         circle_r_min: int = self.slider_val['circle_r_min'].get()
         circle_r_max: int = self.slider_val['circle_r_max'].get()
         min_dist: int = self.slider_val['plm_mindist'].get()
-        # connections: int = int(self.cbox_val['ws_connect'].get())
         dt_type: str = self.cbox_val['dt_type'].get()
         mask_size: int = int(self.cbox_val['dt_mask_size'].get())
         p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
