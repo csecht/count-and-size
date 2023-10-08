@@ -905,7 +905,7 @@ class ImageViewer(ProcessImage):
         #  simultaneously for a visually cleaner start.
         self.setup_image_windows()
         self.configure_main_window()
-        utils.wait4it_msg(size_limit=max(self.cvimg['gray'].shape))
+        # utils.wait4it_msg(size_limit=max(self.cvimg['gray'].shape))
         self.setup_info_messages()
         self.setup_buttons()
         self.config_sliders()

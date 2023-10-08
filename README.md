@@ -1,7 +1,7 @@
 # Project: count-and-size
-![sizeit_icon_512.png](images/sizeit_icon_512.png)
-
-<sub>Image of the program's desktop icon</sub>
+![oysters_25pct.jpg](images%2Foysters_25pct.jpg)
+![oysters_sized_25pct.jpg](images%2Foysters_sized_25pct.jpg)
+<sub>Farmed oyster population sample (top); back lit, with size annotations, U.S. quarter dollar size standard, 93.1 mm sample mean (bottom).</sub>
 
 The interactive Python program, `size_it.py`, is a tkinter GUI for OpenCV processing of an image to obtain sizes, means,
 and ranges of objects in a sample population. The distance transform and
@@ -14,7 +14,7 @@ A report is provided of parameter settings, object count, individual
 object sizes, and sample size mean and range, along with an annotated
 image file of labeled objects.
 
-The program `size_it_RW.py` accomplishes object segmentation with skimage.segmentation.random_walker instead of skimage.segmentation.watershed used in `size_it.py`. While the random walker algorithm may provide better object discrimination for some images, it can increase processing times by about 8-fold. Large images with many objects thus could take well over a minute to process. The main difference in using `size_it_RW.py` is that interactive processing of counts and sizes is triggered from a Button command instead of the action of individual sliders and pull-downs. This allows the distance transform and peak-local-max parameters to be changed and executed as a group. This approach can save time when you already have some idea about the combination of these settings you need. Pre-processing functions, such as noise reduction, filtering, and thresholding, still provide live updates when their individual slider or pull-down values are changed, as they do in `size_it.py`.
+The program `size_it_RW.py` accomplishes object segmentation with the random walker algorithm in place of watershed. While random walker may provide better object segmentation for some images, it can increase processing times by about 8-fold. Large images with many objects may take minutes to process. The main difference in using `size_it_RW.py` is that interactive processing of counts and sizes is triggered from a Button command instead of the action of individual sliders and pull-downs. This allows the distance transform and peak-local-max parameters to be changed and executed as a group. This approach can save time when you already have some idea about the combination of these settings you need. Pre-processing functions, such as noise reduction, filtering, and thresholding, still provide live updates when their individual slider or pull-down values are changed.
 
 This Project was developed to sample oyster populations at various stages of aquaculture production, but can be used to measure any group of round or oblong objects on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can usually be segmented. While segmentation of objects in large or poorly contrasted overlapping clusters is unlikely, such clusters may be screened out by limiting the size range to provide fairly accurate metrics for the remaining individually segmented objects.
 
