@@ -296,8 +296,11 @@ class ProcessImage(tk.Tk):
 
         _k = self.slider_val['filter_k'].get()
 
-        # If filter kernel slider is set to 0, then don't apply a filter.
+        # If filter kernel slider is set to 0, then proceed without,
+        # filtering and use the redux image from reduce_noise().
         if _k == 0:
+            self.update_image(img_name='filter',
+                              img_array=self.cvimg['redux'])
             return
 
         # cv2.GaussianBlur and cv2.medianBlur need to have odd kernels,
@@ -386,8 +389,14 @@ class ProcessImage(tk.Tk):
         #   are implemented only for 8-bit single-channel images.
         #   For other cv2.THRESH_*, thresh needs to be manually provided.
         # Convert values above thresh to a maxval of 255, white.
+        # The thresh parameter is determined automatically (0 is placeholder).
         # Need to use type *_INVERSE for black on white images.
-        _, thresh_img = cv2.threshold(src=self.cvimg['filter'],
+        if self.slider_val['filter_k'].get() == 0:
+            image2threshold = self.cvimg['redux']
+        else:
+            image2threshold = self.cvimg['filter']
+
+        _, thresh_img = cv2.threshold(src=image2threshold,
                                       thresh=0,
                                       maxval=255,
                                       type=th_type)
