@@ -1195,7 +1195,8 @@ class ImageViewer(ProcessImage):
                                          variable=self.slider_val['noise_k'],
                                          **const.SCALE_PARAMETERS)
 
-        self.slider['noise_iter_lbl'].configure(text='Reduce noise, iterations:',
+        self.slider['noise_iter_lbl'].configure(text='Reduce noise, iterations\n'
+                                                     '(0 may extend processing time):',
                                                 **const.LABEL_PARAMETERS)
 
         self.slider['noise_iter'].configure(from_=0, to=5,
