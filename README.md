@@ -142,7 +142,7 @@ Saved files are written to the folder of the input image.
 10. Annotation font size for selected objects can be changed with Ctrl + and Ctrl - keys. Annotation line thickness can be changed with Shift-Ctrl + and Shift-Ctrl -.
 
 ### Known Issues:
-On rare occasions, the program may stall when the information message, "Random walk completed. Finding contours..." is displayed. It stalled because of a forking issue with the multiprocessing Pool function. The program needs to be restarted. The stall was likely not caused by the settings used, so they can be entered again and everything should be fine in subsequent runs.
+Waiting for user feedback.
 
 ### Attributions
 All image files are from the author, C.S. Echt.
