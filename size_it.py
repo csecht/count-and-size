@@ -1733,6 +1733,8 @@ class ImageViewer(ProcessImage):
         #  only when 'Custom' is selected.
         # Verify that entries are numbers and define self.num_sigfig.
         #  Custom sizes can be entered as integer, float, or power operator.
+        # Number of significant figures is the lowest of that for the
+        #  standard's size value vs. it's pixel diameter.
         if size_std == 'Custom':
             self.size_cust_entry.grid()
             self.size_cust_label.grid()
@@ -1740,7 +1742,11 @@ class ImageViewer(ProcessImage):
             try:
                 float(custom_size)  # will raise ValueError if not a number.
                 self.unit_per_px.set(float(custom_size) / int(size_std_px))
-                self.num_sigfig = utils.count_sig_fig(custom_size)
+                if size_std_px == '1':
+                    self.num_sigfig = utils.count_sig_fig(custom_size)
+                else:
+                    self.num_sigfig = min(utils.count_sig_fig(custom_size),
+                                          utils.count_sig_fig(size_std_px))
             except ValueError:
                 messagebox.showinfo(
                     title='Custom size',
@@ -1758,7 +1764,11 @@ class ImageViewer(ProcessImage):
 
             preset_std_size = const.SIZE_STANDARDS[size_std]
             self.unit_per_px.set(preset_std_size / int(size_std_px))
-            self.num_sigfig = utils.count_sig_fig(preset_std_size)
+            if size_std_px == '1':
+                self.num_sigfig = utils.count_sig_fig(preset_std_size)
+            else:
+                self.num_sigfig = min(utils.count_sig_fig(preset_std_size),
+                                      utils.count_sig_fig(size_std_px))
 
     def select_and_size(self, contour_pointset: list) -> None:
         """
