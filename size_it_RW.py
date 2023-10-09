@@ -525,9 +525,6 @@ class ProcessImage(tk.Tk):
         #  cannot be parallelized. Subsequent contouring steps for the
         #  random walker image in select_and_size() do not take long to
         #  process, so do not need to be parallelized.
-        # Note that within PyCharm, multiprocessing may hang with slow iteration
-        #  of Process ForkPoolWorker and requires restarting the script. This
-        #  does not seem to be an issue when running from the system Terminal.
         self.randomwalk_contours: list = parallel.MultiProc(rw_img).pool_it
 
         _info = 'Contours drawn. Calculating sizes...\n\n\n\n'
@@ -1115,6 +1112,7 @@ class ImageViewer(ProcessImage):
             startup, thus shortening startup time.
             """
             self.set_defaults()
+            self.preprocess()
             self.process_rw_and_sizes()
 
         button_params = dict(
