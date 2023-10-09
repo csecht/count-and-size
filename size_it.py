@@ -250,6 +250,13 @@ class ProcessImage(tk.Tk):
         noise_k = _k + 1 if _k % 2 == 0 else _k
         iteration = self.slider_val['noise_iter'].get()
 
+        # If redux iteration slider is set to 0, then proceed without,
+        # noise reduction and use the contrast image from adjust_contrast().
+        if iteration == 0:
+            self.update_image(img_name='redux',
+                              img_array=self.cvimg['contrast'])
+            return
+
         # Need integers for the cv function parameters.
         morph_shape = const.CV_MORPH_SHAPE[self.cbox_val['morphshape'].get()]
         morph_op = const.CV_MORPHOP[self.cbox_val['morphop'].get()]
@@ -293,15 +300,30 @@ class ProcessImage(tk.Tk):
 
         filter_selected = self.cbox_val['filter'].get()
         border_type = cv2.BORDER_DEFAULT
+        noise_iter = self.slider_val['noise_iter'].get()
 
         _k = self.slider_val['filter_k'].get()
 
+        # If filter kernel slider and noise iteration are both set to 0,
+        # then proceed without filtering and use the contrasted image.
+        if _k == 0 and noise_iter == 0:
+            self.update_image(img_name='filter',
+                              img_array=self.cvimg['contrast'])
+            return
+
         # If filter kernel slider is set to 0, then proceed without,
-        # filtering and use the redux image from reduce_noise().
+        # filtering and use the reduced noise image.
         if _k == 0:
             self.update_image(img_name='filter',
                               img_array=self.cvimg['redux'])
             return
+
+        # Need to filter the contrasted image when noise reduction is
+        #  not applied.
+        if noise_iter == 0:
+            image2redux = self.cvimg['contrast']
+        else:
+            image2redux = self.cvimg['redux']
 
         # cv2.GaussianBlur and cv2.medianBlur need to have odd kernels,
         #   but cv2.blur and cv2.bilateralFilter will shift image between
@@ -320,7 +342,7 @@ class ProcessImage(tk.Tk):
 
         if filter_selected == 'cv2.bilateralFilter':
             self.cvimg['filter'] = cv2.bilateralFilter(
-                src=self.cvimg['redux'],
+                src=image2redux,
                 # d=-1 or 0, is very CPU intensive.
                 d=filter_k,
                 sigmaColor=19,
@@ -333,23 +355,23 @@ class ProcessImage(tk.Tk):
         #  how-to-get-rid-of-ripples-from-a-gradient-image-of-a-smoothed-image
         elif filter_selected == 'cv2.GaussianBlur':
             self.cvimg['filter'] = cv2.GaussianBlur(
-                src=self.cvimg['redux'],
+                src=image2redux,
                 ksize=(filter_k, filter_k),
                 sigmaX=0,
                 sigmaY=0,
                 borderType=border_type)
         elif filter_selected == 'cv2.medianBlur':
             self.cvimg['filter'] = cv2.medianBlur(
-                src=self.cvimg['redux'],
+                src=image2redux,
                 ksize=filter_k)
         elif filter_selected == 'cv2.blur':
             self.cvimg['filter'] = cv2.blur(
-                src=self.cvimg['redux'],
+                src=image2redux,
                 ksize=(filter_k, filter_k),
                 borderType=border_type)
         else:  # there are no other choices, but include for future.
             self.cvimg['filter'] = cv2.blur(
-                src=self.cvimg['redux'],
+                src=image2redux,
                 ksize=(filter_k, filter_k),
                 borderType=border_type)
 
@@ -384,6 +406,8 @@ class ProcessImage(tk.Tk):
         p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
         plm_kernel = np.ones(shape=p_kernel, dtype=np.uint8)
+        filter_k = self.slider_val['filter_k'].get()
+        noise_iter = self.slider_val['noise_iter'].get()
 
         # Note from doc: Currently, the Otsu's and Triangle methods
         #   are implemented only for 8-bit single-channel images.
@@ -391,7 +415,9 @@ class ProcessImage(tk.Tk):
         # Convert values above thresh to a maxval of 255, white.
         # The thresh parameter is determined automatically (0 is placeholder).
         # Need to use type *_INVERSE for black on white images.
-        if self.slider_val['filter_k'].get() == 0:
+        if filter_k == 0 and noise_iter == 0:
+            image2threshold = self.cvimg['contrast']
+        elif filter_k == 0:
             image2threshold = self.cvimg['redux']
         else:
             image2threshold = self.cvimg['filter']
@@ -501,6 +527,9 @@ class ProcessImage(tk.Tk):
         #  cannot be parallelized. Subsequent contouring steps for the
         #  watershed image do not take long to process, so do not need
         #  to be parallelized.
+        # Note that within PyCharm, multiprocessing may hang with slow iteration
+        #  of Process ForkPoolWorker and requires restarting the script. This
+        #  does not seem to be an issue when running from the system Terminal.
         self.largest_ws_contours: list = parallel.MultiProc(img).pool_it
 
         # Convert watershed array from int32 to uint8 data type to find contours.
@@ -1191,13 +1220,13 @@ class ImageViewer(ProcessImage):
         self.slider['noise_iter_lbl'].configure(text='Reduce noise, iterations:',
                                                 **const.LABEL_PARAMETERS)
 
-        self.slider['noise_iter'].configure(from_=1, to=5,
+        self.slider['noise_iter'].configure(from_=0, to=5,
                                             tickinterval=1,
                                             variable=self.slider_val['noise_iter'],
                                             **const.SCALE_PARAMETERS)
 
         self.slider['filter_k_lbl'].configure(text='Filter kernel size\n'
-                                                   '(only odd integers or 0 used):',
+                                                   '(only odd integers, 0 is no filter):',
                                               **const.LABEL_PARAMETERS)
         self.slider['filter_k'].configure(from_=0, to=111,
                                           tickinterval=9,
@@ -1664,7 +1693,7 @@ class ImageViewer(ProcessImage):
 
         # Set/Reset Combobox widgets.
         self.cbox['morphop'].current(0)  # 'cv2.MORPH_OPEN' == 2
-        self.cbox['morphshape'].current(0)  # 'cv2.MORPH_RECT' == 0, cv2 default
+        self.cbox['morphshape'].current(2)  # 'cv2.MORPH_ELLIPSE' == 2
         self.cbox['filter'].current(0)  # 'cv2.blur' == 0, cv2 default
         self.cbox['dt_type'].current(1)  # 'cv2.DIST_L2' == 2
         self.cbox['dt_mask_size'].current(1)  # '3' == cv2.DIST_MASK_3
@@ -1889,11 +1918,14 @@ class ImageViewer(ProcessImage):
 
         # Only odd kernel integers are used for processing.
         _nk: int = self.slider_val['noise_k'].get()
-        noise_k: int = _nk + 1 if _nk % 2 == 0 else _nk
+        if noise_iter == 0:
+            noise_k = 'noise reduction not applied'
+        else:
+            noise_k = _nk + 1 if _nk % 2 == 0 else _nk
 
         _fk: int = self.slider_val['filter_k'].get()
         if _fk == 0:
-            filter_k = 'no filter applied'
+            filter_k = 'kernel = 0; filter not applied'
         else:
             filter_k = _fk + 1 if _fk % 2 == 0 else _fk
             filter_k = f'({filter_k}, {filter_k})'
