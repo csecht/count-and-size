@@ -178,7 +178,7 @@ class ProcessImage(tk.Tk):
         self.metrics: dict = {}
 
         self.num_dt_segments: int = 0
-        self.largest_ws_contours: list = []
+        self.watershed_contours: list = []
         self.sorted_size_list: list = []
         self.unit_per_px = tk.DoubleVar()
         self.num_sigfig: int = 0
@@ -521,16 +521,13 @@ class ProcessImage(tk.Tk):
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
 
-        # self.largest_ws_contours is used in select_and_size() to draw
+        # self.watershed_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of ws objects.
         # This step and watershed take the longest times, but watershed
         #  cannot be parallelized. Subsequent contouring steps for the
         #  watershed image do not take long to process, so do not need
         #  to be parallelized.
-        # Note that within PyCharm, multiprocessing may hang with slow iteration
-        #  of Process ForkPoolWorker and requires restarting the script. This
-        #  does not seem to be an issue when running from the system Terminal.
-        self.largest_ws_contours: list = parallel.MultiProc(img).pool_it
+        self.watershed_contours: list = parallel.MultiProc(img).pool_it
 
         # Convert watershed array from int32 to uint8 data type to find contours.
         # Conversion with cv2.convertScaleAbs(watershed_img) also works.
@@ -1220,7 +1217,6 @@ class ImageViewer(ProcessImage):
         self.slider['noise_iter_lbl'].configure(text='Reduce noise, iterations\n'
                                                      '(0 may extend processing time):',
                                                 **const.LABEL_PARAMETERS)
-
         self.slider['noise_iter'].configure(from_=0, to=5,
                                             tickinterval=1,
                                             variable=self.slider_val['noise_iter'],
@@ -2015,7 +2011,7 @@ class ImageViewer(ProcessImage):
         self.filter_image()
         self.set_size_std()
         self.contour_ws_segments(img=self.watershed_segmentation)
-        self.select_and_size(contour_pointset=self.largest_ws_contours)
+        self.select_and_size(contour_pointset=self.watershed_contours)
         self.report_results()
 
         return event
@@ -2032,7 +2028,7 @@ class ImageViewer(ProcessImage):
             *event* as a formality; is functionally None.
         """
         self.set_size_std()
-        self.select_and_size(contour_pointset=self.largest_ws_contours)
+        self.select_and_size(contour_pointset=self.watershed_contours)
         self.report_results()
 
         return event
