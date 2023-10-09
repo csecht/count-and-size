@@ -1,15 +1,16 @@
-"""A module to run parallel processes for contouring watershed basins."""
-# Copyright (C) 2021-2023 C. Echt under GNU General Public License'
+"""A module to run parallel processes for contouring skimage segments."""
+# Copyright (C) 2023 C. Echt under GNU General Public License'
 
 # Standard library imports.
 from multiprocessing.pool import Pool
 
-import cv2
+# Third party imports.
 import numpy as np
 
 # Local application imports.
 # pylint: disable=import-error
 from utility_modules import constants as const
+from utility_modules import pool_worker
 
 # There is a bug(?) in PyCharm that does not recognize cv2 memberships,
 #  so pylint and inspections flag every use of cv2.*.
@@ -18,8 +19,8 @@ from utility_modules import constants as const
 
 class MultiProc:
     """
-    A Class that handles image multiprocessing outside the tk.TK app Classes
-    so that pickling errors are avoided.
+    A Class to handle image multiprocessing outside tk.TK app Classes so
+    that pickling errors can be avoided.
     Methods:
          contour_the_segments: the multiprocessing.Pool.map() func argument.
          pool_it: handles multiprocessing.Pool.map().
@@ -29,25 +30,19 @@ class MultiProc:
 
     def contour_the_segments(self, label: int) -> np.ndarray:
         """
-        Used as func in multiprocess.Pool to generate watershed contours
+        Used as func in multiprocess.Pool to generate segment contours
         for watershed basins or random_walker segments.
-        Called from pool_it().
+        Called from pool_it(). Calls helper module pool_worker.py.
         Args:
             label: an integer element from the list of marker indexes
                    from a labeled image.
         Returns:
-            The indexed (labeled basin) ndarray element of the largest
-            contours to be added to a contour list for object sizing.
+            From a worker module, he indexed (labeled basin) ndarray
+            element of the largest contours to be added to a contour list
+            for object sizing.
         """
 
-        basin_mask = np.zeros(shape=self.image.shape, dtype="uint8")
-        basin_mask[self.image == label] = 255
-
-        # Detect contours in the masked basins and return the largest one.
-        contours, _ = cv2.findContours(image=basin_mask,
-                                       mode=cv2.RETR_EXTERNAL,
-                                       method=cv2.CHAIN_APPROX_SIMPLE)
-        return max(contours, key=cv2.contourArea)
+        return pool_worker.contour_area(self.image, label)
 
     @property
     def pool_it(self) -> list:
