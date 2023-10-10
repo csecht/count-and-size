@@ -40,6 +40,7 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License
 
 # Standard library imports.
+import multiprocessing
 import sys
 from pathlib import Path
 from statistics import mean, median
@@ -1716,6 +1717,7 @@ class ImageViewer(ProcessImage):
         custom_size: str = self.custom_size_entry.get()
         size_std_px: str = self.size_std_px.get()
         size_std: str = self.cbox_val['size_std'].get()
+        preset_std_size: float = const.SIZE_STANDARDS[size_std]
 
         # Need to verify that the pixel diameter entry is a number:
         try:
@@ -1729,12 +1731,12 @@ class ImageViewer(ProcessImage):
             self.size_std_px.set('1')
             size_std_px = '1'
 
-        # For clarity, need to not show the custom size Entry widgets
-        #  only when 'Custom' is selected.
+        # For clarity, need to show the custom size Entry widget only
+        #  when 'Custom' is selected.
         # Verify that entries are numbers and define self.num_sigfig.
         #  Custom sizes can be entered as integer, float, or power operator.
         # Number of significant figures is the lowest of that for the
-        #  standard's size value vs. it's pixel diameter.
+        #  standard's size value or pixel diameter.
         if size_std == 'Custom':
             self.size_cust_entry.grid()
             self.size_cust_label.grid()
@@ -1762,7 +1764,6 @@ class ImageViewer(ProcessImage):
             self.size_cust_label.grid_remove()
             self.custom_size_entry.set('0.0')
 
-            preset_std_size = const.SIZE_STANDARDS[size_std]
             self.unit_per_px.set(preset_std_size / int(size_std_px))
             if size_std_px == '1':
                 self.num_sigfig = utils.count_sig_fig(preset_std_size)
@@ -2071,6 +2072,7 @@ if __name__ == "__main__":
 
     try:
         print(f'{Path(__file__).name} has launched...')
+        multiprocessing.freeze_support()
         app = ImageViewer()
         app.title('Count & Size Settings Report')
         try:
