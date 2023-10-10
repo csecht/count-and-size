@@ -1137,7 +1137,7 @@ class ImageViewer(ProcessImage):
                 input_path=self.input_file,
                 img2save=self.cvimg['sized'],
                 txt2save=self.size_settings_txt + sizes,
-                caller='result')
+                caller=f'{Path(__file__).name}_result')
 
             _info = ('Settings report and result image have been saved to:\n'
                     f'{Path(self.input_file).parent}')

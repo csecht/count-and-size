@@ -129,8 +129,8 @@ def save_settings_and_img(input_path: str,
         img2save: The current resulting image array; can be a np.ndarray
             from cv2 or an ImageTk.PhotoImage from tkinter/PIL
         txt2save: The current image processing report.
-        caller: Descriptive name of the calling function or widget to
-                insert in the file name, e.g. 'report', 'contrast', etc.
+        caller: Descriptive name of the calling script, function or
+         widget to insert in the file name, e.g. 'report', 'contrast', etc.
 
     Returns: None
     """
