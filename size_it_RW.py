@@ -396,7 +396,7 @@ class ProcessImage(tk.Tk):
         Returns:
             None
         """
-        th_type: str = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
+        th_type: int = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
         filter_k = self.slider_val['filter_k'].get()
         noise_iter = self.slider_val['noise_iter'].get()
 
@@ -433,7 +433,7 @@ class ProcessImage(tk.Tk):
             The contour pointset list from parallel.MultiProc(rw_img).pool_it
         """
 
-        dt_type: str = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
+        dt_type: int = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
         mask_size = int(self.cbox_val['dt_mask_size'].get())
         min_dist: int = self.slider_val['plm_mindist'].get()
         p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
@@ -1098,7 +1098,7 @@ class ImageViewer(ProcessImage):
                 input_path=self.input_file,
                 img2save=self.cvimg['sized'],
                 txt2save=self.size_settings_txt + sizes,
-                caller=f'{Path(__file__).name}_result')
+                caller=utils.program_name())
 
             _info = ('Settings report and result image have been saved to:\n'
                     f'{Path(self.input_file).parent}')

@@ -20,7 +20,7 @@ import tkinter as tk
 from datetime import datetime
 from math import floor, log10
 from pathlib import Path
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from tkinter.scrolledtext import ScrolledText
 from typing import Union
 
@@ -84,6 +84,21 @@ def check_platform() -> None:
             windll.shcore.SetProcessDpiAwareness(2)
 
     # print('To quit, use Esc or Ctrl-Q. From the Terminal, use Ctrl-C.')
+
+
+def program_name() -> str:
+    """
+    Returns the script name or, if called from a PyInstaller stand-alone,
+    the executable name. Use for setting file paths and naming windows.
+
+    :return: Context-specific name of the main program, as string.
+    """
+    if getattr(sys, 'frozen', False):  # hasattr(sys, '_MEIPASS'):
+        _name = Path(sys.executable).stem
+    else:
+        _name = Path(sys.modules['__main__'].__file__).stem
+
+    return _name
 
 
 def valid_path_to(input_path: str) -> Path:
@@ -224,15 +239,15 @@ def display_report(frame: tk.Frame, report: str) -> None:
     #  Smaller fonts are needed to shorten the window as lines & rows are added.
     #  With smaller font, need better fg font contrast, e.g. yellow, not MASTER_BG.
     reporttxt = ScrolledText(master=frame,
-                        font=txt_font,
-                        bg=const.DARK_BG,
-                        fg=const.COLORS_TK['yellow'],  # Matches slider labels.
-                        width=max_line,
-                        height=report.count('\n'),
-                        relief='flat',
-                        padx=8, pady=8,
-                        wrap=tk.WORD,
-                        )
+                             font=txt_font,
+                             bg=const.DARK_BG,
+                             fg=const.COLORS_TK['yellow'],  # Matches slider labels.
+                             width=max_line,
+                             height=report.count('\n'),
+                             relief='flat',
+                             padx=8, pady=8,
+                             wrap=tk.WORD,
+                             )
 
     # Replace prior Text with current text;
     #   hide cursor in Text; (re-)grid in-place.
@@ -322,6 +337,7 @@ def no_objects_found_msg():
           ' dark-on-light contrasts.\n'
           'Also, "Circled radius size" sliders may need adjusting.')
     messagebox.showinfo(detail=_m)
+
 
 def wait4it_msg(size_limit: int):
     """
