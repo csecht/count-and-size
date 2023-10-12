@@ -97,6 +97,8 @@ Below, the resulting annotated image. Clicking the "Save settings & sized image"
 
 Below, resulting image for the input `sample3.jpg` and the text output from the saved settings. Note that objects that extend out of frame are excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was previously edited to fill in the shiny gold coin size standard with black for better contrast. The white circle is another coin that was edited to exclude it from analysis. The following report text includes parameter settings used, size metrics in millimeters, and a list of individual object sizes.
 
+Saved files are written to the folder of the input image.
+
 ![sample3_result_screenshot.png](images/sample3_result_screenshot.jpg)
 
 <pre>
@@ -127,7 +129,32 @@ Object size metrics,   mean: 12.6, median: 12.4, range: 7.25--18.1
 </pre>
 `7.25, 7.71, 8.16, 9.15, 9.3, 9.43, 9.56, 9.88, 9.95, 10.0, 10.1, 10.1, 10.1, 10.2, 10.2, 10.4, 10.4, 10.4, 10.5, 10.5, 10.5, 10.7, 10.7, 10.7, 10.8, 10.9, 11.0, 11.1, 11.1, 11.1, 11.1, 11.2, 11.2, 11.2, 11.3, 11.3, 11.4, 11.5, 11.5, 11.6, 11.6, 11.6, 11.6, 11.6, 11.6, 11.6, 11.7, 11.7, 11.7, 11.8, 11.9, 12.1, 12.1, 12.1, 12.2, 12.2, 12.3, 12.3, 12.3, 12.4, 12.4, 12.4, 12.4, 12.4, 12.4, 12.5, 12.5, 12.6, 12.6, 12.6, 12.6, 12.7, 12.7, 12.7, 12.8, 12.8, 12.8, 12.8, 12.9, 13.0, 13.1, 13.1, 13.1, 13.1, 13.2, 13.2, 13.3, 13.4, 13.5, 13.6, 13.6, 13.6, 13.7, 13.7, 13.7, 14.0, 14.0, 14.1, 14.1, 14.3, 14.4, 14.5, 14.5, 14.5, 14.6, 14.6, 14.6, 14.6, 14.8, 14.8, 15.0, 15.0, 15.1, 15.2, 15.2, 15.3, 15.5, 15.6, 15.6, 15.7, 15.7, 15.7, 16.7, 17.1, 17.4, 17.4, 17.6, 18.1`
 
-Saved files are written to the folder of the input image.
+Below, `sample2.jpg` annotated image and settings for the Random Walker algorithm with `size_it_RW.py`.
+
+![sample2_RW_result.jpg](images/sample2_RW_result.jpg)
+<pre>
+Saved image file: sample2_size_it_RW_095354.jpg
+Image: /home/craig/PycharmProjects/count-and-size/images/sample2.jpg
+Image size: 2629x2627
+Contrast:              convertScaleAbs alpha=1.7, beta=0
+Noise reduction:       cv2.getStructuringElement ksize=7,
+                       cv2.getStructuringElement shape=cv2.MORPH_ELLIPSE
+                       cv2.morphologyEx iterations=2
+                       cv2.morphologyEx op=cv2.MORPH_OPEN,
+Filter:                cv2.blur ksize=(9, 9)
+cv2.threshold:         type=cv2.THRESH_OTSU_INVERSE
+cv2.distanceTransform: distanceType=cv2.DIST_L2, maskSize=3
+skimage functions:
+   peak_local_max:     min_distance=54
+                       footprint=np.ones((7, 7), np.uint8)
+════════════════════
+# distTrans segments:  165
+Selected size range:   8--105 pixels, diameter
+Selected size std.:    Puck, 76.2 mm diameter
+                       Pixel diameter entered: 237, unit/px factor: 0.322
+# Selected objects:    158
+Object size metrics,   mean: 30.8, median: 30.9, range: 21.0--40.8
+</pre>
 
 ### Tips:
 1. For best results, use a well-contrasted objects that are not in large overlapping clusters. Best results are obtained using a lightbox with minimal top lighting to photograph objects.
@@ -142,7 +169,7 @@ Saved files are written to the folder of the input image.
 10. Annotation font size for selected objects can be changed with Ctrl + and Ctrl - keys. Annotation line thickness can be changed with Shift-Ctrl + and Shift-Ctrl -.
 
 ### Known Issues:
-Waiting for user feedback.
+On occasion, the program may stall at the step where the info displays, "Contours drawn. Calculating sizes...". Quit the program from the Terminal (it will not respond to it regular Quit commands) and try again. It was not any specific settings, so you can use those prior settings again. The problem is with lengthy "Process ForkPoolWorker" iterations in the multiprocessing Pool module that occur with an unknown condition. The issue seem most likely to happen with size_it_RW.py.
 
 ### Attributions
 All image files are from the author, C.S. Echt.
