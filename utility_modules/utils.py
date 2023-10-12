@@ -96,7 +96,7 @@ def program_name() -> str:
     if getattr(sys, 'frozen', False):  # hasattr(sys, '_MEIPASS'):
         _name = Path(sys.executable).stem
     else:
-        _name = Path(sys.modules['__main__'].__file__).stem
+        _name = Path(__file__).stem
 
     return _name
 

@@ -533,6 +533,8 @@ class ProcessImage(tk.Tk):
                             toplevel=app, infotxt=_info)
 
         return self.randomwalk_contours
+
+
 class ImageViewer(ProcessImage):
     """
     A suite of methods to display cv contours based on chosen settings
@@ -1101,7 +1103,7 @@ class ImageViewer(ProcessImage):
                 caller=utils.program_name())
 
             _info = ('Settings report and result image have been saved to:\n'
-                    f'{Path(self.input_file).parent}')
+                     f'{Path(self.input_file).parent}')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -2004,7 +2006,7 @@ class ImageViewer(ProcessImage):
     def preprocess(self, event=None) -> None:
         """
         Run processing functions prior to randomwalk_segmentation() to
-        allow calling them and updating their images indepently of the
+        allow calling them and updating their images independently of the
         lengthy processing time of randomwalk_segmentation().
         Args:
             event: Implicit widget event.
