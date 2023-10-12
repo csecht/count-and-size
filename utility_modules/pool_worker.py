@@ -10,9 +10,12 @@ Derived from: https://docs.python.org/3/library/multiprocessing.html
 # Third party imports.
 import cv2
 import numpy as np
+# There is a bug(?) in PyCharm that does not recognize cv2 memberships,
+#  so pylint and inspections flag every use of cv2.*.
+# Be aware that this disables all checks of (E1101): *%s %r has no %r member%s*
 # pylint: disable=no-member
 
-def contour_area(img: np.ndarray, label: int) -> np.ndarray:
+def contour_area(img: np.ndarray, idx: int) -> np.ndarray:
     """
     Used as a worker function for multiprocess.Pool to generate contours
     of watershed basins or random_walker segments.
@@ -22,7 +25,7 @@ def contour_area(img: np.ndarray, label: int) -> np.ndarray:
     Args:
         img: the labeled skimage array being iterated over by
              multiprocessing.Pool.map().
-        label: the implicit integer element from the list of marker indexes
+        idx: the implicit integer element from the list of marker indexes
                of the labeled *image*.
     Returns:
         An indexed (labeled basin) ndarray element of a segment's largest
@@ -30,7 +33,7 @@ def contour_area(img: np.ndarray, label: int) -> np.ndarray:
     """
 
     basin_mask = np.zeros(shape=img.shape, dtype="uint8")
-    basin_mask[img == label] = 255
+    basin_mask[img == idx] = 255
 
     # Detect contours in the masked basins and return the largest one.
     contour, _ = cv2.findContours(image=basin_mask,

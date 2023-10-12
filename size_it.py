@@ -810,13 +810,13 @@ class ImageViewer(ProcessImage):
                        ('TIFF', '*.tiff'),
                        ('TIFF', '*.tif'),
                        ('All', '*.*')],
-            initialdir='images',
+            # initialdir='images',
         )
 
         if self.input_file:
             self.cvimg['input'] = cv2.imread(self.input_file)
-            self.cvimg['gray'] = cv2.cvtColor(self.cvimg['input'],
-                                              cv2.COLOR_RGBA2GRAY)
+            self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
+                                              code=cv2.COLOR_RGBA2GRAY)
             self.metrics = manage.input_metrics(self.cvimg['input'])
         else:  # User has closed the filedialog window instead of selecting a file.
             utils.quit_gui(self)

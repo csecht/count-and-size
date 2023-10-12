@@ -8,14 +8,8 @@ from multiprocessing.pool import Pool
 import numpy as np
 
 # Local application imports.
-# pylint: disable=import-error
-from utility_modules import constants as const
-from utility_modules import pool_worker
-
-# There is a bug(?) in PyCharm that does not recognize cv2 memberships,
-#  so pylint and inspections flag every use of cv2.*.
-# Be aware that this disables all checks of (E1101): *%s %r has no %r member%s*
-# pylint: disable=no-member
+from . import constants as const
+from . import pool_worker
 
 class MultiProc:
     """
@@ -34,15 +28,15 @@ class MultiProc:
         for watershed basins or random_walker segments.
         Called from pool_it(). Calls helper module pool_worker.py.
         Args:
-            label: an integer element from the list of marker indexes
-                   from a labeled image.
+            label: the implicit integer element from the list of marker
+                   indices in a labeled image.
         Returns:
             From a worker module, he indexed (labeled basin) ndarray
             element of the largest contours to be added to a contour list
             for object sizing.
         """
 
-        return pool_worker.contour_area(self.image, label)
+        return pool_worker.contour_area(img=self.image, idx=label)
 
     @property
     def pool_it(self) -> list:
