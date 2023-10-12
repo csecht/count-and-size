@@ -457,12 +457,12 @@ class ProcessImage(tk.Tk):
                           img_array=np.uint8(distances_img))
 
         # Inform user of progress when processing large images.
-        _info = 'Completed distance transform. Looking for peaks...\n\n\n\n'
+        _info = '\n\nCompleted distance transform. Looking for peaks...\n\n'
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
 
         if self.slider_val['plm_footprint'].get() == 1:
-            _info = 'A peak_local_max footprint of 1 will take longer...\n\n\n\n'
+            _info = '\n\nA peak_local_max footprint of 1 will take longer...\n\n'
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
 
@@ -481,7 +481,7 @@ class ProcessImage(tk.Tk):
                                             p_norm=np.inf)  # Chebyshev distance
                                             # p_norm=2,  # Euclidean distance
 
-        _info = 'Found peaks. Running random walker algorithm, please wait...\n\n\n\n'
+        _info = '\n\nFound peaks. Running random walker algorithm, please wait...\n\n'
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
 
@@ -516,7 +516,7 @@ class ProcessImage(tk.Tk):
                                prob_tol=0.1,  # default: 1.e-3
                                channel_axis=None)
 
-        _info = 'Random walk completed. Finding contours...\n\n\n\n'
+        _info = '\n\nRandom walk completed. Finding contours...\n\n'
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
 
@@ -528,7 +528,7 @@ class ProcessImage(tk.Tk):
         #  process, so do not need to be parallelized.
         self.randomwalk_contours: list = parallel.MultiProc(rw_img).pool_it
 
-        _info = 'Contours drawn. Calculating sizes...\n\n\n\n'
+        _info = '\n\nContours drawn. Calculating sizes...\n\n'
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
 
@@ -1263,8 +1263,7 @@ class ImageViewer(ProcessImage):
             values are used in randomwalk_segmentation(), which is called
             only from a Button().
             """
-            _info = ('Click "Run Random Walker" to update counts and sizes.\n'
-                     f'{Path(self.input_file).parent}')
+            _info = '\n\nClick "Run Random Walker" to update counts and sizes.\n\n'
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -2019,9 +2018,8 @@ class ImageViewer(ProcessImage):
         self.threshold_image()
         self.set_size_std()
         self.report_results()
-        _info = ('Preprocessing completed.\n'
-                 'Click "Run Random Walker" to update counts and sizes.\n'
-                 f'{Path(self.input_file).parent}')
+        _info = ('\nPreprocessing completed.\n'
+                 'Click "Run Random Walker" to update counts and sizes.\n\n')
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
