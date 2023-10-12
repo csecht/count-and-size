@@ -857,7 +857,7 @@ class ImageViewer(ProcessImage):
 
         os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
         file = tk.Menu(self.master, tearoff=0)
-        menubar.add_cascade(label=f'{Path(__file__).stem}', menu=file)
+        menubar.add_cascade(label=utils.program_name(), menu=file)
         file.add_command(label='Process now',
                          command=_call_start,
                          accelerator='Return') # macOS doesn't recognize 'Enter'
