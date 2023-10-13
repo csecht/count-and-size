@@ -2069,10 +2069,10 @@ if __name__ == "__main__":
     # Program exits here if any of the module checks fail or if the
     #   argument --about is used, which prints info, then exits.
     utils.check_platform()
-    vcheck.minversion('3.7')
-    vcheck.maxversion('3.11')
+    vcheck.minversion('3.7')   # comment for Pyinstaller
+    vcheck.maxversion('3.11')  # comment for Pyinstaller
 
-    manage.arguments()
+    manage.arguments()  # comment for Pyinstaller
 
     try:
         # multiprocessing.freeze_support()  # uncomment for Pyinstaller
