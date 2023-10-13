@@ -701,7 +701,7 @@ class ImageViewer(ProcessImage):
         #  then proceed with image processing and sizing.
         # This order of events allows macOS implementation to flow well.
         self.manage_main_window()
-        self.input_file: str = ''
+        self.input_file: str = ''  # defined by filedialog in setup_start_window()
         self.setup_start_window()
 
     def manage_main_window(self):
@@ -897,7 +897,7 @@ class ImageViewer(ProcessImage):
         process_now_button.grid(row=3, column=1, **padding, sticky=tk.E)
 
         # Create menu instance and add pull-down menus.
-        menubar = tk.Menu(master=start_win, )
+        menubar = tk.Menu(master=start_win)
         start_win.config(menu=menubar)
 
         os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
@@ -1132,15 +1132,16 @@ class ImageViewer(ProcessImage):
             """
             A Button kw "command" caller to avoid messy lambda statements.
             """
-            sizes = ', '.join(str(i) for i in self.sorted_size_list)
+            _sizes = ', '.join(str(i) for i in self.sorted_size_list)
             utils.save_settings_and_img(
                 input_path=self.input_file,
                 img2save=self.cvimg['sized'],
-                txt2save=self.size_settings_txt + sizes,
+                txt2save=self.size_settings_txt + _sizes,
                 caller=utils.program_name())
 
+            _folder = str(Path(self.input_file).parent)
             _info = ('Settings report and result image have been saved to:\n'
-                     f'{Path(self.input_file).parent}')
+                     f'{utils.valid_path_to(_folder)}')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -1638,9 +1639,11 @@ class ImageViewer(ProcessImage):
                                         caller=image_name)
 
             # Provide user with a notice that a file was created.
+            folder = str(Path(self.input_file).parent)
             _info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
-                    f'{Path(self.input_file).parent}\n'
+                    f'{utils.valid_path_to(folder)}\n'
                     'with a timestamp.')
+
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -2052,11 +2055,12 @@ if __name__ == "__main__":
     utils.check_platform()
     vcheck.minversion('3.7')
     vcheck.maxversion('3.11')
+
     manage.arguments()
+    parallel.support_multiprocessing()
 
     try:
         print(f'{Path(__file__).name} has launched...')
-        multiprocessing.freeze_support()
         app = ImageViewer()
         app.title('Count & Size Settings Report')
         try:
