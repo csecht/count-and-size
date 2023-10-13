@@ -76,6 +76,7 @@ def check_platform() -> None:
     if const.MY_OS not in 'win, lin, dar':
         print('Only Windows, Linux, and macOS platforms are supported.\n')
         sys.exit(0)
+
     # Need to account for Windows scaling in different releases.
     if const.MY_OS == 'win':
         if platform.release() < '10':
@@ -96,7 +97,7 @@ def program_name() -> str:
     if getattr(sys, 'frozen', False):  # hasattr(sys, '_MEIPASS'):
         _name = Path(sys.executable).stem
     else:
-        _name = Path(__file__).stem
+        _name = Path(sys.modules['__main__'].__file__).stem
 
     return _name
 
@@ -104,13 +105,11 @@ def program_name() -> str:
 def valid_path_to(input_path: str) -> Path:
     """
     Get correct path to program's directory/file structure
-    depending on whether program invocation is a standalone app or
+    depending on whether program invocation is a Pyinstaller app or
     the command line. Works with symlinks. Works with absolute paths
     outside of program's folder.
     Allows command line invocation using any path; does not need to be
     from parent directory.
-    _MEIPASS var is used by distribution programs from
-    PyInstaller --onefile; e.g. for images dir.
 
     :param input_path: Program's local dir/file name, as string.
     :return: Absolute path as pathlib Path object.
