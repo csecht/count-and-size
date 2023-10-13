@@ -682,7 +682,7 @@ class ImageViewer(ProcessImage):
         #  managers position windows.
         w_offset = int(self.winfo_screenwidth() * 0.55)
         self.geometry(f'+{w_offset}+0')
-        self.resizable(width=True, height=True)
+        self.resizable(width=True, height=False)
 
         # Need to provide exit info msg to Terminal.
         self.protocol(name='WM_DELETE_WINDOW',
@@ -926,15 +926,14 @@ class ImageViewer(ProcessImage):
             Provide a notice in report (mainloop, app) window.
             Called locally from .protocol().
             """
-            _info = ('That window cannot be closed from its window bar.\n'
+            _info = ('\nThat window cannot be closed from its window bar.\n'
                     'Minimize it if it is in the way.\n'
-                    'Esc or Ctrl-Q keys will Quit the program.')
-            self.info_label.config(fg=const.COLORS_TK['vermilion'],
-                                   font=cv2.FONT_HERSHEY_SIMPLEX)
+                    'Esc or Ctrl-Q keys will Quit the program.\n')
+            self.info_label.config(fg=const.COLORS_TK['vermilion'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             # Give user time to read the message before resetting it.
-            app.after(ms=3000, func=self.setup_info_messages)
+            app.after(ms=4000, func=self.setup_info_messages)
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
         # Dictionary item order determines stack order of windows.
@@ -1095,15 +1094,17 @@ class ImageViewer(ProcessImage):
             """
             A Button kw "command" caller to avoid messy lambda statements.
             """
-            sizes = ', '.join(str(i) for i in self.sorted_size_list)
+            _sizes = ', '.join(str(i) for i in self.sorted_size_list)
             utils.save_settings_and_img(
                 input_path=self.input_file,
                 img2save=self.cvimg['sized'],
-                txt2save=self.size_settings_txt + sizes,
+                txt2save=self.size_settings_txt + _sizes,
                 caller=utils.program_name())
 
-            _info = ('Settings report and result image have been saved to:\n'
-                     f'{Path(self.input_file).parent}')
+            _folder = str(Path(self.input_file).parent)
+            _info = ('\nSettings report and result image have been saved to:\n'
+                     f'{utils.valid_path_to(_folder)}\n\n')
+
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -1359,11 +1360,11 @@ class ImageViewer(ProcessImage):
             values are used in randomwalk_segmentation(), which is called
             only from a Button().
             """
-            _info = ('Click "Run Random Walker" to update counts and sizes.\n'
-                     f'{Path(self.input_file).parent}')
+            _info = 'Click "Run Random Walker" to update counts and sizes.\n'
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
+            return event
 
         for _name, widget in self.cbox.items():
             if '_lbl' in _name:
@@ -1639,9 +1640,11 @@ class ImageViewer(ProcessImage):
                                         caller=image_name)
 
             # Provide user with a notice that a file was created.
+            folder = str(Path(self.input_file).parent)
             _info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
-                    f'{Path(self.input_file).parent}\n'
+                    f'{utils.valid_path_to(folder)}\n'
                     'with a timestamp.')
+
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -2068,11 +2071,12 @@ if __name__ == "__main__":
     utils.check_platform()
     vcheck.minversion('3.7')
     vcheck.maxversion('3.11')
+
     manage.arguments()
+    parallel.support_multiprocessing()
 
     try:
         print(f'{Path(__file__).name} has launched...')
-        multiprocessing.freeze_support()
         app = ImageViewer()
         app.title('Count & Size Settings Report')
         try:
