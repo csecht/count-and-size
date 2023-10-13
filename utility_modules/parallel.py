@@ -1,7 +1,9 @@
 """A module to run parallel processes for contouring skimage segments."""
 # Copyright (C) 2023 C. Echt under GNU General Public License'
 
-# Standard library imports.
+# Standard library imports
+import multiprocessing
+import sys
 from multiprocessing.pool import Pool
 
 # Third party imports.
@@ -10,6 +12,16 @@ import numpy as np
 # Local application imports.
 from . import constants as const
 from . import pool_worker
+
+
+def support_multiprocessing():
+    """
+    Use of MultiProc Class needs special support when used in a
+    frozen app, e.g., a Pyinstaller executable.
+    """
+    if getattr(sys, 'frozen', False):  # hasattr(sys, '_MEIPASS'):
+        multiprocessing.freeze_support()
+
 
 class MultiProc:
     """
