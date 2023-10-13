@@ -2073,10 +2073,10 @@ if __name__ == "__main__":
     vcheck.maxversion('3.11')
 
     manage.arguments()
-    parallel.support_multiprocessing()
 
     try:
-        print(f'{Path(__file__).name} has launched...')
+        # multiprocessing.freeze_support()  # uncomment for Pyinstaller
+        print(f'{Path(__file__).name} has launched...')  # comment for Pyinstaller
         app = ImageViewer()
         app.title('Count & Size Settings Report')
         try:

@@ -14,15 +14,6 @@ from . import constants as const
 from . import pool_worker
 
 
-def support_multiprocessing():
-    """
-    Use of MultiProc Class needs special support when used in a
-    frozen app, e.g., a Pyinstaller executable.
-    """
-    if getattr(sys, 'frozen', False):  # hasattr(sys, '_MEIPASS'):
-        multiprocessing.freeze_support()
-
-
 class MultiProc:
     """
     A Class to handle image multiprocessing outside tk.TK app Classes so
