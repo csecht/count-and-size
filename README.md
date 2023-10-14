@@ -1,7 +1,7 @@
 # Project: count-and-size
 ![oysters_25pct.jpg](images%2Foysters_25pct.jpg)
 ![oysters_sized_25pct.jpg](images%2Foysters_sized_25pct.jpg)
-<sub>Farmed oyster population sample (top); back lit, with size annotations, U.S. quarter dollar size standard, 93.1 mm sample mean (bottom).</sub>
+<sub>Farmed oyster population sample (top); the analyzed back lit image, with annotations (bottom), using a U.S. quarter dollar for the size standard. Sample mean was 93.1 mm, n=27.</sub>
 
 The interactive Python program, `size_it.py`, is a tkinter GUI for OpenCV processing of an image to obtain sizes, means,
 and ranges of objects in a sample population. The distance transform and
@@ -50,7 +50,7 @@ Be aware that very large image file may require a few seconds to display the ima
 
 The Esc or Crtl-Q key will quit the program once a file is selected. To quit the initial Open file dialog, just close the window in the usual manner.
 
-Sample image files, listed below, are provided in the `images` folder. This is the default location for selecting an input image file, but you can browse to where ever your favorite file is.
+Sample image files, listed below, are provided in this distribution's `images` directory. From the opening window, users can browse to there or whichever directory contains their image for analysis. Settings and annotated images are saved to the selected image's directory.
 
 Image file examples provided in the `images` folder, where sample1 was used to establish the default parameters:
 * sample1.jpg (baby oysters on black burlap, 1200x1199 902 kB),
@@ -95,66 +95,35 @@ Below, the resulting annotated image. Clicking the "Save settings & sized image"
 
 ![sample1_result_screenshot](images/sample1_result_screenshot.jpg)
 
-Below, resulting image for the input `sample3.jpg` and the text output from the saved settings. Note that objects that extend out of frame are excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was previously edited to fill in the shiny gold coin size standard with black for better contrast. The white circle is another coin that was edited to exclude it from analysis. The following report text includes parameter settings used, size metrics in millimeters, and a list of individual object sizes.
+Below, resulting annotated image for the input `sample3.jpg` and the text output from the saved settings. Note that objects that extend out of frame are excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was previously edited to fill in the shiny gold coin size standard with black for better contrast. The white circle is another coin that was edited to exclude it from analysis. The following report text includes parameter settings used, size metrics in millimeters, and a list of individual object sizes. Analyzed with `size_it_RW.py`, which uses the Random Walker algorithm.
 
-Saved files are written to the folder of the input image.
-
-![sample3_result_screenshot.png](images/sample3_result_screenshot.jpg)
+![sample3_size_it_RW_result.jpg](images/sample3_size_it_RW_result.jpg)
 
 <pre>
-Time saved: 06:36:25PM
-Saved image file: sample3_result_063625.jpg
-Image: /home/craig/PycharmProjects/count-and-size/images/sample3.jpg 840x967
-
-Contrast:              convertScaleAbs alpha=1.7, beta=-25
-Noise reduction:       cv2.getStructuringElement ksize=3,
-                       cv2.getStructuringElement shape=cv2.MORPH_RECT
+Time saved: 12:53:49PM
+Saved image file: sample3_size_it_RW_125349.jpg
+Image: /home/craig/count-and-size-main/images/sample3.jpg
+Image size: 967x840
+Contrast:              convertScaleAbs alpha=1.8, beta=0
+Noise reduction:       cv2.getStructuringElement ksize=5,
+                       cv2.getStructuringElement shape=cv2.MORPH_ELLIPSE
                        cv2.morphologyEx iterations=1
-                       cv2.morphologyEx op=cv2.MORPH_CLOSE,
-Filter:                cv2.blur ksize=(3, 3)
+                       cv2.morphologyEx op=cv2.MORPH_OPEN,
+Filter:                cv2.blur ksize=(5, 5)
 cv2.threshold:         type=cv2.THRESH_OTSU_INVERSE
 cv2.distanceTransform: distanceType=cv2.DIST_L2, maskSize=5
 skimage functions:
-   peak_local_max:     min_distance=31
-                       footprint=np.ones((8, 8), np.uint8
-   watershed:          connectivity=1
-                       compactness=1.0
+   peak_local_max:     min_distance=34
+                       footprint=np.ones((3, 3), np.uint8)
 ════════════════════
-# distTrans segments:  147
-Selected size range:   8--56 pixels, diameter
+# distTrans segments:  159
+Selected size range:   8--48 pixels, diameter
 Selected size std.:    Sacagawea $, 26.5 mm diameter
-                       Pixel diameter entered: 116, unit/px factor: 0.228
-# Selected objects:    128
-Object size metrics,   mean: 12.6, median: 12.4, range: 7.25--18.1
+                       Pixel diameter entered: 117, unit/px factor: 0.226
+# Selected objects:    129
+Object size metrics,   mean: 12.3, median: 12.2, range: 6.92--18.1
 </pre>
-`7.25, 7.71, 8.16, 9.15, 9.3, 9.43, 9.56, 9.88, 9.95, 10.0, 10.1, 10.1, 10.1, 10.2, 10.2, 10.4, 10.4, 10.4, 10.5, 10.5, 10.5, 10.7, 10.7, 10.7, 10.8, 10.9, 11.0, 11.1, 11.1, 11.1, 11.1, 11.2, 11.2, 11.2, 11.3, 11.3, 11.4, 11.5, 11.5, 11.6, 11.6, 11.6, 11.6, 11.6, 11.6, 11.6, 11.7, 11.7, 11.7, 11.8, 11.9, 12.1, 12.1, 12.1, 12.2, 12.2, 12.3, 12.3, 12.3, 12.4, 12.4, 12.4, 12.4, 12.4, 12.4, 12.5, 12.5, 12.6, 12.6, 12.6, 12.6, 12.7, 12.7, 12.7, 12.8, 12.8, 12.8, 12.8, 12.9, 13.0, 13.1, 13.1, 13.1, 13.1, 13.2, 13.2, 13.3, 13.4, 13.5, 13.6, 13.6, 13.6, 13.7, 13.7, 13.7, 14.0, 14.0, 14.1, 14.1, 14.3, 14.4, 14.5, 14.5, 14.5, 14.6, 14.6, 14.6, 14.6, 14.8, 14.8, 15.0, 15.0, 15.1, 15.2, 15.2, 15.3, 15.5, 15.6, 15.6, 15.7, 15.7, 15.7, 16.7, 17.1, 17.4, 17.4, 17.6, 18.1`
-
-Below, `sample2.jpg` annotated image and settings for the Random Walker algorithm with `size_it_RW.py`.
-
-![sample2_RW_result.jpg](images/sample2_RW_result.jpg)
-<pre>
-Saved image file: sample2_size_it_RW_095354.jpg
-Image: /home/craig/PycharmProjects/count-and-size/images/sample2.jpg
-Image size: 2629x2627
-Contrast:              convertScaleAbs alpha=1.7, beta=0
-Noise reduction:       cv2.getStructuringElement ksize=7,
-                       cv2.getStructuringElement shape=cv2.MORPH_ELLIPSE
-                       cv2.morphologyEx iterations=2
-                       cv2.morphologyEx op=cv2.MORPH_OPEN,
-Filter:                cv2.blur ksize=(9, 9)
-cv2.threshold:         type=cv2.THRESH_OTSU_INVERSE
-cv2.distanceTransform: distanceType=cv2.DIST_L2, maskSize=3
-skimage functions:
-   peak_local_max:     min_distance=54
-                       footprint=np.ones((7, 7), np.uint8)
-════════════════════
-# distTrans segments:  165
-Selected size range:   8--105 pixels, diameter
-Selected size std.:    Puck, 76.2 mm diameter
-                       Pixel diameter entered: 237, unit/px factor: 0.322
-# Selected objects:    158
-Object size metrics,   mean: 30.8, median: 30.9, range: 21.0--40.8
-</pre>
+`6.92, 7.77, 8.04, 8.76, 9.17, 9.2, 9.64, 9.66, 9.68, 9.7, 9.8, 9.83, 9.88, 9.91, 9.93, 9.98, 10.0, 10.1, 10.2, 10.2, 10.3, 10.4, 10.4, 10.6, 10.6, 10.6, 10.7, 10.7, 10.8, 10.8, 10.8, 10.8, 10.9, 10.9, 11.0, 11.1, 11.1, 11.2, 11.2, 11.2, 11.2, 11.3, 11.3, 11.3, 11.4, 11.4, 11.4, 11.4, 11.5, 11.5, 11.5, 11.7, 11.7, 11.7, 11.8, 11.8, 11.9, 12.0, 12.0, 12.0, 12.1, 12.1, 12.1, 12.1, 12.2, 12.2, 12.3, 12.3, 12.4, 12.4, 12.4, 12.4, 12.5, 12.6, 12.6, 12.7, 12.7, 12.7, 12.8, 12.8, 12.8, 12.8, 12.8, 12.9, 13.0, 13.0, 13.1, 13.1, 13.2, 13.2, 13.3, 13.3, 13.3, 13.4, 13.5, 13.6, 13.7, 13.7, 13.9, 13.9, 14.0, 14.0, 14.3, 14.3, 14.4, 14.4, 14.4, 14.4, 14.5, 14.5, 14.6, 14.7, 14.7, 14.7, 14.8, 14.8, 14.9, 15.1, 15.1, 15.4, 15.4, 15.5, 15.9, 15.9, 16.4, 16.9, 17.1, 17.4, 18.1`
 
 ### Tips:
 1. For best results, use a well-contrasted objects that are not in large overlapping clusters. Best results are obtained using a lightbox with minimal top lighting to photograph objects.
@@ -169,7 +138,7 @@ Object size metrics,   mean: 30.8, median: 30.9, range: 21.0--40.8
 10. Annotation font size for selected objects can be changed with Ctrl + and Ctrl - keys. Annotation line thickness can be changed with Shift-Ctrl + and Shift-Ctrl -.
 
 ### Known Issues:
-On occasion, the program may stall at the step where the info displays, "Contours drawn. Calculating sizes...". Quit the program from the Terminal (it will not respond to it regular Quit commands) and try again. It was not any specific settings, so you can use those prior settings again. The problem is with lengthy "Process ForkPoolWorker" iterations in the multiprocessing Pool module that occur with an unknown condition. The issue seem most likely to happen with size_it_RW.py.
+On occasion, the program may stall at the step where the info displays, "Contours drawn. Calculating sizes...". Quit the program from the Terminal (it will not respond to it regular Quit commands) and try again. It was not any specific settings, so you can use those prior settings again. The problem is with lengthy "Process ForkPoolWorker" iterations in the multiprocessing Pool module that occur with an unknown condition. The issue seem most likely to happen with `size_it_RW.py`.
 
 ### Attributions
 All image files are from the author, C.S. Echt.
