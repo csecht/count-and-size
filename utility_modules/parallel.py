@@ -2,8 +2,6 @@
 # Copyright (C) 2023 C. Echt under GNU General Public License'
 
 # Standard library imports
-import multiprocessing
-import sys
 from multiprocessing.pool import Pool
 
 # Third party imports.

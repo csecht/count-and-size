@@ -20,7 +20,7 @@ import tkinter as tk
 from datetime import datetime
 from math import floor, log10
 from pathlib import Path
-from tkinter import messagebox, filedialog
+from tkinter import messagebox
 from tkinter.scrolledtext import ScrolledText
 from typing import Union
 
