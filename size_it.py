@@ -36,7 +36,7 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 """
 
 # Standard library imports.
-import multiprocessing
+# import multiprocessing  # Uncomment for Pyinstaller apps.
 import sys
 from pathlib import Path
 from statistics import mean, median
@@ -323,9 +323,9 @@ class ProcessImage(tk.Tk):
         # Need to filter the contrasted image when noise reduction is
         #  not applied.
         if noise_iter == 0:
-            image2redux = self.cvimg['contrast']
+            image2filter = self.cvimg['contrast']
         else:
-            image2redux = self.cvimg['redux']
+            image2filter = self.cvimg['redux']
 
         # cv2.GaussianBlur and cv2.medianBlur need to have odd kernels,
         #   but cv2.blur and cv2.bilateralFilter will shift image between
@@ -344,7 +344,7 @@ class ProcessImage(tk.Tk):
 
         if filter_selected == 'cv2.bilateralFilter':
             self.cvimg['filter'] = cv2.bilateralFilter(
-                src=image2redux,
+                src=image2filter,
                 # d=-1 or 0, is very CPU intensive.
                 d=filter_k,
                 sigmaColor=19,
@@ -357,23 +357,18 @@ class ProcessImage(tk.Tk):
         #  how-to-get-rid-of-ripples-from-a-gradient-image-of-a-smoothed-image
         elif filter_selected == 'cv2.GaussianBlur':
             self.cvimg['filter'] = cv2.GaussianBlur(
-                src=image2redux,
+                src=image2filter,
                 ksize=(filter_k, filter_k),
                 sigmaX=0,
                 sigmaY=0,
                 borderType=border_type)
         elif filter_selected == 'cv2.medianBlur':
             self.cvimg['filter'] = cv2.medianBlur(
-                src=image2redux,
+                src=image2filter,
                 ksize=filter_k)
         elif filter_selected == 'cv2.blur':
             self.cvimg['filter'] = cv2.blur(
-                src=image2redux,
-                ksize=(filter_k, filter_k),
-                borderType=border_type)
-        else:  # there are no other choices, but include for future.
-            self.cvimg['filter'] = cv2.blur(
-                src=image2redux,
+                src=image2filter,
                 ksize=(filter_k, filter_k),
                 borderType=border_type)
 
@@ -2060,9 +2055,9 @@ if __name__ == "__main__":
 
     try:
         # multiprocessing.freeze_support()  # uncomment for Pyinstaller
-        print(f'{Path(__file__).name} has launched...')  # comment for Pyinstaller
+        print(f'{utils.program_name()} has launched...')
         app = ImageViewer()
-        app.title('Count & Size Settings Report')
+        app.title(f'{utils.program_name()} Settings Report')
         try:
             icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
             app.wm_iconphoto(True, icon)
