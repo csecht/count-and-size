@@ -449,11 +449,6 @@ class ProcessImage(tk.Tk):
         plm_kernel = np.ones(shape=p_kernel, dtype=np.uint8)
 
         # Generate the markers as local maxima of the distance to the background.
-        if self.slider_val['plm_footprint'].get() == 1:
-            _info = '\n\nA peak_local_max footprint of 1 will take longer...\n\n'
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Generate the markers as local maxima of the distance to the background.
@@ -469,10 +464,11 @@ class ProcessImage(tk.Tk):
                                             p_norm=np.inf)  # Chebyshev distance
                                             # p_norm=2,  # Euclidean distance
 
-        _info = ('\nFound peaks from distance transform.\n'
-                 'Running random walker algorithm, please wait...\n\n')
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
+        if not self.first_run:
+            _info = ('\nFound peaks from distance transform.\n'
+                     'Running random walker algorithm, please wait...\n\n')
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
 
         mask = np.zeros(shape=self.cvimg['dist_trans'].shape, dtype=bool)
         # Set background to True (not zero: True or 1)
@@ -505,9 +501,10 @@ class ProcessImage(tk.Tk):
                                prob_tol=0.1,  # default: 1.e-3
                                channel_axis=None)
 
-        _info = '\n\nRandom walker completed. Finding contours for sizing...\n\n'
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
+        if not self.first_run:
+            _info = '\n\nRandom walker completed. Finding contours for sizing...\n\n'
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
 
         # self.randomwalk_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of ws objects.
@@ -516,10 +513,6 @@ class ProcessImage(tk.Tk):
         #  random walker image in select_and_size() do not take long to
         #  process, so do not need to be parallelized.
         self.randomwalk_contours: list = parallel.MultiProc(rw_img).pool_it
-
-        _info = '\n\nContours found. Calculating sizes...\n\n'
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
 
         return self.randomwalk_contours
 
@@ -1149,6 +1142,23 @@ class ImageViewer(ProcessImage):
         #  for one Scale() in each Toplevel().
         scale_len = int(self.winfo_screenwidth() * 0.25)
 
+        def _need_to_click(event=None):
+            """
+            Post notice when selecting peak_local_max, because plm slider
+            values are used in randomwalk_segmentation(), which is called
+            only from a Button().
+            """
+            if self.slider_val['plm_footprint'].get() == 1:
+                _info = ('\nClick "Run Random Walker" to update counts and sizes.\n'
+                         'A peak_local_max footprint of 1 may take a while.\n\n')
+            else:
+                _info = '\n\nClick "Run Random Walker" to update counts and sizes.\n\n'
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+
+            return event
+
         # Scale widgets that are pre-random_walker (contrast, noise,
         # filter and threshold) and size max/min are called with mouse
         # button release.
@@ -1239,20 +1249,6 @@ class ImageViewer(ProcessImage):
         #  are called on mouse button release.
         # Note that the <if '_lbl'> condition doesn't improve performance,
         #  but is there for clarity's sake.
-
-        def _need_to_click(event=None):
-            """
-            Post notice when selecting peak_local_max, because plm slider
-            values are used in randomwalk_segmentation(), which is called
-            only from a Button().
-            """
-            _info = '\n\nClick "Run Random Walker" to update counts and sizes.\n\n'
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-
-            return event
-
         for _name, widget in self.slider.items():
             if '_lbl' in _name:
                 continue
@@ -1333,20 +1329,6 @@ class ImageViewer(ProcessImage):
         # Now bind functions to all Comboboxes.
         # Note that the  <if '_lbl'> condition doesn't seem to be needed for
         # performance; it just clarifies the bind intention.
-
-        def _need_to_click(event=None):
-            """
-            Post notice when selecting peak_local_max, because dt slider
-            values are used in randomwalk_segmentation(), which is called
-            only from a Button().
-            """
-            _info = ('Click "Run Random Walker" to update\n'
-                     'distance transform, counts, and sizes.\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-            return event
-
         for _name, widget in self.cbox.items():
             if '_lbl' in _name:
                 continue
@@ -1876,7 +1858,16 @@ class ImageViewer(ProcessImage):
         # Cycle back to the starting info about size std units after
         #   last progress message in contour_rw_segments().
         # Give user time to see the final progress msg before cycling back.
-        app.after(3000, self.setup_info_messages)
+        #  ...except if initial run, when all prior progress info messages
+        #   have been omitted, so don't need a delay. Here, at the end of
+        #   the processing line, is where the first_run flag is reset.
+        if self.first_run:
+            self.first_run = False
+        else:
+            _info = '\n\nContours found, sizes calculated, report updated.\n\n'
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+            app.after(3000, self.setup_info_messages)
 
     def report_results(self) -> None:
         """
@@ -2002,11 +1993,14 @@ class ImageViewer(ProcessImage):
         self.th_and_dist_trans()
         self.set_size_std()
         self.report_results()
-        _info = ('\nPreprocessing completed.\n'
-                 'Click "Run Random Walker" to update counts and sizes.\n\n')
-        self.info_label.config(fg=const.COLORS_TK['blue'])
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
+        # Var first_run is reset to False at end of select_and_size()
+        #   during the first run.
+        if not self.first_run:
+            _info = ('\nPreprocessing completed.\n'
+                     'Click "Run Random Walker" to update counts and sizes.\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
 
         return event
 
