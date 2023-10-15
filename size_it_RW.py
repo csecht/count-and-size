@@ -382,7 +382,7 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='filter',
                           img_array=self.cvimg['filter'])
 
-    def threshold_image(self) -> None:
+    def th_and_dist_trans(self) -> None:
         """
         Produces a threshold image from the filtered image. This image
         is used for masking in randomwalk_segmentation(). It is separate
@@ -394,6 +394,8 @@ class ProcessImage(tk.Tk):
         th_type: int = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
         filter_k = self.slider_val['filter_k'].get()
         noise_iter = self.slider_val['noise_iter'].get()
+        dt_type: int = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
+        mask_size = int(self.cbox_val['dt_mask_size'].get())
 
         # Note from doc: Currently, the Otsu's and Triangle methods
         #   are implemented only for 8-bit single-channel images.
@@ -413,8 +415,21 @@ class ProcessImage(tk.Tk):
                                                 maxval=255,
                                                 type=th_type)
 
+        # Calculate the distance transform of the input, by replacing each
+        #   foreground (non-zero) element, with its shortest distance to
+        #   the background (any zero-valued element).
+        #   Returns a float64 ndarray.
+        # Note that maskSize=0 calculates the precise mask size only for
+        #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
+        self.cvimg['dist_trans']: np.ndarray = cv2.distanceTransform(
+            src=self.cvimg['thresh'],
+            distanceType=dt_type,
+            maskSize=mask_size)
+
         self.update_image(img_name='thresh',
                           img_array=self.cvimg['thresh'])
+        self.update_image(img_name='dist_trans',
+                          img_array=np.uint8(self.cvimg['dist_trans']))
 
     @property
     def randomwalk_segmentation(self) -> list:
@@ -428,34 +443,12 @@ class ProcessImage(tk.Tk):
             The contour pointset list from parallel.MultiProc(rw_img).pool_it
         """
 
-        dt_type: int = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
-        mask_size = int(self.cbox_val['dt_mask_size'].get())
         min_dist: int = self.slider_val['plm_mindist'].get()
         p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
                     self.slider_val['plm_footprint'].get())
         plm_kernel = np.ones(shape=p_kernel, dtype=np.uint8)
 
-        # Now we want to segment objects in the image.
         # Generate the markers as local maxima of the distance to the background.
-        # Calculate the distance transform of the input, by replacing each
-        #   foreground (non-zero) element, with its shortest distance to
-        #   the background (any zero-valued element).
-        #   Returns a float64 ndarray.
-        # Note that maskSize=0 calculates the precise mask size only for
-        #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
-        distances_img: np.ndarray = cv2.distanceTransform(
-            src=self.cvimg['thresh'],
-            distanceType=dt_type,
-            maskSize=mask_size)
-
-        self.update_image(img_name='dist_trans',
-                          img_array=np.uint8(distances_img))
-
-        # Inform user of progress when processing large images.
-        _info = '\n\nCompleted distance transform. Looking for peaks...\n\n'
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
-
         if self.slider_val['plm_footprint'].get() == 1:
             _info = '\n\nA peak_local_max footprint of 1 will take longer...\n\n'
             manage.info_message(widget=self.info_label,
@@ -466,7 +459,7 @@ class ProcessImage(tk.Tk):
         # Generate the markers as local maxima of the distance to the background.
         # Don't use exclude_border; objects touching image border will be excluded
         #   in ImageViewer.select_and_size().
-        local_max: ndimage = peak_local_max(image=distances_img,
+        local_max: ndimage = peak_local_max(image=self.cvimg['dist_trans'],
                                             min_distance=min_dist,
                                             exclude_border=False, # True is min_dist
                                             num_peaks=np.inf,
@@ -476,11 +469,12 @@ class ProcessImage(tk.Tk):
                                             p_norm=np.inf)  # Chebyshev distance
                                             # p_norm=2,  # Euclidean distance
 
-        _info = '\n\nFound peaks. Running random walker algorithm, please wait...\n\n'
+        _info = ('\nFound peaks from distance transform.\n'
+                 'Running random walker algorithm, please wait...\n\n')
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
 
-        mask = np.zeros(shape=distances_img.shape, dtype=bool)
+        mask = np.zeros(shape=self.cvimg['dist_trans'].shape, dtype=bool)
         # Set background to True (not zero: True or 1)
         mask[tuple(local_max.T)] = True
 
@@ -511,7 +505,7 @@ class ProcessImage(tk.Tk):
                                prob_tol=0.1,  # default: 1.e-3
                                channel_axis=None)
 
-        _info = '\n\nRandom walk completed. Finding contours...\n\n'
+        _info = '\n\nRandom walker completed. Finding contours for sizing...\n\n'
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
 
@@ -523,7 +517,7 @@ class ProcessImage(tk.Tk):
         #  process, so do not need to be parallelized.
         self.randomwalk_contours: list = parallel.MultiProc(rw_img).pool_it
 
-        _info = '\n\nContours drawn. Calculating sizes...\n\n'
+        _info = '\n\nContours found. Calculating sizes...\n\n'
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
 
@@ -584,12 +578,6 @@ class ImageViewer(ProcessImage):
             'filter_k': tk.Scale(master=self.contour_selectors_frame),
             'filter_k_lbl': tk.Label(master=self.contour_selectors_frame),
 
-            'dt_type': tk.Scale(master=self.contour_selectors_frame),
-            'dt_type_lbl': tk.Label(master=self.contour_selectors_frame),
-
-            'dt_mask_size': tk.Scale(master=self.contour_selectors_frame),
-            'dt_mask_size_lbl': tk.Label(master=self.contour_selectors_frame),
-
             'plm_mindist': tk.Scale(master=self.contour_selectors_frame),
             'plm_mindist_lbl': tk.Label(master=self.contour_selectors_frame),
 
@@ -621,9 +609,6 @@ class ImageViewer(ProcessImage):
 
             'dt_mask_size': ttk.Combobox(master=self.contour_selectors_frame),
             'dt_mask_size_lbl': tk.Label(master=self.contour_selectors_frame),
-
-            'ws_connect': ttk.Combobox(master=self.contour_selectors_frame),
-            'ws_connect_lbl': tk.Label(master=self.contour_selectors_frame),
 
             # for size standards
             'size_std_lbl': tk.Label(master=self.contour_selectors_frame),
@@ -1275,7 +1260,7 @@ class ImageViewer(ProcessImage):
                 widget.bind('<ButtonRelease-1>', self.process_sizes)
             elif 'plm_' in _name:
                 widget.bind('<ButtonRelease-1>', _need_to_click)
-            else:
+            else:  # is alpha, beta, noise_k, noise_iter, filter_k.
                 widget.bind('<ButtonRelease-1>', self.preprocess)
 
     def config_comboboxes(self) -> None:
@@ -1355,7 +1340,8 @@ class ImageViewer(ProcessImage):
             values are used in randomwalk_segmentation(), which is called
             only from a Button().
             """
-            _info = 'Click "Run Random Walker" to update counts and sizes.\n'
+            _info = ('Click "Run Random Walker" to update\n'
+                     'distance transform, counts, and sizes.\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -1366,9 +1352,7 @@ class ImageViewer(ProcessImage):
                 continue
             if 'size_' in _name:
                 widget.bind('<<ComboboxSelected>>', func=self.process_sizes)
-            elif 'dt_' in _name:
-                widget.bind('<ButtonRelease-1>', _need_to_click)
-            else:
+            else:  # is morphop, morphshape, filter, th_type, dt_type, dt_mask_size.
                 widget.bind('<<ComboboxSelected>>', func=self.preprocess)
 
     def config_entries(self) -> None:
@@ -2015,7 +1999,7 @@ class ImageViewer(ProcessImage):
         self.adjust_contrast()
         self.reduce_noise()
         self.filter_image()
-        self.threshold_image()
+        self.th_and_dist_trans()
         self.set_size_std()
         self.report_results()
         _info = ('\nPreprocessing completed.\n'
