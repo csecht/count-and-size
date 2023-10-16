@@ -392,9 +392,6 @@ class ProcessImage(tk.Tk):
         #   https://pyimagesearch.com/2015/11/02/watershed-opencv/
         # see also: http://scipy-lectures.org/packages/scikit-image/index.html
 
-        # Help user know what is happening with large image processing.
-        img_size: int = max(self.cvimg['gray'].shape)
-
         connections = int(self.cbox_val['ws_connect'].get())  # 1, 4 or 8.
         th_type: int = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
         dt_type: int = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
@@ -443,14 +440,12 @@ class ProcessImage(tk.Tk):
                           img_array=np.uint8(distances_img))
 
         # Inform user of progress when processing large images.
-        if img_size > const.SIZE_TO_WAIT:
-            _info = 'Completed distance transform; looking for peaks...\n\n\n'
-            if self.slider_val['plm_footprint'].get() == 1:
-                _info = ('Completed distance transform; looking for peaks...\n'
-                        'A peak_local max footprint of 1 may take a while.\n\n')
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-        elif self.slider_val['plm_footprint'].get() == 1:
+        _info = 'Completed distance transform; looking for peaks...\n\n\n'
+        self.info_label.config(fg=const.COLORS_TK['blue'])
+        manage.info_message(widget=self.info_label,
+                            toplevel=app, infotxt=_info)
+
+        if self.slider_val['plm_footprint'].get() == 1:
             # Need to run self.show_info_messages() at end of select_and_size()
             #  to cycle back to default size std units message.
             _info = 'A peak_local max footprint of 1 may take a while...\n\n\n'
@@ -472,10 +467,9 @@ class ProcessImage(tk.Tk):
                                             p_norm=np.inf)  # Chebyshev distance
                                             # p_norm=2,  # Euclidean distance
 
-        if img_size > const.SIZE_TO_WAIT:
-            _info = 'Found peaks; running watershed algorithm...\n\n\n'
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
+        _info = 'Found peaks; running watershed algorithm...\n\n\n'
+        manage.info_message(widget=self.info_label,
+                            toplevel=app, infotxt=_info)
 
         mask = np.zeros(shape=distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
@@ -512,11 +506,11 @@ class ProcessImage(tk.Tk):
         """
 
         # Inform user of progress when processing large images.
-        img_size: int = max(self.cvimg['gray'].shape)  # same shape as *img*.
-        if img_size > const.SIZE_TO_WAIT:
-            _info = 'Watershed completed; now finding contours...\n\n\n'
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
+        _info = ('Watershed completed; finding contours for sizing...\n'
+                 '(Excessive delay may require a program restart.)\n\n')
+        self.info_label.config(fg=const.COLORS_TK['blue'])
+        manage.info_message(widget=self.info_label,
+                            toplevel=app, infotxt=_info)
 
         # self.watershed_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of ws objects.
@@ -563,11 +557,6 @@ class ProcessImage(tk.Tk):
 
         self.update_image(img_name='watershed',
                           img_array=watershed_img)
-
-        if img_size > const.SIZE_TO_WAIT:
-            _info = 'Contours found. Report ready.\n\n\n'
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
 
         # Now draw enclosing circles around watershed segments and
         #  annotate with object sizes in ImageViewer.select_and_size().
@@ -1063,8 +1052,6 @@ class ImageViewer(ProcessImage):
 
         # Default Frame() arguments work fine to display report text.
         # bg won't show when grid sticky EW for tk.Text; see utils.display_report().
-        # self.contour_report_frame.configure(relief='flat')  # 'flat' is default.
-
         self.contour_selectors_frame.configure(relief='raised',
                                                bg=const.DARK_BG,
                                                # bg=const.COLORS_TK['sky blue'],  # for development
@@ -1105,7 +1092,7 @@ class ImageViewer(ProcessImage):
         _info = ('When the entered pixel size is 1 and selected size standard\n'
                 'is None, displayed sizes are pixels.\n'
                 'Size units are millimeters for any pre-set size standard,\n'
-                'and whatever you want for custom standards.\n')
+                'and whatever you want for custom standards.')
 
         self.info_label.config(text=_info,
                                font=const.WIDGET_FONT,
@@ -2019,6 +2006,11 @@ class ImageViewer(ProcessImage):
         self.filter_image()
         self.set_size_std()
         self.contour_ws_segments(img=self.watershed_segmentation)
+
+        # At end of progress notices, give user time to read last msg,
+        #  then cycle back to default info msg.
+        app.after(ms=3000, func=self.show_info_messages)
+
         self.select_and_size(contour_pointset=self.watershed_contours)
         self.report_results()
 
