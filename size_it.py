@@ -451,7 +451,7 @@ class ProcessImage(tk.Tk):
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
         elif self.slider_val['plm_footprint'].get() == 1:
-            # Need to run self.setup_info_messages() at end of select_and_size()
+            # Need to run self.show_info_messages() at end of select_and_size()
             #  to cycle back to default size std units message.
             _info = 'A peak_local max footprint of 1 may take a while...\n\n\n'
             manage.info_message(widget=self.info_label,
@@ -584,7 +584,7 @@ class ImageViewer(ProcessImage):
     start_now
     setup_image_windows
     configure_main_window
-    setup_info_messages
+    show_info_messages
     setup_buttons
     config_sliders
     config_comboboxes
@@ -938,7 +938,7 @@ class ImageViewer(ProcessImage):
         self.setup_image_windows()
         self.configure_main_window()
         # utils.wait4it_msg(size_limit=max(self.cvimg['gray'].shape))
-        self.setup_info_messages()
+        self.show_info_messages()
         self.setup_buttons()
         self.config_sliders()
         self.config_comboboxes()
@@ -974,7 +974,7 @@ class ImageViewer(ProcessImage):
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             # Give user time to read the message before resetting it.
-            app.after(3000, self.setup_info_messages)
+            app.after(3000, self.show_info_messages)
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
         # Dictionary item order determines stack order of windows.
@@ -1090,7 +1090,7 @@ class ImageViewer(ProcessImage):
         #  display_windows() after all image windows so that it stacks
         #  on top at startup.
 
-    def setup_info_messages(self) -> None:
+    def show_info_messages(self) -> None:
         """
         Informative note at bottom of settings (mainloop) window about
         the displayed size units. The Label text is also re-configured
@@ -1102,16 +1102,17 @@ class ImageViewer(ProcessImage):
             None
         """
 
-        self.info_label.config(
-            text='When the entered pixel size is 1 and the selected size\n'
-                 'standard is None, then circled diameters are pixels.\n'
-                 'Diameters are millimeters for any pre-set size standard,\n'
-                 'and whatever you want for custom standards.',
-            font=const.WIDGET_FONT,
-            bg=const.MASTER_BG,
-            fg='black')
+        _info = ('When the entered pixel size is 1 and selected size standard\n'
+                'is None, displayed sizes are pixels.\n'
+                'Size units are millimeters for any pre-set size standard,\n'
+                'and whatever you want for custom standards.\n')
+
+        self.info_label.config(text=_info,
+                               font=const.WIDGET_FONT,
+                               bg=const.MASTER_BG,
+                               fg='black')
         self.info_label.grid(column=1, row=2, rowspan=2,
-                             padx=10, sticky=tk.EW)
+                             padx=0, sticky=tk.EW)
 
     def setup_buttons(self) -> None:
         """
@@ -1137,10 +1138,9 @@ class ImageViewer(ProcessImage):
             _folder = str(Path(self.input_file).parent)
             _info = ('Settings report and result image have been saved to:\n'
                      f'{utils.valid_path_to(_folder)}')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(4000, self.setup_info_messages)
+            app.after(4000, self.show_info_messages)
 
         def _do_reset():
             """
@@ -1638,12 +1638,10 @@ class ImageViewer(ProcessImage):
             _info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
                     f'{utils.valid_path_to(folder)}\n'
                     'with a timestamp.')
-
-            self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             # Give user time to read the message before resetting it.
-            app.after(4000, self.setup_info_messages)
+            app.after(4000, self.show_info_messages)
 
         # macOS right mouse button has a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
@@ -1893,7 +1891,7 @@ class ImageViewer(ProcessImage):
         # Note that the after time used here delays execution of this method.
         if (max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT or
                 self.slider_val['plm_footprint'].get() == 1):
-            app.after(2000, self.setup_info_messages)
+            app.after(3000, self.show_info_messages)
 
     def report_results(self) -> None:
         """
