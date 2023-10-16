@@ -499,7 +499,8 @@ class ProcessImage(tk.Tk):
                                channel_axis=None)
 
         if not self.first_run:
-            _info = '\n\nRandom walker completed. Finding contours for sizing...\n\n'
+            _info = ('\n\nRandom walker completed. Finding contours for sizing...\n'
+                     '(Excessive delay may require a program restart.)\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -957,7 +958,8 @@ class ImageViewer(ProcessImage):
         # Because sharing the constants.py module with size_it.py, need to
         #  rename the window that does not display watershed segments
         #  used in size_it.py.
-        #  Random_walker segments display as an inverse threshold img.
+        # Random_walker segments display as an inverse threshold img, so
+        #   there is no need to show them alongside, as done in size_it.
         const.WIN_NAME['dist_trans'] = 'Distances transformed'
 
         for _name, toplevel in self.img_window.items():
@@ -998,8 +1000,6 @@ class ImageViewer(ProcessImage):
 
         # Default Frame() arguments work fine to display report text.
         # bg won't show when grid sticky EW for tk.Text; see utils.display_report().
-        # self.contour_report_frame.configure(relief='flat')  # 'flat' is default.
-
         self.contour_selectors_frame.configure(relief='raised',
                                                bg=const.DARK_BG,
                                                # bg=const.COLORS_TK['sky blue'],  # for development
@@ -1113,7 +1113,6 @@ class ImageViewer(ProcessImage):
                        sticky=tk.W)
 
         # Need to use cross-platform padding.
-        # self.update()
         process_padx = (reset_btn.winfo_reqwidth() + 20, 0)
         process_btn.grid(column=0, row=2,
                          padx=process_padx,
@@ -1244,7 +1243,7 @@ class ImageViewer(ProcessImage):
         # To avoid grabbing all the intermediate values between normal
         #  click and release movements, bind sliders to call functions
         #  only on left button release.
-        # Most are bound to do nothing because processing is initiated
+        # Most are bound to preprocess(); process_all() is initiated
         #  only with a Button(). To speed program responsiveness when
         #  changing the size range, only the sizing and reporting methods
         #  are called on mouse button release.
@@ -1274,8 +1273,6 @@ class ImageViewer(ProcessImage):
         #  and padding in different systems.
         width_correction = 2 if const.MY_OS == 'win' else 0  # is Linux or macOS
 
-        # Comboboxes that are pre-random_walker (morphology, filter, threshold)
-        #  and size standards are bound with mouse button release.
         # Combobox styles are set in manage.ttk_styles(), called in setup_buttons().
         self.cbox['morphop_lbl'].config(text='Reduce noise, morphology operator:',
                                         **const.LABEL_PARAMETERS)
@@ -1328,7 +1325,7 @@ class ImageViewer(ProcessImage):
                                      **const.COMBO_PARAMETERS)
 
         # Now bind functions to all Comboboxes.
-        # Note that the  <if '_lbl'> condition doesn't seem to be needed for
+        # Note that the  <if '_lbl'> condition isn't needed for
         # performance; it just clarifies the bind intention.
         for _name, widget in self.cbox.items():
             if '_lbl' in _name:
