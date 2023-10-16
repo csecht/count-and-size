@@ -228,10 +228,6 @@ class ProcessImage(tk.Tk):
         # https://docs.opencv2.org/3.4/d3/dc1/tutorial_basic_linear_transform.html
         # https://stackoverflow.com/questions/39308030/
         #   how-do-i-increase-the-contrast-of-an-image-in-python-opencv
-
-        self.time_start: float = time()
-
-
         self.cvimg['contrast'] = (
             cv2.convertScaleAbs(
                 src=self.cvimg['gray'],
@@ -464,12 +460,6 @@ class ProcessImage(tk.Tk):
                                             p_norm=np.inf)  # Chebyshev distance
                                             # p_norm=2,  # Euclidean distance
 
-        if not self.first_run:
-            _info = ('\nFound peaks from distance transform.\n'
-                     'Running random walker algorithm, please wait...\n\n')
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-
         mask = np.zeros(shape=self.cvimg['dist_trans'].shape, dtype=bool)
         # Set background to True (not zero: True or 1)
         mask[tuple(local_max.T)] = True
@@ -487,6 +477,13 @@ class ProcessImage(tk.Tk):
         # Replace thresh_img background with -1 to ignore those pixels.
         labeled_array[labeled_array == self.cvimg['thresh']] = -1
 
+        if not self.first_run:
+            _info = ('\nFound peaks from distance transform.\n'
+                     'Running random walker algorithm, please wait...\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+
         # NOTE: beta and tolerances were empirically determined for best
         #  performance with the sample images running an Intel i9600k @ 4.8 GHz.
         #  Default beta & tol take ~8x longer to process for similar results.
@@ -503,6 +500,7 @@ class ProcessImage(tk.Tk):
 
         if not self.first_run:
             _info = '\n\nRandom walker completed. Finding contours for sizing...\n\n'
+            self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
 
@@ -527,7 +525,7 @@ class ImageViewer(ProcessImage):
     start_now
     setup_image_windows
     configure_main_window
-    setup_info_messages
+    show_info_messages
     setup_buttons
     config_sliders
     config_comboboxes
@@ -870,7 +868,7 @@ class ImageViewer(ProcessImage):
         #  simultaneously for a visually cleaner start.
         self.setup_image_windows()
         self.configure_main_window()
-        self.setup_info_messages()
+        self.show_info_messages()
         self.setup_buttons()
         self.config_sliders()
         self.config_comboboxes()
@@ -906,7 +904,7 @@ class ImageViewer(ProcessImage):
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             # Give user time to read the message before resetting it.
-            app.after(ms=4000, func=self.setup_info_messages)
+            app.after(ms=4000, func=self.show_info_messages)
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
         # Dictionary item order determines stack order of windows.
@@ -1028,7 +1026,7 @@ class ImageViewer(ProcessImage):
         #  display_windows() after all image windows so that it stacks
         #  on top at startup.
 
-    def setup_info_messages(self) -> None:
+    def show_info_messages(self) -> None:
         """
         Informative note at bottom of settings (mainloop) window about
         the displayed size units. The Label text is also re-configured
@@ -1040,13 +1038,13 @@ class ImageViewer(ProcessImage):
             None
         """
 
-        info = ('With entered pixel size of 1 and selected size standard\n'
-                'is None, then displayed sizes are pixels.\n'
+        _info = ('When the entered pixel size is 1 and selected size standard\n'
+                'is None, displayed sizes are pixels.\n'
                 'Size units are millimeters for any pre-set size standard,\n'
                 'and whatever you want for custom standards.\n'
                 f'(Processing time elapsed: {self.elapsed})')
 
-        self.info_label.config(text=info,
+        self.info_label.config(text=_info,
                                font=const.WIDGET_FONT,
                                bg=const.MASTER_BG,
                                fg='black')
@@ -1081,7 +1079,7 @@ class ImageViewer(ProcessImage):
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(5000, self.setup_info_messages)
+            app.after(5000, self.show_info_messages)
 
         def _do_reset():
             """
@@ -1149,11 +1147,14 @@ class ImageViewer(ProcessImage):
             only from a Button().
             """
             if self.slider_val['plm_footprint'].get() == 1:
+                self.info_label.config(fg=const.COLORS_TK['vermilion'])
+
                 _info = ('\nClick "Run Random Walker" to update counts and sizes.\n'
                          'A peak_local_max footprint of 1 may take a while.\n\n')
             else:
                 _info = '\n\nClick "Run Random Walker" to update counts and sizes.\n\n'
-            self.info_label.config(fg=const.COLORS_TK['blue'])
+                self.info_label.config(fg=const.COLORS_TK['blue'])
+
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
 
@@ -1600,17 +1601,15 @@ class ImageViewer(ProcessImage):
                                         txt2save='The displayed image',
                                         caller=image_name)
 
-            # Provide user with a notice that a file was created.
+            # Provide user with a notice that a file was created and
+            #  give user time to read the message before resetting it.
             folder = str(Path(self.input_file).parent)
             _info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
                     f'{utils.valid_path_to(folder)}\n'
                     'with a timestamp.')
-
-            self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            # Give user time to read the message before resetting it.
-            app.after(4000, self.setup_info_messages)
+            app.after(4000, self.show_info_messages)
 
         # macOS right mouse button has a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
@@ -1853,21 +1852,10 @@ class ImageViewer(ProcessImage):
         self.update_image(img_name='sized',
                           img_array=self.cvimg['sized'])
 
+        # Record total time to process for user's info message. Start
+        #  time is set in preprocess() or process_rw_and_sizes().
         self.elapsed = round(time() - self.time_start, 3)
 
-        # Cycle back to the starting info about size std units after
-        #   last progress message in contour_rw_segments().
-        # Give user time to see the final progress msg before cycling back.
-        #  ...except if initial run, when all prior progress info messages
-        #   have been omitted, so don't need a delay. Here, at the end of
-        #   the processing line, is where the first_run flag is reset.
-        if self.first_run:
-            self.first_run = False
-        else:
-            _info = '\n\nContours found, sizes calculated, report updated.\n\n'
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-            app.after(3000, self.setup_info_messages)
 
     def report_results(self) -> None:
         """
@@ -1987,13 +1975,15 @@ class ImageViewer(ProcessImage):
         Returns:
             *event* as a formality; functionally None.
         """
+        self.time_start: float = time()
         self.adjust_contrast()
         self.reduce_noise()
         self.filter_image()
         self.th_and_dist_trans()
         self.set_size_std()
         self.report_results()
-        # Var first_run is reset to False at end of select_and_size()
+
+        # Var first_run is reset to False in process_rw_and_sizes()
         #   during the first run.
         if not self.first_run:
             _info = ('\nPreprocessing completed.\n'
@@ -2015,8 +2005,32 @@ class ImageViewer(ProcessImage):
         Returns:
             *event* as a formality; is functionally None.
         """
+
+        self.time_start: float = time()
         self.select_and_size(contour_pointset=self.randomwalk_segmentation)
         self.report_results()
+
+        # Give user time to see the final progress msg before cycling back.
+        #  ...except if initial run, when all processing occurs before the
+        #  info msg window is displayed. Here, at the end of the processing
+        #  pipeline, is where the first_run flag is set to False.
+        # self.elapsed is set at end of select_and_size().
+        if self.first_run:
+            self.first_run = False
+            _info = (f'Time to process image: {self.elapsed}\n'
+                     'Default settings were used. Settings that increase or\n'
+                     'decrease number of detected objects will increase or\n'
+                     'decrease, respectively, the processing time.\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+        else:
+            _info = ('\nContours found and sizes calculated. Report updated.\n'
+                     f'Processing time elapsed: {self.elapsed}\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+            app.after(4000, self.show_info_messages)
 
         return event
 
@@ -2033,7 +2047,15 @@ class ImageViewer(ProcessImage):
         """
         self.set_size_std()
         self.select_and_size(contour_pointset=self.randomwalk_contours)
+        self.elapsed = 'n/a'
         self.report_results()
+
+        _info = '\n\nReport updated and image annotated with new size selections.\n\n'
+        self.info_label.config(fg=const.COLORS_TK['blue'])
+        manage.info_message(widget=self.info_label,
+                            toplevel=app, infotxt=_info)
+        app.after(4000, self.show_info_messages)
+
 
         return event
 
