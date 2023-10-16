@@ -52,7 +52,7 @@ The Esc or Crtl-Q key will quit the program once a file is selected. To quit the
 
 Sample image files, listed below, are provided in this distribution's `images` directory. From the opening window, users can browse to there or whichever directory contains their image for analysis. Settings and annotated images are saved to the selected image's directory.
 
-Image file examples provided in the `images` folder, where sample1 was used to establish the default parameters:
+Image file examples provided in the `images/examples` folder of this distribution, where sample1 was used to establish default processing parameters:
 * sample1.jpg (baby oysters on black burlap, 1200x1199 902 kB),
 * sample2.jpg (baby oysters on white, Sacagawea coin edited to black, 2627x2629, 1050 kB),
 * sample3.jpg (sample2 cropped, with some oysters out of frame, 540x967, 268 kB)
