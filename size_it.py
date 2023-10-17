@@ -440,15 +440,18 @@ class ProcessImage(tk.Tk):
                           img_array=np.uint8(distances_img))
 
         # Inform user of progress when processing large images.
-        _info = 'Completed distance transform; looking for peaks...\n\n\n'
-        self.info_label.config(fg=const.COLORS_TK['blue'])
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
 
         if self.slider_val['plm_footprint'].get() == 1:
             # Need to run self.show_info_messages() at end of select_and_size()
             #  to cycle back to default size std units message.
-            _info = 'A peak_local max footprint of 1 may take a while...\n\n\n'
+            _info = ('Completed distance transform; looking for peaks...\n'
+                     'A peak_local max footprint of 1 may take a while...\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+        else:
+            _info = 'Completed distance transform; looking for peaks...\n\n\n'
+            self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
 
@@ -506,7 +509,8 @@ class ProcessImage(tk.Tk):
         """
 
         # Inform user of progress when processing large images.
-        _info = ('Watershed completed; finding contours for sizing...\n\n\n')
+        _info = ('Watershed completed; finding contours for sizing...\n'
+                 '(Excessive delay may require a program restart.)\n\n')
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
@@ -2049,12 +2053,11 @@ if __name__ == "__main__":
 
     # Choose a compatible multiprocessing method idea from:
     # https://coderzcolumn.com/tutorials/python/multiprocessing-basic
+    # On Windows and macOS, spawn is default method.
     try:
-        # multiprocessing.freeze_support()  # uncomment for Pyinstaller
+        multiprocessing.freeze_support()
         if const.MY_OS == 'lin':
             multiprocessing.set_start_method('forkserver')
-        else:  # is Windows or macOS (spawn is default on macOS).
-            multiprocessing.set_start_method('spawn')
 
         print(f'{utils.program_name()} has launched...')
         app = ImageViewer()

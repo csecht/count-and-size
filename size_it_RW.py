@@ -2066,12 +2066,11 @@ if __name__ == "__main__":
 
     # Choose a compatible multiprocessing method idea from:
     # https://coderzcolumn.com/tutorials/python/multiprocessing-basic
+    # On Windows and macOS, spawn is default method.
     try:
-        # multiprocessing.freeze_support()  # uncomment for Pyinstaller
+        multiprocessing.freeze_support()
         if const.MY_OS == 'lin':
             multiprocessing.set_start_method('forkserver')
-        else:  # is Windows or macOS (spawn is default on macOS).
-            multiprocessing.set_start_method('spawn')
 
         print(f'{utils.program_name()} has launched...')
         app = ImageViewer()
