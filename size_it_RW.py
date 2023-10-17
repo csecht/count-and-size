@@ -430,8 +430,8 @@ class ProcessImage(tk.Tk):
     @property
     def randomwalk_segmentation(self) -> list:
         """
-        Segment objects with cv2.distanceTransform, skimage
-        peak_local_max and skimage.segmentation.random_walker.
+        Segment objects with skimage.feature.peak_local_max() and
+        skimage.segmentation.random_walker().
         Called as arg for select_and_size() from process_rw_and_sizes().
         Calls update_image().
 
@@ -616,6 +616,12 @@ class ImageViewer(ProcessImage):
         self.size_cust_entry = tk.Entry(self.contour_selectors_frame)
         self.custom_size_entry = tk.StringVar()
         self.size_cust_label = tk.Label(self.contour_selectors_frame)
+
+        self.button = {
+            'reset': ttk.Button(),
+            'save': ttk.Button(),
+            'process': ttk.Button(),
+        }
 
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
@@ -1092,32 +1098,32 @@ class ImageViewer(ProcessImage):
             style='My.TButton',
             width=0)
 
-        reset_btn = ttk.Button(text='Reset settings',
-                               command=_do_reset,
-                               **button_params)
+        self.button['reset'].config(text='Reset settings',
+                                    command=_do_reset,
+                                    **button_params)
 
-        save_btn = ttk.Button(text='Save settings & sized image',
-                              command=_save_results,
-                              **button_params)
+        self.button['save'].config(text='Save settings & sized image',
+                                   command=_save_results,
+                                   **button_params)
 
-        process_btn = ttk.Button(text='Run Random Walker',
+        self.button['process'].config(text='Run Random Walker',
                                  command=self.process_rw_and_sizes,
                                  **button_params)
 
         # Widget griding in the mainloop window.
-        reset_btn.grid(column=0, row=2,
+        self.button['reset'].grid(column=0, row=2,
                        padx=10,
                        pady=5,
                        sticky=tk.W)
 
         # Need to use cross-platform padding.
-        process_padx = (reset_btn.winfo_reqwidth() + 20, 0)
-        process_btn.grid(column=0, row=2,
+        process_padx = (self.button['reset'].winfo_reqwidth() + 20, 0)
+        self.button['process'].grid(column=0, row=2,
                          padx=process_padx,
                          pady=5,
                          sticky=tk.W)
 
-        save_btn.grid(column=0, row=3,
+        self.button['save'].grid(column=0, row=3,
                       padx=10,
                       pady=(0, 5),
                       sticky=tk.W)
@@ -1358,6 +1364,40 @@ class ImageViewer(ProcessImage):
 
         self.size_cust_entry.bind('<Return>', func=self.process_sizes)
         self.size_cust_entry.bind('<KP_Enter>', func=self.process_sizes)
+
+    def widget_control(self, action: str) -> None:
+        """
+        Used to disable settings widgets when MultiProc methods are
+        running, or set to normal after multiprocessing methods finish.
+        Args:
+            action: Either 'off' to disable widgets, or 'on' to enable.
+        """
+
+        if action == 'off':
+            for _, _w in self.slider.items():
+                _w.configure(state=tk.DISABLED)
+            for _, _w in self.cbox.items():
+                _w.configure(state=tk.DISABLED)
+            for _, _w in self.button.items():
+                _w.grid_remove()
+            self.size_std_px_entry.configure(state=tk.DISABLED)
+            self.size_std_px_label.configure(state=tk.DISABLED)
+            self.size_cust_entry.configure(state=tk.DISABLED)
+            self.size_cust_label.configure(state=tk.DISABLED)
+        else:  # is 'on'
+            for _, _w in self.slider.items():
+                _w.configure(state=tk.NORMAL)
+            for _k, _w in self.cbox.items():
+                if '_lbl' in _k:
+                    _w.configure(state=tk.NORMAL)
+                else:
+                    _w.configure(state='readonly')
+            for _, _w in self.button.items():
+                _w.grid()
+            self.size_std_px_entry.configure(state=tk.NORMAL)
+            self.size_std_px_label.configure(state=tk.NORMAL)
+            self.size_cust_entry.configure(state=tk.NORMAL)
+            self.size_cust_label.configure(state=tk.NORMAL)
 
     def config_annotations(self) -> None:
         """
@@ -1630,6 +1670,8 @@ class ImageViewer(ProcessImage):
             None
         """
         # Default settings are optimized for sample1.jpg input.
+
+        self.widget_control('on')
 
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
@@ -2001,9 +2043,11 @@ class ImageViewer(ProcessImage):
             *event* as a formality; is functionally None.
         """
 
+        self.widget_control('off')
         self.time_start: float = time()
         self.select_and_size(contour_pointset=self.randomwalk_segmentation)
         self.report_results()
+        self.widget_control('on')
 
         # Give user time to see the final progress msg before cycling back.
         #  ...except if initial run, when all processing occurs before the
@@ -2025,7 +2069,7 @@ class ImageViewer(ProcessImage):
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(4000, self.show_info_messages)
+            app.after(3500, self.show_info_messages)
 
         return event
 

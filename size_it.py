@@ -444,13 +444,13 @@ class ProcessImage(tk.Tk):
         if self.slider_val['plm_footprint'].get() == 1:
             # Need to run self.show_info_messages() at end of select_and_size()
             #  to cycle back to default size std units message.
-            _info = ('Completed distance transform; looking for peaks...\n'
+            _info = ('\nCompleted distance transform; looking for peaks...\n'
                      'A peak_local max footprint of 1 may take a while...\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
         else:
-            _info = 'Completed distance transform; looking for peaks...\n\n\n'
+            _info = '\nCompleted distance transform; looking for peaks...\n\n\n'
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -470,7 +470,7 @@ class ProcessImage(tk.Tk):
                                             p_norm=np.inf)  # Chebyshev distance
                                             # p_norm=2,  # Euclidean distance
 
-        _info = 'Found peaks; running watershed algorithm...\n\n\n'
+        _info = '\nFound peaks; running watershed algorithm...\n\n\n'
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
 
@@ -509,7 +509,7 @@ class ProcessImage(tk.Tk):
         """
 
         # Inform user of progress when processing large images.
-        _info = ('Watershed completed; finding contours for sizing...\n'
+        _info = ('\nWatershed completed; finding contours for sizing...\n'
                  '(Excessive delay may require a program restart.)\n\n')
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
@@ -675,6 +675,9 @@ class ImageViewer(ProcessImage):
         self.size_cust_entry = tk.Entry(self.contour_selectors_frame)
         self.custom_size_entry = tk.StringVar()
         self.size_cust_label = tk.Label(self.contour_selectors_frame)
+
+        self.reset_btn = ttk.Button()
+        self.save_btn = ttk.Button()
 
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
@@ -960,7 +963,7 @@ class ImageViewer(ProcessImage):
             """
             _info = ('That window cannot be closed from its window bar.\n'
                     'Minimize it if it is in the way.\n'
-                    'Esc or Ctrl-Q keys will Quit the program.')
+                    'Esc or Ctrl-Q keys will Quit the program.\n')
             self.info_label.config(fg=const.COLORS_TK['vermilion'],
                                    font=cv2.FONT_HERSHEY_SIMPLEX)
             manage.info_message(widget=self.info_label,
@@ -1095,7 +1098,7 @@ class ImageViewer(ProcessImage):
         _info = ('When the entered pixel size is 1 and selected size standard\n'
                 'is None, displayed sizes are pixels.\n'
                 'Size units are millimeters for any pre-set size standard,\n'
-                'and whatever you want for custom standards.')
+                'and whatever you want for custom standards.\n')
 
         self.info_label.config(text=_info,
                                font=const.WIDGET_FONT,
@@ -1126,7 +1129,7 @@ class ImageViewer(ProcessImage):
                 caller=utils.program_name())
 
             _folder = str(Path(self.input_file).parent)
-            _info = ('Settings report and result image have been saved to:\n'
+            _info = ('\nSettings report and result image have been saved to:\n'
                      f'{utils.valid_path_to(_folder)}')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -1144,20 +1147,20 @@ class ImageViewer(ProcessImage):
             style='My.TButton',
             width=0)
 
-        reset_btn = ttk.Button(text='Reset settings',
+        self.reset_btn.configure(text='Reset settings',
                                command=_do_reset,
                                **button_params)
 
-        save_btn = ttk.Button(text='Save settings & sized image',
+        self.save_btn.configure(text='Save settings & sized image',
                               command=_save_results,
                               **button_params)
 
         # Widget griding in the mainloop window.
-        reset_btn.grid(column=0, row=2,
+        self.reset_btn.grid(column=0, row=2,
                        padx=10,
                        pady=5,
                        sticky=tk.W)
-        save_btn.grid(column=0, row=3,
+        self.save_btn.grid(column=0, row=3,
                       padx=10,
                       pady=(0, 5),
                       sticky=tk.W)
@@ -1379,6 +1382,40 @@ class ImageViewer(ProcessImage):
 
         self.size_cust_entry.bind('<Return>', func=self.process_sizes)
         self.size_cust_entry.bind('<KP_Enter>', func=self.process_sizes)
+
+    def widget_control(self, action: str) -> None:
+        """
+        Used to disable settings widgets when MultiProc methods are
+        running, or set to normal after multiprocessing methods finish.
+        Args:
+            action: Either 'off' to disable widgets, or 'on' to enable.
+        """
+
+        if action == 'off':
+            for _, _w in self.slider.items():
+                _w.configure(state=tk.DISABLED)
+            for _, _w in self.cbox.items():
+                _w.configure(state=tk.DISABLED)
+            self.reset_btn.grid_remove()
+            self.save_btn.grid_remove()
+            self.size_std_px_entry.configure(state=tk.DISABLED)
+            self.size_std_px_label.configure(state=tk.DISABLED)
+            self.size_cust_entry.configure(state=tk.DISABLED)
+            self.size_cust_label.configure(state=tk.DISABLED)
+        else:  # is 'on'
+            for _, _w in self.slider.items():
+                _w.configure(state=tk.NORMAL)
+            for _k, _w in self.cbox.items():
+                if '_lbl' in _k:
+                    _w.configure(state=tk.NORMAL)
+                else:
+                    _w.configure(state='readonly')
+            self.reset_btn.grid()
+            self.save_btn.grid()
+            self.size_std_px_entry.configure(state=tk.NORMAL)
+            self.size_std_px_label.configure(state=tk.NORMAL)
+            self.size_cust_entry.configure(state=tk.NORMAL)
+            self.size_cust_label.configure(state=tk.NORMAL)
 
     def config_annotations(self) -> None:
         """
@@ -1626,7 +1663,7 @@ class ImageViewer(ProcessImage):
             # Provide user with a notice that a file was created.
             folder = str(Path(self.input_file).parent)
             _info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
-                    f'{utils.valid_path_to(folder)}\n'
+                    f'{utils.valid_path_to(folder)}\n\n'
                     'with a timestamp.')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -1657,6 +1694,8 @@ class ImageViewer(ProcessImage):
             None
         """
         # Default settings are optimized for sample1.jpg input.
+
+        self.widget_control('on')
 
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
@@ -2004,6 +2043,7 @@ class ImageViewer(ProcessImage):
         Returns:
             *event* as a formality; is functionally None.
         """
+        self.widget_control('off')
         self.adjust_contrast()
         self.reduce_noise()
         self.filter_image()
@@ -2011,15 +2051,16 @@ class ImageViewer(ProcessImage):
         self.contour_ws_segments(img=self.watershed_segmentation)
         self.select_and_size(contour_pointset=self.watershed_contours)
         self.report_results()
+        self.widget_control('on')
 
         # Inform user of progress when processing large images.
         # At end of progress notices, give user time to read last msg,
         #  then cycle back to default info msg.
-        _info = 'Contours found and sizes calculated. Report updated.\n\n\n'
+        _info = '\nContours found and sizes calculated. Report updated.\n\n\n'
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
-        app.after(ms=3000, func=self.show_info_messages)
+        app.after(ms=3500, func=self.show_info_messages)
 
 
         return event
