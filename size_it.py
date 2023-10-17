@@ -506,8 +506,7 @@ class ProcessImage(tk.Tk):
         """
 
         # Inform user of progress when processing large images.
-        _info = ('Watershed completed; finding contours for sizing...\n'
-                 '(Excessive delay may require a program restart.)\n\n')
+        _info = ('Watershed completed; finding contours for sizing...\n\n\n')
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
@@ -2006,13 +2005,18 @@ class ImageViewer(ProcessImage):
         self.filter_image()
         self.set_size_std()
         self.contour_ws_segments(img=self.watershed_segmentation)
-
-        # At end of progress notices, give user time to read last msg,
-        #  then cycle back to default info msg.
-        app.after(ms=3000, func=self.show_info_messages)
-
         self.select_and_size(contour_pointset=self.watershed_contours)
         self.report_results()
+
+        # Inform user of progress when processing large images.
+        # At end of progress notices, give user time to read last msg,
+        #  then cycle back to default info msg.
+        _info = 'Contours found and sizes calculated. Report updated.\n\n\n'
+        self.info_label.config(fg=const.COLORS_TK['blue'])
+        manage.info_message(widget=self.info_label,
+                            toplevel=app, infotxt=_info)
+        app.after(ms=3000, func=self.show_info_messages)
+
 
         return event
 

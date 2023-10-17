@@ -1075,8 +1075,6 @@ class ImageViewer(ProcessImage):
             _folder = str(Path(self.input_file).parent)
             _info = ('\nSettings report and result image have been saved to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
-
-            self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             app.after(5000, self.show_info_messages)
