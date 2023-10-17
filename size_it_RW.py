@@ -40,7 +40,7 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License
 
 # Standard library imports.
-# import multiprocessing  # Uncomment for Pyinstaller apps.
+import multiprocessing
 import sys
 from pathlib import Path
 from statistics import mean, median
@@ -499,8 +499,8 @@ class ProcessImage(tk.Tk):
                                channel_axis=None)
 
         if not self.first_run:
-            _info = ('\n\nRandom walker completed. Finding contours for sizing...\n'
-                     '(Excessive delay may require a program restart.)\n')
+            _info = ('\nRandom walker completed. Finding contours for sizing...\n'
+                     '(Excessive delay may require a program restart.)\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -2064,8 +2064,15 @@ if __name__ == "__main__":
 
     manage.arguments()  # comment for Pyinstaller
 
+    # Choose a compatible multiprocessing method idea from:
+    # https://coderzcolumn.com/tutorials/python/multiprocessing-basic
     try:
         # multiprocessing.freeze_support()  # uncomment for Pyinstaller
+        if const.MY_OS == 'lin':
+            multiprocessing.set_start_method('forkserver')
+        else:  # is Windows or macOS (spawn is default on macOS).
+            multiprocessing.set_start_method('spawn')
+
         print(f'{utils.program_name()} has launched...')
         app = ImageViewer()
         app.title(f'{utils.program_name()} Settings Report')

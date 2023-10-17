@@ -36,7 +36,7 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 """
 
 # Standard library imports.
-# import multiprocessing  # Uncomment for Pyinstaller apps.
+import multiprocessing
 import sys
 from pathlib import Path
 from statistics import mean, median
@@ -2047,8 +2047,15 @@ if __name__ == "__main__":
 
     manage.arguments()  # comment for Pyinstaller
 
+    # Choose a compatible multiprocessing method idea from:
+    # https://coderzcolumn.com/tutorials/python/multiprocessing-basic
     try:
         # multiprocessing.freeze_support()  # uncomment for Pyinstaller
+        if const.MY_OS == 'lin':
+            multiprocessing.set_start_method('forkserver')
+        else:  # is Windows or macOS (spawn is default on macOS).
+            multiprocessing.set_start_method('spawn')
+
         print(f'{utils.program_name()} has launched...')
         app = ImageViewer()
         app.title(f'{utils.program_name()} Settings Report')
