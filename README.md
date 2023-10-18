@@ -138,7 +138,7 @@ Object size metrics,   mean: 12.3, median: 12.2, range: 6.92--18.1
 10. Annotation font size for selected objects can be changed with Ctrl + and Ctrl - keys. Annotation line thickness can be changed with Shift-Ctrl + and Shift-Ctrl -.
 
 ### Known Issues:
-On occasion, the program may stall at the step where the info displays, "Contours drawn. Calculating sizes...". Quit the program from the Terminal (it will not respond to it regular Quit commands) and try again. It was not any specific settings, so you can use those prior settings again. The problem is with lengthy "Process ForkPoolWorker" iterations in the multiprocessing Pool module that occur with an unknown condition. The issue seem most likely to happen with `size_it_RW.py`.
+On occasion, the program may stall at the step where the info displays, "Finding contours for sizing...". Quit the program and try again. It was not any specific settings, so you can use those prior settings again. The problem is with the multiprocessing Pool function and occurs under unknown conditions.
 
 ### Attributions
 All image files are from the author, C.S. Echt.
