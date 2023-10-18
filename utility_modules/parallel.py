@@ -87,7 +87,5 @@ class MultiProc:
             contours: list = mpool.map(func=self.contour_the_segments,
                                        iterable=np.unique(ar=self.image),
                                        chunksize=40)
-            mpool.close()
-            mpool.join()
 
         return contours
