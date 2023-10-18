@@ -2,7 +2,8 @@
 # Copyright (C) 2023 C. Echt under GNU General Public License'
 
 # Standard library imports
-from multiprocessing import Lock
+import multiprocessing
+from multiprocessing import Lock, Manager
 from multiprocessing.pool import Pool
 
 # Third party imports.
@@ -62,16 +63,27 @@ class MultiProc:
         # Idea and explanation for using Lock() from @dano at:
         #  https://stackoverflow.com/questions/25557686/
         #   python-sharing-a-lock-between-processes/25558333#25558333
-        def init(lock):
-            self.lock = lock
+        if const.MY_OS == 'lin':
+            def init(lock):
+                self.lock = lock
 
-        lock_it = Lock()
+            lock_it = Lock()
 
-        # chunksize=40 was empirically optimized for speed using the
-        #  sample images on a 6-core HP Pavilion Windows 11 laptop.
-        with Pool(processes=const.NCPU,
-                  initializer=init,
-                  initargs=(lock_it,)) as mpool:
+            # chunksize=40 was empirically optimized for speed using the
+            #  sample images on a 6-core HP Pavilion Windows 11 laptop.
+            with Pool(processes=const.NCPU,
+                      initializer=init,
+                      initargs=(lock_it, )) as mpool:
+                contours: list = mpool.map(func=self.contour_the_segments,
+                                           iterable=np.unique(ar=self.image),
+                                           chunksize=40)
+                mpool.close()
+                mpool.join()
+
+            return contours
+
+        # For Windows and macOS...
+        with Pool(processes=const.NCPU) as mpool:
             contours: list = mpool.map(func=self.contour_the_segments,
                                        iterable=np.unique(ar=self.image),
                                        chunksize=40)

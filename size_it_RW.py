@@ -2098,7 +2098,8 @@ class ImageViewer(ProcessImage):
 
 
 if __name__ == "__main__":
-    # multiprocessing.freeze_support()  # uncomment for PyInstaller (Windows)
+    if const.MY_OS == 'win':
+        multiprocessing.freeze_support()
     # Can choose a compatible multiprocessing method, see:
     # https://coderzcolumn.com/tutorials/python/multiprocessing-basic
     # On Windows and macOS, spawn is default method.
