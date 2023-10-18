@@ -2050,27 +2050,25 @@ class ImageViewer(ProcessImage):
         self.report_results()
         self.widget_control('on')
 
-        # Give user time to see the final progress msg before cycling back.
-        #  ...except if initial run, when all processing occurs before the
-        #  info msg window is displayed. Here, at the end of the processing
-        #  pipeline, is where the first_run flag is set to False.
+        # Here, at the end of the processing pipeline, is where the
+        #  first_run flag is set to False.
         # self.elapsed is set at end of select_and_size().
         if self.first_run:
             self.first_run = False
             _info = (f'Time to process image: {self.elapsed}\n'
                      'Default settings were used. Settings that increase or\n'
-                     'decrease number of detected objects will increase or\n'
-                     'decrease, respectively, the processing time.\n')
+                     'decrease number of detected objects will respectively\n'
+                     'increase or decrease the processing time.\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
+            app.after(ms=4000, func=self.show_info_messages)
         else:
             _info = ('\nContours found and sizes calculated. Report updated.\n'
                      f'Processing time elapsed: {self.elapsed}\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(3500, self.show_info_messages)
 
         return event
 
@@ -2090,33 +2088,31 @@ class ImageViewer(ProcessImage):
         self.elapsed = 'n/a'
         self.report_results()
 
-        _info = '\n\nReport updated and image annotated with new size selections.\n\n'
+        _info = '\n\nNew object size range selected. Report updated.\n\n'
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
-        app.after(4000, self.show_info_messages)
-
+        app.after(2000, self.show_info_messages)
 
         return event
 
 
 if __name__ == "__main__":
+    # multiprocessing.freeze_support()  # uncomment for PyInstaller (Windows)
+    # Can choose a compatible multiprocessing method, see:
+    # https://coderzcolumn.com/tutorials/python/multiprocessing-basic
+    # On Windows and macOS, spawn is default method.
+
     # Program exits here if any of the module checks fail or if the
     #   argument --about is used, which prints info, then exits.
+    # check_platform() also enables display scaling on Windows.
     utils.check_platform()
-    vcheck.minversion('3.7')   # comment for Pyinstaller
-    vcheck.maxversion('3.11')  # comment for Pyinstaller
+    vcheck.minversion('3.7')   # comment for PyInstaller
+    vcheck.maxversion('3.11')  # comment for PyInstaller
 
     manage.arguments()  # comment for Pyinstaller
 
-    # Choose a compatible multiprocessing method idea from:
-    # https://coderzcolumn.com/tutorials/python/multiprocessing-basic
-    # On Windows and macOS, spawn is default method.
     try:
-        multiprocessing.freeze_support()
-        if const.MY_OS == 'lin':
-            multiprocessing.set_start_method('forkserver')
-
         print(f'{utils.program_name()} has launched...')
         app = ImageViewer()
         app.title(f'{utils.program_name()} Settings Report')

@@ -296,7 +296,7 @@ SIZE_STANDARDS = {
 SIZE_TO_WAIT = 2000
 
 # Count only physical CPU cores (exclude hyperthreads) for best performance
-#   of parallel.MultiProc().  Leave 1 CPU open.
-NCPU = cpu_count(logical=False) - 1
+#   of parallel.MultiProc().
+NCPU = cpu_count(logical=False)
 # The multiprocess cpu_count() will count hyperthreads as CPUs.
 # NCPU = mp.cpu_count()

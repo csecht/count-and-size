@@ -185,6 +185,7 @@ class ProcessImage(tk.Tk):
         self.unit_per_px = tk.DoubleVar()
         self.num_sigfig: int = 0
         self.info_label = tk.Label(self)
+        self.first_run = True
 
     def update_image(self,
                      img_name: str,
@@ -509,7 +510,7 @@ class ProcessImage(tk.Tk):
         """
 
         # Inform user of progress when processing large images.
-        _info = ('\nWatershed completed; finding contours for sizing...\n'
+        _info = ('\nWatershed completed. Finding contours for sizing...\n'
                  '(Excessive delay may require a program restart.)\n\n')
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
@@ -2057,11 +2058,14 @@ class ImageViewer(ProcessImage):
         # Inform user of progress when processing large images.
         # At end of progress notices, give user time to read last msg,
         #  then cycle back to default info msg.
-        _info = '\nContours found and sizes calculated. Report updated.\n\n\n'
-        self.info_label.config(fg=const.COLORS_TK['blue'])
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
-        app.after(ms=3500, func=self.show_info_messages)
+        if self.first_run:
+            self.first_run = False
+            self.show_info_messages()
+        else:
+            _info = '\nContours found and sizes calculated. Report updated.\n\n\n'
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
 
         return event
 
@@ -2080,26 +2084,30 @@ class ImageViewer(ProcessImage):
         self.select_and_size(contour_pointset=self.watershed_contours)
         self.report_results()
 
+        _info = '\n\nNew object size range selected. Report updated.\n\n'
+        self.info_label.config(fg=const.COLORS_TK['blue'])
+        manage.info_message(widget=self.info_label,
+                            toplevel=app, infotxt=_info)
+        app.after(2000, self.show_info_messages)
+
         return event
 
 
 if __name__ == "__main__":
-    # Program exits here if any of the module checks fail or if the
-    #   argument --about is used, which prints info, then exits.
-    utils.check_platform()
-    vcheck.minversion('3.7')   # comment for Pyinstaller
-    vcheck.maxversion('3.11')  # comment for Pyinstaller
-
-    manage.arguments()  # comment for Pyinstaller
-
-    # Choose a compatible multiprocessing method idea from:
+    # multiprocessing.freeze_support()  # uncomment for PyInstaller (Windows)
+    # Can choose a compatible multiprocessing method, see:
     # https://coderzcolumn.com/tutorials/python/multiprocessing-basic
     # On Windows and macOS, spawn is default method.
-    try:
-        multiprocessing.freeze_support()
-        if const.MY_OS == 'lin':
-            multiprocessing.set_start_method('forkserver')
 
+    # Program exits here if any of the module checks fail or if the
+    #   argument --about is used, which prints info, then exits.
+    # check_platform() also enables display scaling on Windows.
+    utils.check_platform()
+    vcheck.minversion('3.7')   # comment for PyInstaller
+    vcheck.maxversion('3.11')  # comment for PyInstaller
+
+    manage.arguments()  # comment for Pyinstaller
+    try:
         print(f'{utils.program_name()} has launched...')
         app = ImageViewer()
         app.title(f'{utils.program_name()} Settings Report')
