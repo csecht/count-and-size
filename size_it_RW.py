@@ -1384,6 +1384,7 @@ class ImageViewer(ProcessImage):
             self.size_std_px_label.configure(state=tk.DISABLED)
             self.size_cust_entry.configure(state=tk.DISABLED)
             self.size_cust_label.configure(state=tk.DISABLED)
+            app.update()
         else:  # is 'on'
             for _, _w in self.slider.items():
                 _w.configure(state=tk.NORMAL)
