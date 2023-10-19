@@ -127,18 +127,17 @@ Object size metrics,   mean: 12.3, median: 12.2, range: 6.92--18.1
 
 ### Tips:
 1. For best results, use a well-contrasted objects that are not in large overlapping clusters. Best results are obtained using a lightbox with minimal top lighting to photograph objects.
-2. Before setting the size standard, adjust parameters to achieve the best separation and counts, then enter the resulting pixel diameter for your selected size standard to convert pixels to units measure. Units are millimeters for the pre-set standards, and whatever you want for custom standards.
-3. Once you select "Custom" for a size standard, an entry field pops up to fill in the known size. 
-4. Large files can take a while to process, so don't immediately start mashing buttons if things seem to be stalled.
-5. Size standards that are shiny can be pre-processed to solid white or black. Or just use a flat black or flat white object as a standard.
-6. Fill in the pixel diameter and type of size standard once segmentation and counts are optimized. In addition to making the size ranges (as radii) easier to navigate, it will also provide the most accurate size metrics.
-7. Size metrics are most accurate when the size standard is excluded from analysis. The easiest way to do that is to use a standard that is the largest or smallest object in the sample, then adjust the "Contour area size" sliders until just the standard's diameter is excluded.
-8. The number of significant figures reported are determined by standard's unit size or its pixel diameter, whichever has fewer sig. fig. This limit also holds when a custom size standard is used. See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained. Depending on the magnitude of the entered custom size, displayed size values may be in power notation. Saved individual size lists, however, are converted to decimal numbers.
-9. Right-click on an image in one of the windows to save it to file. The image, saved to original image's folder, will be at the specified scale for screen display, not the image file's original resolution. To save the annotated result image (sized & circled) at its original resolution, use the 'Save settings...' button.
-10. Annotation font size for selected objects can be changed with Ctrl + and Ctrl - keys. Annotation line thickness can be changed with Shift-Ctrl + and Shift-Ctrl -.
+2. Use a flat black or flat white object as a size standard.
+3. Before setting the size standard, adjust parameters to achieve the best separation and counts, then enter the resulting pixel diameter for your selected size standard to convert pixels to units measure. This will provide the most accurate size metrics. Units are millimeters for the pre-set standards, and whatever you want for custom standards.
+4. Once you select "Custom" for a size standard, an entry field pops up to fill in the known size.
+5. Size metrics are most accurate when the standard's size is excluded from analysis. The easiest way to do that is to use a standard that is the largest or smallest object in the sample, then adjust the "Circled radius size" sliders until the standard's diameter is excluded.
+6. The number of significant figures reported are determined by standard's unit size or its pixel diameter, whichever has fewer sig. fig. This limit also holds when a custom size standard is used. See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained. Depending on the magnitude of the entered custom size, displayed size values may be in power notation. Saved individual size lists, however, are converted to decimal numbers.
+7. Right-click on an image in one of the windows to save it to file. The image, saved to original image's folder, will be at the specified scale for screen display, not the image file's original resolution. To save the annotated result image (sized & circled) at its original resolution, use the 'Save settings...' button. 
+8. Font size for annotated (sized) objects can be changed with Ctrl + and Ctrl - keys. Annotation line thickness can be changed with Shift-Ctrl + and Shift-Ctrl -.
+9. Large files or many segmentations can take a while to process. Be patient.
 
 ### Known Issues:
-On occasion, the program may stall at the step where the info displays, "Finding contours for sizing...". Quit the program and try again. It was not any specific settings, so you can use those prior settings again. The problem is with the multiprocessing Pool function and occurs under unknown conditions.
+Waiting for user feedback.
 
 ### Attributions
 All image files are from the author, C.S. Echt.
