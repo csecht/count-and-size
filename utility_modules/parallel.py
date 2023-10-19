@@ -2,8 +2,9 @@
 # Copyright (C) 2023 C. Echt under GNU General Public License'
 
 # Standard library imports
-import multiprocessing
-from multiprocessing import Lock, Manager
+import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Lock
 from multiprocessing.pool import Pool
 
 # Third party imports.
@@ -54,38 +55,51 @@ class MultiProc:
         Returns:
             List of watershed contours used for object sizing.
          """
-        # Note: using multiprocessing to find segment contours takes
-        #  less time than finding them serially with a for-loop, which
-        #  helps with large files or many objects.
 
         # This implementation of Lock(), close(), and join() reduces
-        #  or eliminates intermittent hanging of the Pool() function.
+        #   intermittent hanging (deadlock) of the Pool() function.
+        # When used with method 'fork' in Linux, it is very fast, but
+        #  'fork' is subject to deadlocks.
         # Idea and explanation for using Lock() from @dano at:
         #  https://stackoverflow.com/questions/25557686/
         #   python-sharing-a-lock-between-processes/25558333#25558333
-        if const.MY_OS == 'lin':
-            def init(lock):
-                self.lock = lock
+        # if const.MY_OS == 'lin':
+        #     def init(lock):
+        #         self.lock = lock
+        #
+        #     lock_it = Lock()
+        #
+        #     # chunksize=40 was empirically optimized for speed using the
+        #     #  sample images on a 6-core HP Pavilion Windows 11 laptop.
+        #     with Pool(processes=const.NCPU,
+        #               initializer=init,
+        #               initargs=(lock_it, )) as mpool:
+        #         contours: list = mpool.map(func=self.contour_the_segments,
+        #                                    iterable=np.unique(ar=self.image),
+        #                                    chunksize=40)
+        #         mpool.close()
+        #         mpool.join()
+        #
+        #     return contours
+        #
+        # # For Windows and macOS...
+        # with Pool(processes=const.NCPU) as mpool:
+        #     contours: list = mpool.map(func=self.contour_the_segments,
+        #                                iterable=np.unique(ar=self.image),
+        #                                chunksize=40)
 
-            lock_it = Lock()
-
-            # chunksize=40 was empirically optimized for speed using the
-            #  sample images on a 6-core HP Pavilion Windows 11 laptop.
-            with Pool(processes=const.NCPU,
-                      initializer=init,
-                      initargs=(lock_it, )) as mpool:
-                contours: list = mpool.map(func=self.contour_the_segments,
-                                           iterable=np.unique(ar=self.image),
-                                           chunksize=40)
-                mpool.close()
-                mpool.join()
-
-            return contours
-
-        # For Windows and macOS...
-        with Pool(processes=const.NCPU) as mpool:
-            contours: list = mpool.map(func=self.contour_the_segments,
-                                       iterable=np.unique(ar=self.image),
-                                       chunksize=40)
+        # Stability is ensured with chunksize=1 even though it is slower.
+        # The multiprocess 'spawn' method is needed to ensure stability
+        #  on Linux, that is, it avoids deadlocks that happen with 'fork'.
+        #  'fork' is about 2x faster than 'spawn', but, oh well.
+        #  'spawn' is the default method on Windows and macOS.
+        # get_context() is needed here because when mp.set_start_method('spawn')
+        #  is used in if __name__ == "__main__" of size_it_RW.py, for unknown
+        #  reasons, a tk error is raised for no attribute of randomwalk_segmentation().
+        with ProcessPoolExecutor(max_workers=1, #const.NCPU,
+                                 mp_context=mp.get_context('spawn')) as executor:
+            contours = list(executor.map(self.contour_the_segments,
+                                            np.unique(ar=self.image),
+                                         chunksize=1))
 
         return contours

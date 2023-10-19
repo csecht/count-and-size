@@ -40,7 +40,7 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License
 
 # Standard library imports.
-import multiprocessing
+# import multiprocessing as mp
 import sys
 from pathlib import Path
 from statistics import mean, median
@@ -52,7 +52,7 @@ from time import time
 from utility_modules import (vcheck,
                              utils,
                              manage,
-                             parallel,
+                             # parallel,
                              constants as const,
                              to_precision as to_p)
 
@@ -499,8 +499,7 @@ class ProcessImage(tk.Tk):
                                channel_axis=None)
 
         if not self.first_run:
-            _info = ('\nRandom walker completed. Finding contours for sizing...\n'
-                     '(Excessive delay may require a program restart.)\n\n')
+            _info = '\nRandom walker completed. Finding contours for sizing...\n\n\n'
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -511,7 +510,30 @@ class ProcessImage(tk.Tk):
         #  cannot be parallelized. Subsequent contouring steps for the
         #  random walker image in select_and_size() do not take long to
         #  process, so do not need to be parallelized.
-        self.randomwalk_contours: list = parallel.MultiProc(rw_img).pool_it
+        # self.randomwalk_contours: list = parallel.MultiProc(rw_img).pool_it
+
+        # Note: This for loop is much more stable, and in most cases faster,
+        #  than using parallelization methods.
+        self.randomwalk_contours.clear()
+        for label in np.unique(ar=rw_img):
+
+            # If the label is zero, we are examining the 'background',
+            #   so simply ignore it.
+            if label == 0:
+                continue
+
+            # ...otherwise, allocate memory for the label region and draw
+            #   it on the mask.
+            mask = np.zeros(shape=rw_img.shape, dtype="uint8")
+            mask[rw_img == label] = 255
+
+            # Detect contours in the mask and grab the largest one.
+            contours, _ = cv2.findContours(image=mask.copy(),
+                                           mode=cv2.RETR_EXTERNAL,
+                                           method=cv2.CHAIN_APPROX_SIMPLE)
+
+            # Grow the list used to draw circles around WS contours.
+            self.randomwalk_contours.append(max(contours, key=cv2.contourArea))
 
         return self.randomwalk_contours
 
@@ -2096,13 +2118,9 @@ class ImageViewer(ProcessImage):
 
         return event
 
-
 if __name__ == "__main__":
-    if const.MY_OS == 'win':
-        multiprocessing.freeze_support()
-    # Can choose a compatible multiprocessing method, see:
-    # https://coderzcolumn.com/tutorials/python/multiprocessing-basic
-    # On Windows and macOS, spawn is default method.
+    # if const.MY_OS == 'win':
+    #     mp.freeze_support()  # Used for PyInstaller (Windows).
 
     # Program exits here if any of the module checks fail or if the
     #   argument --about is used, which prints info, then exits.

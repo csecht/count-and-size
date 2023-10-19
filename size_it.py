@@ -36,7 +36,7 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 """
 
 # Standard library imports.
-import multiprocessing
+# import multiprocessing as mp
 import sys
 from pathlib import Path
 from statistics import mean, median
@@ -47,7 +47,7 @@ from typing import List
 from utility_modules import (vcheck,
                              utils,
                              manage,
-                             parallel,
+                             # parallel,
                              constants as const,
                              to_precision as to_p)
 
@@ -522,7 +522,30 @@ class ProcessImage(tk.Tk):
         #  cannot be parallelized. Subsequent contouring steps for the
         #  watershed image do not take long to process, so do not need
         #  to be parallelized.
-        self.watershed_contours: list = parallel.MultiProc(img).pool_it
+        # self.watershed_contours: list = parallel.MultiProc(img).pool_it
+
+        # Note: This for loop is much more stable, and in most cases faster,
+        #  than using parallelization methods.
+        self.watershed_contours.clear()
+        for label in np.unique(ar=img):
+
+            # If the label is zero, we are examining the 'background',
+            #   so simply ignore it.
+            if label == 0:
+                continue
+
+            # ...otherwise, allocate memory for the label region and draw
+            #   it on the mask.
+            mask = np.zeros(shape=img.shape, dtype="uint8")
+            mask[img == label] = 255
+
+            # Detect contours in the mask and grab the largest one.
+            contours, _ = cv2.findContours(image=mask.copy(),
+                                           mode=cv2.RETR_EXTERNAL,
+                                           method=cv2.CHAIN_APPROX_SIMPLE)
+
+            # Grow the list used to draw circles around WS contours.
+            self.watershed_contours.append(max(contours, key=cv2.contourArea))
 
         # Convert watershed array from int32 to uint8 data type to find contours.
         # Conversion with cv2.convertScaleAbs(watershed_img) also works.
@@ -2094,12 +2117,8 @@ class ImageViewer(ProcessImage):
 
 
 if __name__ == "__main__":
-    if const.MY_OS == 'win':
-        multiprocessing.freeze_support()  # uncomment for PyInstaller (Windows)
-
-    # Can choose a compatible multiprocessing method, see:
-    # https://coderzcolumn.com/tutorials/python/multiprocessing-basic
-    # On Windows and macOS, spawn is default method.
+    # if const.MY_OS == 'win':
+    #     mp.freeze_support()  # Used for PyInstaller (Windows).
 
     # Program exits here if any of the module checks fail or if the
     #   argument --about is used, which prints info, then exits.
@@ -2109,6 +2128,7 @@ if __name__ == "__main__":
     vcheck.maxversion('3.11')  # comment for PyInstaller
 
     manage.arguments()  # comment for Pyinstaller
+
     try:
         print(f'{utils.program_name()} has launched...')
         app = ImageViewer()
