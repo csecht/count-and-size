@@ -46,7 +46,6 @@ from typing import List
 from utility_modules import (vcheck,
                              utils,
                              manage,
-                             # parallel,
                              constants as const,
                              to_precision as to_p)
 
@@ -340,8 +339,7 @@ class ProcessImage(tk.Tk):
         #  will not have much effect, whereas if they are large (> 150),
         #  they will have a very strong effect, making the image look "cartoonish".
         # NOTE: The larger the sigma the greater the effect of kernel size d.
-        # NOTE: filtered image dtype is uint8
-
+        # NOTE: filtered image dtype is uint8.
         if filter_selected == 'cv2.bilateralFilter':
             self.cvimg['filter'] = cv2.bilateralFilter(
                 src=image2filter,
@@ -439,11 +437,7 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='dist_trans',
                           img_array=np.uint8(distances_img))
 
-        # Inform user of progress when processing large images.
-
         if self.slider_val['plm_footprint'].get() == 1:
-            # Need to run self.show_info_messages() at end of select_and_size()
-            #  to cycle back to default size std units message.
             _info = ('\nCompleted distance transform; looking for peaks...\n'
                      'A peak_local max footprint of 1 may take a while...\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])

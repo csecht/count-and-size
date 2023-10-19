@@ -51,7 +51,6 @@ from time import time
 from utility_modules import (vcheck,
                              utils,
                              manage,
-                             # parallel,
                              constants as const,
                              to_precision as to_p)
 
@@ -1265,9 +1264,9 @@ class ImageViewer(ProcessImage):
                                               variable=self.slider_val['circle_r_max'],
                                               **const.SCALE_PARAMETERS)
 
-        # To avoid grabbing all the intermediate values between normal
-        #  click and release movements, bind sliders to call functions
-        #  only on left button release.
+        # To avoid processing all the intermediate values between normal
+        #  slider movements, bind sliders to call functions only on
+        #  left button release.
         # Most are bound to preprocess(); process_all() is initiated
         #  only with a Button(). To speed program responsiveness when
         #  changing the size range, only the sizing and reporting methods
