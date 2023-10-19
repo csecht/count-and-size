@@ -40,7 +40,6 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License
 
 # Standard library imports.
-# import multiprocessing as mp
 import sys
 from pathlib import Path
 from statistics import mean, median
@@ -2119,9 +2118,6 @@ class ImageViewer(ProcessImage):
         return event
 
 if __name__ == "__main__":
-    # if const.MY_OS == 'win':
-    #     mp.freeze_support()  # Used for PyInstaller (Windows).
-
     # Program exits here if any of the module checks fail or if the
     #   argument --about is used, which prints info, then exits.
     # check_platform() also enables display scaling on Windows.

@@ -94,7 +94,7 @@ class MultiProc:
         #  'fork' is about 2x faster than 'spawn', but, oh well.
         #  'spawn' is the default method on Windows and macOS.
         # get_context() is needed here because when mp.set_start_method('spawn')
-        #  is used in if __name__ == "__main__" of size_it_RW.py, for unknown
+        #  is used in if __name__ == "__main__" of size_it_rw.py, for unknown
         #  reasons, a tk error is raised for no attribute of randomwalk_segmentation().
         with ProcessPoolExecutor(max_workers=1, #const.NCPU,
                                  mp_context=mp.get_context('spawn')) as executor:
