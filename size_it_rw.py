@@ -720,7 +720,7 @@ class ImageViewer(ProcessImage):
             # Provide some info to user for why the start screen appears
             #  frozen when processing larger images.
             process_btn_txt.set('Processing started, wait...')
-
+            start_win.config(cursor='watch')
             self.start_now()
             start_win.destroy()
             return event
@@ -763,7 +763,6 @@ class ImageViewer(ProcessImage):
                        ('TIFF', '*.tiff'),
                        ('TIFF', '*.tif'),
                        ('All', '*.*')],
-            # initialdir='images',
         )
 
         if self.input_file:
@@ -1404,6 +1403,7 @@ class ImageViewer(ProcessImage):
             self.size_std_px_label.configure(state=tk.DISABLED)
             self.size_cust_entry.configure(state=tk.DISABLED)
             self.size_cust_label.configure(state=tk.DISABLED)
+            app.config(cursor='watch')
             app.update()
         else:  # is 'on'
             for _, _w in self.slider.items():
@@ -1419,6 +1419,8 @@ class ImageViewer(ProcessImage):
             self.size_std_px_label.configure(state=tk.NORMAL)
             self.size_cust_entry.configure(state=tk.NORMAL)
             self.size_cust_label.configure(state=tk.NORMAL)
+            app.config(cursor='')
+            app.update()
 
     def config_annotations(self) -> None:
         """
@@ -2064,7 +2066,9 @@ class ImageViewer(ProcessImage):
             *event* as a formality; is functionally None.
         """
 
-        self.widget_control('off')
+        if not self.first_run:
+            self.widget_control('off')
+
         self.time_start: float = time()
         self.select_and_size(contour_pointset=self.randomwalk_segmentation)
         self.report_results()
