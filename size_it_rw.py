@@ -570,7 +570,7 @@ class ImageViewer(ProcessImage):
         self.contour_selectors_frame = tk.Frame()
         # self.configure(bg='green')  # for development.
 
-        self.do_inverse_th = tk.StringVar()
+        self.do_inverse_th = tk.BooleanVar()
 
         # Note: The matching control variable attributes for the
         #   following selector widgets are in ProcessImage __init__.
@@ -646,6 +646,8 @@ class ImageViewer(ProcessImage):
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
         self.img_window: dict = {}
+
+        # self.slider_values: list = []
 
         # Is an instance attribute here only because it is used in call
         #  to utils.save_settings_and_img() from the Save button.
@@ -815,12 +817,12 @@ class ImageViewer(ProcessImage):
                                  **const.LABEL_PARAMETERS)
         inverse_yes = tk.Radiobutton(master=start_win,
                                      text='Yes',
-                                     value='yes',
+                                     value=True,
                                      variable=self.do_inverse_th,
                                      **const.RADIO_PARAMETERS)
         inverse_no = tk.Radiobutton(start_win,
                                     text='No',
-                                    value='no',
+                                    value=False,
                                     variable=self.do_inverse_th,
                                     **const.RADIO_PARAMETERS)
         inverse_no.select()
@@ -1270,17 +1272,17 @@ class ImageViewer(ProcessImage):
         #  only with a Button(). To speed program responsiveness when
         #  changing the size range, only the sizing and reporting methods
         #  are called on mouse button release.
-        # Note that the <if '_lbl'> condition doesn't improve performance,
+        # Note that the isinstance() condition doesn't improve performance,
         #  but is there for clarity's sake.
-        for _name, widget in self.slider.items():
-            if '_lbl' in _name:
+        for _name, _w in self.slider.items():
+            if isinstance(_w, tk.Label):
                 continue
             if 'circle_r' in _name:
-                widget.bind('<ButtonRelease-1>', self.process_sizes)
+                _w.bind('<ButtonRelease-1>', self.process_sizes)
             elif 'plm_' in _name:
-                widget.bind('<ButtonRelease-1>', _need_to_click)
+                _w.bind('<ButtonRelease-1>', _need_to_click)
             else:  # is alpha, beta, noise_k, noise_iter, filter_k.
-                widget.bind('<ButtonRelease-1>', self.preprocess)
+                _w.bind('<ButtonRelease-1>', self.preprocess)
 
     def config_comboboxes(self) -> None:
         """
@@ -1348,15 +1350,15 @@ class ImageViewer(ProcessImage):
                                      **const.COMBO_PARAMETERS)
 
         # Now bind functions to all Comboboxes.
-        # Note that the  <if '_lbl'> condition isn't needed for
+        # Note that the isinstance() condition isn't needed for
         # performance; it just clarifies the bind intention.
-        for _name, widget in self.cbox.items():
-            if '_lbl' in _name:
+        for _name, _w in self.cbox.items():
+            if isinstance(_w, tk.Label):
                 continue
             if 'size_' in _name:
-                widget.bind('<<ComboboxSelected>>', func=self.process_sizes)
+                _w.bind('<<ComboboxSelected>>', func=self.process_sizes)
             else:  # is morphop, morphshape, filter, th_type, dt_type, dt_mask_size.
-                widget.bind('<<ComboboxSelected>>', func=self.preprocess)
+                _w.bind('<<ComboboxSelected>>', func=self.preprocess)
 
     def config_entries(self) -> None:
         """
@@ -1391,9 +1393,8 @@ class ImageViewer(ProcessImage):
         Args:
             action: Either 'off' to disable widgets, or 'on' to enable.
         """
-
         if action == 'off':
-            for _, _w in self.slider.items():
+            for _name, _w in self.slider.items():
                 _w.configure(state=tk.DISABLED)
             for _, _w in self.cbox.items():
                 _w.configure(state=tk.DISABLED)
@@ -1406,10 +1407,10 @@ class ImageViewer(ProcessImage):
             app.config(cursor='watch')
             app.update()
         else:  # is 'on'
-            for _, _w in self.slider.items():
+            for _name, _w in self.slider.items():
                 _w.configure(state=tk.NORMAL)
-            for _k, _w in self.cbox.items():
-                if '_lbl' in _k:
+            for _, _w in self.cbox.items():
+                if isinstance(_w, tk.Label):
                     _w.configure(state=tk.NORMAL)
                 else:
                     _w.configure(state='readonly')
@@ -1694,8 +1695,6 @@ class ImageViewer(ProcessImage):
         """
         # Default settings are optimized for sample1.jpg input.
 
-        self.widget_control('on')
-
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
         self.slider_val['beta'].set(0)
@@ -1707,7 +1706,7 @@ class ImageViewer(ProcessImage):
         self.slider_val['circle_r_min'].set(8)
         self.slider_val['circle_r_max'].set(300)
 
-        if self.do_inverse_th.get() == 'yes':
+        if self.do_inverse_th.get():
             self.cbox['th_type'].current(1)
             self.cbox_val['th_type'].set('cv2.THRESH_OTSU_INVERSE')
         else:
@@ -2035,6 +2034,7 @@ class ImageViewer(ProcessImage):
         Returns:
             *event* as a formality; functionally None.
         """
+
         self.time_start: float = time()
         self.adjust_contrast()
         self.reduce_noise()
@@ -2066,13 +2066,10 @@ class ImageViewer(ProcessImage):
             *event* as a formality; is functionally None.
         """
 
-        if not self.first_run:
-            self.widget_control('off')
 
         self.time_start: float = time()
         self.select_and_size(contour_pointset=self.randomwalk_segmentation)
         self.report_results()
-        self.widget_control('on')
 
         # Here, at the end of the processing pipeline, is where the
         #  first_run flag is set to False.
