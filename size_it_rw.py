@@ -647,7 +647,9 @@ class ImageViewer(ProcessImage):
         #   tk.Toplevel as values; don't want tk windows created here.
         self.img_window: dict = {}
 
-        # self.slider_values: list = []
+        # Used to reset values that user may have tried to change during
+        #  prolonged processing times.
+        self.slider_values: list = []
 
         # Is an instance attribute here only because it is used in call
         #  to utils.save_settings_and_img() from the Save button.
@@ -1396,6 +1398,8 @@ class ImageViewer(ProcessImage):
         if action == 'off':
             for _name, _w in self.slider.items():
                 _w.configure(state=tk.DISABLED)
+                if isinstance(_w, tk.Scale):
+                    self.slider_values.append(self.slider_val[_name].get())
             for _, _w in self.cbox.items():
                 _w.configure(state=tk.DISABLED)
             for _, _w in self.button.items():
@@ -1407,8 +1411,12 @@ class ImageViewer(ProcessImage):
             app.config(cursor='watch')
             app.update()
         else:  # is 'on'
+            idx = 0
             for _name, _w in self.slider.items():
                 _w.configure(state=tk.NORMAL)
+                if self.slider_values and isinstance(_w, tk.Scale):
+                    self.slider_val[_name].set(self.slider_values[idx])
+                    idx += 1
             for _, _w in self.cbox.items():
                 if isinstance(_w, tk.Label):
                     _w.configure(state=tk.NORMAL)
@@ -1422,6 +1430,7 @@ class ImageViewer(ProcessImage):
             self.size_cust_label.configure(state=tk.NORMAL)
             app.config(cursor='')
             app.update()
+            self.slider_values.clear()
 
     def config_annotations(self) -> None:
         """
@@ -2034,7 +2043,7 @@ class ImageViewer(ProcessImage):
         Returns:
             *event* as a formality; functionally None.
         """
-
+        self.widget_control('on')
         self.time_start: float = time()
         self.adjust_contrast()
         self.reduce_noise()
@@ -2066,10 +2075,11 @@ class ImageViewer(ProcessImage):
             *event* as a formality; is functionally None.
         """
 
-
+        self.widget_control('off')
         self.time_start: float = time()
         self.select_and_size(contour_pointset=self.randomwalk_segmentation)
         self.report_results()
+        self.widget_control('on')
 
         # Here, at the end of the processing pipeline, is where the
         #  first_run flag is set to False.
