@@ -1161,25 +1161,25 @@ class ImageViewer(ProcessImage):
 
         button_params = dict(
             style='My.TButton',
-            width=0)
+            width=0,)
 
         self.reset_btn.configure(text='Reset settings',
-                               command=_do_reset,
-                               **button_params)
+                                 command=_do_reset,
+                                 **button_params)
 
         self.save_btn.configure(text='Save settings & sized image',
-                              command=_save_results,
-                              **button_params)
+                                command=_save_results,
+                                **button_params)
 
         # Widget griding in the mainloop window.
         self.reset_btn.grid(column=0, row=2,
-                       padx=10,
-                       pady=5,
-                       sticky=tk.W)
+                            padx=10,
+                            pady=5,
+                            sticky=tk.W)
         self.save_btn.grid(column=0, row=3,
-                      padx=10,
-                      pady=(0, 5),
-                      sticky=tk.W)
+                           padx=10,
+                           pady=(0, 5),
+                           sticky=tk.W)
 
     def config_sliders(self) -> None:
         """
@@ -1451,23 +1451,23 @@ class ImageViewer(ProcessImage):
 
         def increase_font_size() -> None:
             self.metrics['font_scale'] *= 1.1
-            self.process_sizes()
+            self.select_and_size(contour_pointset=self.watershed_contours)
 
         def decrease_font_size() -> None:
             self.metrics['font_scale'] *= 0.9
             if self.metrics['font_scale'] < 0.1:
                 self.metrics['font_scale'] = 0.1
-            self.process_sizes()
+            self.select_and_size(contour_pointset=self.watershed_contours)
 
         def increase_line_thickness() -> None:
             self.metrics['line_thickness'] += 1
-            self.process_sizes()
+            self.select_and_size(contour_pointset=self.watershed_contours)
 
         def decrease_line_thickness() -> None:
             self.metrics['line_thickness'] -= 1
             if self.metrics['line_thickness'] == 0:
                 self.metrics['line_thickness'] = 1
-            self.process_sizes()
+            self.select_and_size(contour_pointset=self.watershed_contours)
 
         # Bindings are needed only for the settings and sized img windows,
         #  but is simpler to use bind_all() which does not depend on widget focus.

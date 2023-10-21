@@ -1138,26 +1138,26 @@ class ImageViewer(ProcessImage):
                                    **button_params)
 
         self.button['process'].config(text='Run Random Walker',
-                                 command=self.process_rw_and_sizes,
-                                 **button_params)
+                                      command=self.process_rw_and_sizes,
+                                      **button_params)
 
         # Widget griding in the mainloop window.
         self.button['reset'].grid(column=0, row=2,
-                       padx=10,
-                       pady=5,
-                       sticky=tk.W)
+                                  padx=10,
+                                  pady=5,
+                                  sticky=tk.W)
 
         # Need to use cross-platform padding.
         process_padx = (self.button['reset'].winfo_reqwidth() + 20, 0)
         self.button['process'].grid(column=0, row=2,
-                         padx=process_padx,
-                         pady=5,
-                         sticky=tk.W)
+                                    padx=process_padx,
+                                    pady=5,
+                                    sticky=tk.W)
 
         self.button['save'].grid(column=0, row=3,
-                      padx=10,
-                      pady=(0, 5),
-                      sticky=tk.W)
+                                padx=10,
+                                pady=(0, 5),
+                                sticky=tk.W)
 
     def config_sliders(self) -> None:
         """
@@ -1451,23 +1451,23 @@ class ImageViewer(ProcessImage):
 
         def increase_font_size() -> None:
             self.metrics['font_scale'] *= 1.1
-            self.process_sizes()
+            self.select_and_size(contour_pointset=self.randomwalk_contours)
 
         def decrease_font_size() -> None:
             self.metrics['font_scale'] *= 0.9
             if self.metrics['font_scale'] < 0.1:
                 self.metrics['font_scale'] = 0.1
-            self.process_sizes()
+            self.select_and_size(contour_pointset=self.randomwalk_contours)
 
         def increase_line_thickness() -> None:
             self.metrics['line_thickness'] += 1
-            self.process_sizes()
+            self.select_and_size(contour_pointset=self.randomwalk_contours)
 
         def decrease_line_thickness() -> None:
             self.metrics['line_thickness'] -= 1
             if self.metrics['line_thickness'] == 0:
                 self.metrics['line_thickness'] = 1
-            self.process_sizes()
+            self.select_and_size(contour_pointset=self.randomwalk_contours)
 
         # Bindings are needed only for the settings and sized img windows,
         #  but is simpler to use bind_all() which does not depend on widget focus.
