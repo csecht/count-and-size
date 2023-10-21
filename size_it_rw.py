@@ -1437,7 +1437,6 @@ class ImageViewer(ProcessImage):
             for _, _w in self.size_std.items():
                 if not isinstance(_w, tk.StringVar):
                     _w.configure(state=tk.NORMAL)
-
             app.config(cursor='')
             app.update()
             self.slider_values.clear()
@@ -1474,25 +1473,20 @@ class ImageViewer(ProcessImage):
         #  but is simpler to use bind_all() which does not depend on widget focus.
         # NOTE: On Windows, KP_* is not a recognized keysym string; works on Linux.
         #  Windows keysyms 'plus' & 'minus' are for both keyboard and keypad.
-        self.bind_all(
-            '<Control-equal>', lambda _: increase_font_size())
-        # Need platform-specific keypad keysym.
-        if const.MY_OS == 'win':
-            self.bind_all('<Control-plus>', lambda _: increase_font_size())
-        else:
-            self.bind_all('<Control-KP_Add>', lambda _: increase_font_size())
-
+        self.bind_all('<Control-equal>', lambda _: increase_font_size())
         self.bind_all('<Control-minus>', lambda _: decrease_font_size())
         self.bind_all('<Control-KP_Subtract>', lambda _: decrease_font_size())
 
         self.bind_all('<Shift-Control-plus>', lambda _: increase_line_thickness())
         self.bind_all('<Shift-Control-KP_Add>', lambda _: increase_line_thickness())
-
         self.bind_all('<Shift-Control-underscore>', lambda _: decrease_line_thickness())
+
         # Need platform-specific keypad keysym.
         if const.MY_OS == 'win':
+            self.bind_all('<Control-plus>', lambda _: increase_font_size())
             self.bind_all('<Shift-Control-minus>', lambda _: decrease_line_thickness())
         else:
+            self.bind_all('<Control-KP_Add>', lambda _: increase_font_size())
             self.bind_all('<Shift-Control-KP_Subtract>', lambda _: decrease_line_thickness())
 
     def grid_widgets(self) -> None:
@@ -2135,6 +2129,7 @@ class ImageViewer(ProcessImage):
         app.after(2000, self.show_info_messages)
 
         return event
+
 
 if __name__ == "__main__":
     # Program exits here if any of the module checks fail or if the
