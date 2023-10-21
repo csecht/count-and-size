@@ -637,12 +637,6 @@ class ImageViewer(ProcessImage):
             'filter_k': tk.Scale(master=self.contour_selectors_frame),
             'filter_k_lbl': tk.Label(master=self.contour_selectors_frame),
 
-            'dt_type': tk.Scale(master=self.contour_selectors_frame),
-            'dt_type_lbl': tk.Label(master=self.contour_selectors_frame),
-
-            'dt_mask_size': tk.Scale(master=self.contour_selectors_frame),
-            'dt_mask_size_lbl': tk.Label(master=self.contour_selectors_frame),
-
             'plm_mindist': tk.Scale(master=self.contour_selectors_frame),
             'plm_mindist_lbl': tk.Label(master=self.contour_selectors_frame),
 
@@ -684,14 +678,15 @@ class ImageViewer(ProcessImage):
         }
 
         # User-entered pixel diameters of selected size standards.
-        # There are only two, so no need to use dictionaries. (?)
-        self.size_std_px_entry = tk.Entry(self.contour_selectors_frame)
-        self.size_std_px = tk.StringVar()
-        self.size_std_px_label = tk.Label(self.contour_selectors_frame)
+        self.size_std = {
+            'px_entry': tk.Entry(self.contour_selectors_frame),
+            'px_val': tk.StringVar(),
+            'px_lbl': tk.Label(self.contour_selectors_frame),
 
-        self.size_cust_entry = tk.Entry(self.contour_selectors_frame)
-        self.custom_size_entry = tk.StringVar()
-        self.size_cust_label = tk.Label(self.contour_selectors_frame)
+            'custom_entry': tk.Entry(self.contour_selectors_frame),
+            'custom_val': tk.StringVar(),
+            'custom_lbl': tk.Label(self.contour_selectors_frame),
+        }
 
         self.reset_btn = ttk.Button()
         self.save_btn = ttk.Button()
@@ -699,6 +694,10 @@ class ImageViewer(ProcessImage):
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
         self.img_window: dict = {}
+
+        # Used to reset values that user may have tried to change during
+        #  prolonged processing times.
+        self.slider_values: list = []
 
         # Is an instance attribute here only because it is used in call
         #  to utils.save_settings_and_img() from the Save button.
@@ -1384,21 +1383,20 @@ class ImageViewer(ProcessImage):
             None
         """
 
-        self.size_std_px_entry.config(textvariable=self.size_std_px,
-                                      width=6)
-        self.size_std_px_label.config(text='Enter px diameter of size standard:',
-                                      **const.LABEL_PARAMETERS)
+        self.size_std['px_entry'].config(textvariable=self.size_std['px_val'],
+                                         width=6)
+        self.size_std['px_lbl'].config(text='Enter px diameter of size standard:',
+                                       **const.LABEL_PARAMETERS)
 
-        self.size_cust_entry.config(textvariable=self.custom_size_entry,
-                                    width=8)
-        self.size_cust_label.config(text="Enter custom standard's size:",
-                                    **const.LABEL_PARAMETERS)
+        self.size_std['custom_entry'].config(textvariable=self.size_std['custom_val'],
+                                             width=8)
+        self.size_std['custom_lbl'].config(text="Enter custom standard's size:",
+                                           **const.LABEL_PARAMETERS)
 
-        self.size_std_px_entry.bind('<Return>', func=self.process_sizes)
-        self.size_std_px_entry.bind('<KP_Enter>', func=self.process_sizes)
-
-        self.size_cust_entry.bind('<Return>', func=self.process_sizes)
-        self.size_cust_entry.bind('<KP_Enter>', func=self.process_sizes)
+        for _, _w in self.size_std.items():
+            if isinstance(_w, tk.Entry):
+                _w.bind('<Return>', func=self.process_sizes)
+                _w.bind('<KP_Enter>', func=self.process_sizes)
 
     def widget_control(self, action: str) -> None:
         """
@@ -1408,34 +1406,40 @@ class ImageViewer(ProcessImage):
             action: Either 'off' to disable widgets, or 'on' to enable.
         """
         if action == 'off':
-            for _, _w in self.slider.items():
+            for _name, _w in self.slider.items():
                 _w.configure(state=tk.DISABLED)
+                # if isinstance(_w, tk.Scale):
+                #     self.slider_values.append(self.slider_val[_name].get())
             for _, _w in self.cbox.items():
                 _w.configure(state=tk.DISABLED)
+            for _, _w in self.size_std.items():
+                if not isinstance(_w, tk.StringVar):
+                    _w.configure(state=tk.DISABLED)
             self.reset_btn.grid_remove()
             self.save_btn.grid_remove()
-            self.size_std_px_entry.configure(state=tk.DISABLED)
-            self.size_std_px_label.configure(state=tk.DISABLED)
-            self.size_cust_entry.configure(state=tk.DISABLED)
-            self.size_cust_label.configure(state=tk.DISABLED)
             app.config(cursor='watch')
             app.update()
         else:  # is 'on'
-            for _, _w in self.slider.items():
+            idx = 0
+            for _name, _w in self.slider.items():
                 _w.configure(state=tk.NORMAL)
+                # if self.slider_values and isinstance(_w, tk.Scale):
+                #     self.slider_val[_name].set(self.slider_values[idx])
+                #     idx += 1
             for _name, _w in self.cbox.items():
                 if isinstance(_w, tk.Label):
                     _w.configure(state=tk.NORMAL)
                 else:
                     _w.configure(state='readonly')
+            for _, _w in self.size_std.items():
+                if not isinstance(_w, tk.StringVar):
+                    _w.configure(state=tk.NORMAL)
             self.reset_btn.grid()
             self.save_btn.grid()
-            self.size_std_px_entry.configure(state=tk.NORMAL)
-            self.size_std_px_label.configure(state=tk.NORMAL)
-            self.size_cust_entry.configure(state=tk.NORMAL)
-            self.size_cust_label.configure(state=tk.NORMAL)
+
             app.config(cursor='')
             app.update()
+            self.slider_values.clear()
 
     def config_annotations(self) -> None:
         """
@@ -1572,13 +1576,13 @@ class ImageViewer(ProcessImage):
         self.slider['circle_r_max_lbl'].grid(column=0, row=18, **east_grid_params)
         self.slider['circle_r_max'].grid(column=1, row=18, **slider_grid_params)
 
-        self.size_std_px_label.grid(column=0, row=19, **east_grid_params)
-        self.size_std_px_entry.grid(column=1, row=19, **west_grid_params)
+        self.size_std['px_lbl'].grid(column=0, row=19, **east_grid_params)
+        self.size_std['px_entry'].grid(column=1, row=19, **west_grid_params)
 
         # The label widget is gridded to the left, based on this widget's width.
         self.cbox['size_std'].grid(column=1, row=19, **east_grid_params)
 
-        self.size_cust_entry.grid(column=1, row=20, **east_grid_params)
+        self.size_std['custom_entry'].grid(column=1, row=20, **east_grid_params)
 
         # Use update() because update_idletasks() doesn't always work to
         #  get the gridded widgets' correct winfo_reqwidth.
@@ -1612,12 +1616,12 @@ class ImageViewer(ProcessImage):
                                        padx=size_std_padx,
                                        **east_params_relative)
 
-        custom_std_padx = (0, self.size_cust_entry.winfo_reqwidth() + 10)
-        self.size_cust_label.grid(column=1, row=20,
-                                  padx=custom_std_padx,
-                                  **east_params_relative)
+        custom_std_padx = (0, self.size_std['custom_entry'].winfo_reqwidth() + 10)
+        self.size_std['custom_lbl'].grid(column=1, row=20,
+                                         padx=custom_std_padx,
+                                         **east_params_relative)
         # Remove initially; show only when Custom size is needed.
-        self.size_cust_label.grid_remove()
+        self.size_std['custom_lbl'].grid_remove()
 
     def grid_img_labels(self) -> None:
         """
@@ -1743,9 +1747,8 @@ class ImageViewer(ProcessImage):
         self.cbox['size_std'].current(0)  # 'None'
 
         # Set to 1 to avoid division by 0.
-        self.size_std_px.set('1')
-
-        self.custom_size_entry.set('0.0')
+        self.size_std['px_val'].set('1')
+        self.size_std['custom_val'].set('0.0')
 
     def set_size_std(self) -> None:
         """
@@ -1758,8 +1761,8 @@ class ImageViewer(ProcessImage):
             None
         """
 
-        custom_size: str = self.custom_size_entry.get()
-        size_std_px: str = self.size_std_px.get()
+        size_std_px: str = self.size_std['px_val'].get()
+        custom_size: str = self.size_std['custom_val'].get()
         size_std: str = self.cbox_val['size_std'].get()
         preset_std_size: float = const.SIZE_STANDARDS[size_std]
 
@@ -1772,7 +1775,7 @@ class ImageViewer(ProcessImage):
             _m = 'Enter only integers > 0 for the pixel diameter'
             messagebox.showerror(title='Invalid entry',
                                  detail=_m)
-            self.size_std_px.set('1')
+            self.size_std['px_val'].set('1')
             size_std_px = '1'
 
         # For clarity, need to show the custom size Entry widget only
@@ -1782,8 +1785,8 @@ class ImageViewer(ProcessImage):
         # Number of significant figures is the lowest of that for the
         #  standard's size value or pixel diameter.
         if size_std == 'Custom':
-            self.size_cust_entry.grid()
-            self.size_cust_label.grid()
+            self.size_std['custom_entry'].grid()
+            self.size_std['custom_lbl'].grid()
 
             try:
                 float(custom_size)  # will raise ValueError if not a number.
@@ -1801,12 +1804,12 @@ class ImageViewer(ProcessImage):
                            '  integer: 26, 2651, 2_651\n'
                            '  decimal: 26.5, 0.265, .2\n'
                            '  exponent: 2.6e10, 2.6e-2')
-                self.custom_size_entry.set('0.0')
+                self.size_std['custom_val'].set('0.0')
 
         else:  # is one of the preset size standards
-            self.size_cust_entry.grid_remove()
-            self.size_cust_label.grid_remove()
-            self.custom_size_entry.set('0.0')
+            self.size_std['custom_entry'].grid_remove()
+            self.size_std['custom_lbl'].grid_remove()
+            self.size_std['custom_val'].set('0.0')
 
             self.unit_per_px.set(preset_std_size / int(size_std_px))
             if size_std_px == '1':
@@ -1984,7 +1987,7 @@ class ImageViewer(ProcessImage):
 
         size_std: str = self.cbox_val['size_std'].get()
         if size_std == 'Custom':
-            size_std_size: str = self.custom_size_entry.get()
+            size_std_size: str = self.size_std['custom_entry'].get()
         else:
             size_std_size: str = const.SIZE_STANDARDS[size_std]
 
@@ -2040,7 +2043,7 @@ class ImageViewer(ProcessImage):
             f'{"Selected size range:".ljust(space)}{circle_r_min}--{circle_r_max} pixels, diameter\n'
             f'{"Selected size std.:".ljust(space)}{size_std},'
             f' {size_std_size} {unit} diameter\n'
-            f'{tab}Pixel diameter entered: {self.size_std_px.get()},'
+            f'{tab}Pixel diameter entered: {self.size_std["px_val"].get()},'
             f' unit/px factor: {unit_per_px}\n'
             f'{"# Selected objects:".ljust(space)}{num_selected}\n'
             f'{"Object size metrics,".ljust(space)}mean: {mean_unit_dia}, median:'
