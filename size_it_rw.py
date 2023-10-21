@@ -1111,10 +1111,14 @@ class ImageViewer(ProcessImage):
 
         def _do_reset():
             """
-            Separates setting default values from process calls during
-            startup, thus shortening startup time.
+            Separates setting default values from lengthy process calls,
+            thus shortening response time.
             """
+            self.slider_values.clear()
             self.set_defaults()
+            self.widget_control('off')  # is turned 'on' in preprocess().
+            self.preprocess()
+
             _info = ('\nClick "Run Random Walker" to update counts and sizes\n'
                      'with default settings.\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
