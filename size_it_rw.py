@@ -654,7 +654,7 @@ class ImageViewer(ProcessImage):
 
         # Is an instance attribute here only because it is used in call
         #  to utils.save_settings_and_img() from the Save button.
-        self.size_settings_txt: str = ''
+        self.report_txt: str = ''
 
         # Manage the starting windows, grab the input and run settings,
         #  then proceed with image processing and sizing.
@@ -935,7 +935,7 @@ class ImageViewer(ProcessImage):
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             # Give user time to read the message before resetting it.
-            app.after(ms=4000, func=self.show_info_messages)
+            app.after(ms=4444, func=self.show_info_messages)
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
         # Dictionary item order determines stack order of windows.
@@ -966,8 +966,8 @@ class ImageViewer(ProcessImage):
             'sized': tk.Label(self.img_window['sized']),
         }
 
-        # Need an image to replace blank tk desktop icon for each window.
-        #   Set correct path to the local 'images' directory and icon file.
+        # Need an image to replace blank tk desktop icon for each img window.
+        #  Set correct path to the local 'images' directory and icon file.
         # Withdraw all windows here for clean transition; all are deiconified
         #  in display_windows().
         # Need to disable default window Exit in display windows b/c
@@ -979,8 +979,9 @@ class ImageViewer(ProcessImage):
         #  border when it has focus and light grey when being dragged.
         icon_path = None
         try:
+            #  If the icon file is not present, a Terminal msg will display from
+            #  <if __name__ == "__main__"> at startup.
             icon_path = tk.PhotoImage(file=utils.valid_path_to('image/sizeit_icon_512.png'))
-            # Provide icon for mainloop (settings&report) window here.
             app.iconphoto(True, icon_path)
         except tk.TclError as _msg:
             pass
@@ -1069,10 +1070,10 @@ class ImageViewer(ProcessImage):
         """
 
         _info = ('When the entered pixel size is 1 and selected size standard\n'
-                'is None, displayed sizes are pixels.\n'
-                'Size units are millimeters for any pre-set size standard,\n'
-                'and whatever you want for custom standards.\n'
-                f'(Processing time elapsed: {self.elapsed})')
+                 'is None, displayed sizes are pixels.\n'
+                 'Size units are millimeters for any pre-set size standard,\n'
+                 'and whatever you want for custom standards.\n'
+                 f'(Processing time elapsed: {self.elapsed})')
 
         self.info_label.config(text=_info,
                                font=const.WIDGET_FONT,
@@ -1099,7 +1100,7 @@ class ImageViewer(ProcessImage):
             utils.save_settings_and_img(
                 input_path=self.input_file,
                 img2save=self.cvimg['sized'],
-                txt2save=self.size_settings_txt + _sizes,
+                txt2save=self.report_txt + _sizes,
                 caller=utils.program_name())
 
             _folder = str(Path(self.input_file).parent)
@@ -1397,11 +1398,11 @@ class ImageViewer(ProcessImage):
 
     def widget_control(self, action: str) -> None:
         """
-        Used to disable settings widgets when MultiProc methods are
-        running, or set to normal after multiprocessing methods finish.
-        Provides a spinning watch cursor while widgets are inactive.
-        Gets Scale() at time of disabling and sets those upon enabling
-        in case user tried to change a setting on a disabled Scale().
+        Used to disable settings widgets when random walker is running.
+        Provides a watch cursor while widgets are disabled.
+        Gets Scale() values at time of disabling and resets them upon
+        enabling, thus preventing user click events retained in memory
+        from changing slider position post-processing.
 
         Args:
             action: Either 'off' to disable widgets, or 'on' to enable.
@@ -1681,7 +1682,7 @@ class ImageViewer(ProcessImage):
                     'with a timestamp.')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(4000, self.show_info_messages)
+            app.after(4444, self.show_info_messages)
 
         # macOS right mouse button has a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
@@ -2006,7 +2007,7 @@ class ImageViewer(ProcessImage):
         # Divider symbol is Box Drawings Double Horizontal from https://coolsymbol.com/
         divider = "═" * 20  # divider's unicode_escape: u'\u2550\'
 
-        self.size_settings_txt = (
+        self.report_txt = (
             f'Image: {self.input_file}\nImage size: {px_w}x{px_h}\n'
             f'{"Contrast:".ljust(space)}convertScaleAbs alpha={alpha}, beta={beta}\n'
             f'{"Noise reduction:".ljust(space)}cv2.getStructuringElement ksize={noise_k},\n'
@@ -2033,7 +2034,7 @@ class ImageViewer(ProcessImage):
         )
 
         utils.display_report(frame=self.contour_report_frame,
-                             report=self.size_settings_txt)
+                             report=self.report_txt)
 
     def preprocess(self, event=None) -> None:
         """
@@ -2047,7 +2048,6 @@ class ImageViewer(ProcessImage):
             *event* as a formality; functionally None.
         """
         self.widget_control('on')
-        self.time_start: float = time()
         self.adjust_contrast()
         self.reduce_noise()
         self.filter_image()
@@ -2096,7 +2096,7 @@ class ImageViewer(ProcessImage):
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(ms=4000, func=self.show_info_messages)
+            app.after(ms=4444, func=self.show_info_messages)
         else:
             _info = ('\nContours found and sizes calculated. Report updated.\n'
                      f'Processing time elapsed: {self.elapsed}\n\n')
@@ -2126,7 +2126,7 @@ class ImageViewer(ProcessImage):
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
-        app.after(2000, self.show_info_messages)
+        app.after(2222, self.show_info_messages)
 
         return event
 
@@ -2144,7 +2144,7 @@ if __name__ == "__main__":
     try:
         print(f'{utils.program_name()} has launched...')
         app = ImageViewer()
-        app.title(f'{utils.program_name()} Settings Report')
+        app.title(f'{utils.program_name()} Report & Settings')
         try:
             icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
             app.wm_iconphoto(True, icon)
