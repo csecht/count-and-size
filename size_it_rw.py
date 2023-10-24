@@ -19,8 +19,8 @@ python3 -m size_it
 python3 -m size_it --terminal
 Windows systems may need to substitute 'python3' with 'py' or 'python'.
 
-Note that from the initial "Set run settings" window, the file, scale
-factor, and annotation color cannot be changed after the "Process now"
+Note that from the initial "Set starting parameters" window, the file,
+scaling, and annotation color cannot be changed after the "Process now"
 button is clicked. Once image processing begins, if the run settings are
 not to your liking, just quit, restart, and choose different values.
 
@@ -504,12 +504,6 @@ class ProcessImage(tk.Tk):
 
         # self.randomwalk_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of ws objects.
-        # This step and random walker take the longest times, but random walker
-        #  cannot be parallelized. Subsequent contouring steps for the
-        #  random walker image in select_and_size() do not take long to
-        #  process, so do not need to be parallelized.
-        # self.randomwalk_contours: list = parallel.MultiProc(rw_img).pool_it
-
         # Note: This for loop is much more stable, and in most cases faster,
         #  than using parallelization methods.
         self.randomwalk_contours.clear()
@@ -530,7 +524,7 @@ class ProcessImage(tk.Tk):
                                            mode=cv2.RETR_EXTERNAL,
                                            method=cv2.CHAIN_APPROX_SIMPLE)
 
-            # Grow the list used to draw circles around WS contours.
+            # Add to the list used to draw circles around WS contours.
             self.randomwalk_contours.append(max(contours, key=cv2.contourArea))
 
         return self.randomwalk_contours
@@ -780,7 +774,7 @@ class ImageViewer(ProcessImage):
 
         # Once a file is selected, the file dialog is removed, and the
         #  start window setup can proceed, now with its active title.
-        start_win.title('Set run settings')
+        start_win.title('Set start parameters')
         start_win.resizable(width=False, height=False)
         self.update_idletasks()
 
@@ -1925,9 +1919,9 @@ class ImageViewer(ProcessImage):
                           img_array=self.cvimg['sized'])
 
         # Record total time to process for user's info message. Start
-        #  time is set in preprocess() or process_rw_and_sizes().
+        #  time is set in process_rw_and_sizes(). Preprocessing time is
+        #  negligible, so it is ignored.
         self.elapsed = round(time() - self.time_start, 3)
-
 
     def report_results(self) -> None:
         """
@@ -2126,7 +2120,7 @@ class ImageViewer(ProcessImage):
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
-        app.after(2222, self.show_info_messages)
+        app.after(3333, self.show_info_messages)
 
         return event
 

@@ -19,8 +19,8 @@ python3 -m size_it
 python3 -m size_it --terminal
 Windows systems may need to substitute 'python3' with 'py' or 'python'.
 
-Note that from the initial "Set run settings" window, the file, scale
-factor, and annotation color cannot be changed after the "Process now"
+Note that from the initial "Set starting parameters" window, the file,
+scaling, and annotation color cannot be changed after the "Process now"
 button is clicked. Once image processing begins, if the run settings are
 not to your liking, just quit, restart, and choose different values.
 
@@ -437,14 +437,13 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='dist_trans',
                           img_array=np.uint8(distances_img))
 
-        if self.slider_val['plm_footprint'].get() == 1:
-            _info = ('\nCompleted distance transform; looking for peaks...\n'
-                     'A peak_local max footprint of 1 may take a while...\n\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-        else:
-            _info = '\nCompleted distance transform; looking for peaks...\n\n\n'
+        if not self.first_run:
+            if self.slider_val['plm_footprint'].get() == 1:
+                _info = ('\nCompleted distance transform; looking for peaks...\n'
+                         'A peak_local max footprint of 1 may take a while...\n\n')
+            else:
+                _info = '\nCompleted distance transform; looking for peaks...\n\n\n'
+
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -464,9 +463,10 @@ class ProcessImage(tk.Tk):
                                             p_norm=np.inf)  # Chebyshev distance
                                             # p_norm=2,  # Euclidean distance
 
-        _info = '\nFound peaks; running watershed algorithm...\n\n\n'
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
+        if not self.first_run:
+            _info = '\nFound peaks; running watershed algorithm...\n\n\n'
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
 
         mask = np.zeros(shape=distances_img.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
@@ -503,20 +503,14 @@ class ProcessImage(tk.Tk):
         """
 
         # Inform user of progress when processing large images.
-        _info = ('\nWatershed completed. Finding contours for sizing...\n'
-                 '(Excessive delay may require a program restart.)\n\n')
-        self.info_label.config(fg=const.COLORS_TK['blue'])
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
+        if not self.first_run:
+            _info = '\nWatershed completed. Finding contours for sizing...\n\n\n'
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
 
         # self.watershed_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of ws objects.
-        # This step and watershed take the longest times, but watershed
-        #  cannot be parallelized. Subsequent contouring steps for the
-        #  watershed image do not take long to process, so do not need
-        #  to be parallelized.
-        # self.watershed_contours: list = parallel.MultiProc(img).pool_it
-
         # Note: This for loop is much more stable, and in most cases faster,
         #  than using parallelization methods.
         self.watershed_contours.clear()
@@ -537,7 +531,7 @@ class ProcessImage(tk.Tk):
                                            mode=cv2.RETR_EXTERNAL,
                                            method=cv2.CHAIN_APPROX_SIMPLE)
 
-            # Grow the list used to draw circles around WS contours.
+            # Add to the list used to draw circles around WS contours.
             self.watershed_contours.append(max(contours, key=cv2.contourArea))
 
         # Convert watershed array from int32 to uint8 data type to find contours.
@@ -829,7 +823,7 @@ class ImageViewer(ProcessImage):
 
         # Once a file is selected, the file dialog is removed, and the
         #  start window setup can proceed, now with its active title.
-        start_win.title('Set run settings')
+        start_win.title('Set start parameters')
         start_win.resizable(width=False, height=False)
         self.update_idletasks()
 
@@ -1935,14 +1929,6 @@ class ImageViewer(ProcessImage):
         self.update_image(img_name='sized',
                           img_array=self.cvimg['sized'])
 
-        # Cycle back to the starting info about size std units after
-        #   last progress message in contour_ws_segments().
-        # Give user time to see the final progress msg before cycling back.
-        # Note that the after time used here delays execution of this method.
-        if (max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT or
-                self.slider_val['plm_footprint'].get() == 1):
-            app.after(3333, self.show_info_messages)
-
     def report_results(self) -> None:
         """
         Write the current settings and cv metrics in a Text widget of
@@ -2075,9 +2061,7 @@ class ImageViewer(ProcessImage):
         self.report_results()
         self.widget_control('on')
 
-        # Inform user of progress when processing large images.
-        # At end of progress notices, give user time to read last msg,
-        #  then cycle back to default info msg.
+        # This last progress msg remains until another setting is changed.
         if self.first_run:
             self.first_run = False
             self.show_info_messages()
@@ -2108,7 +2092,7 @@ class ImageViewer(ProcessImage):
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
-        app.after(2222, self.show_info_messages)
+        app.after(3333, self.show_info_messages)
 
         return event
 
