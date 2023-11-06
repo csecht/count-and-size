@@ -11,6 +11,7 @@ quit_gui -  Error-free and informative exit from the program.
 no_objects_found - A simple messagebox when a contour pointset is empty.
 wait4it_msg - A messagebox explaining large images can take a long time.
 """
+import copy
 # Copyright (C) 2022-2023 C.S. Echt, under GNU General Public License'
 
 # Standard library imports.
@@ -121,11 +122,7 @@ def valid_path_to(input_path: str) -> Path:
         base_path = getattr(sys, '_MEIPASS', Path(Path(__file__).resolve()).parent)
         valid_path = Path(base_path) / input_path
     else:
-        # NOTE: this path only works for images in the program images folder.
-        if 'images/' in input_path:
-            valid_path = Path(Path(__file__).parent, f'../{input_path}').resolve()
-        else:  # A path outside the Project was used for the input file.
-            valid_path = Path(Path(f'{input_path}')).resolve()
+        valid_path = Path(f'{input_path}').resolve()
 
     return valid_path
 
@@ -148,9 +145,8 @@ def save_settings_and_img(input_path: str,
 
     Returns: None
     """
-
-    curr_time = datetime.now().strftime('%I%M%S')
-    time2print = datetime.now().strftime('%I:%M:%S%p')
+    curr_time = datetime.now().strftime('%Y%m%d%I%M%S')
+    time2print = datetime.now().strftime('%Y/%m/%d %I:%M:%S%p')
 
     # For JPEG file format the supported parameter is cv2.IMWRITE_JPEG_QUALITY
     # with a possible value between 0 and 100, the default value being 95.
@@ -209,6 +205,42 @@ def save_settings_and_img(input_path: str,
     if manage.arguments()['terminal']:
         print(f'Result image and its report were saved to files.'
               f'{data2save}')
+
+
+def export_segments(input_path: str, img2exp: np.ndarray, index: int) -> None:
+    """
+    Writes an image file for an individual contoured segments from a
+    list of contour. File names include a timestamp and segment index
+    number.
+    Called from ImageViewer.select_and_export() from a Button() command.
+
+    Args:
+        input_path: The input image file path, as string.
+        img2exp: An np.ndarray slice of a segmented (contoured) object,
+                 from the input image, to be exported to file.
+        index: The segmented contour index number.
+
+    Returns: None
+    """
+
+    curr_time = datetime.now().strftime('%Y%m%d%I%M%S')
+
+    # Freeze time so seconds in file name can't change during method execution.
+    timestamp = copy.deepcopy(curr_time)
+    export_folder = Path(input_path).parent
+    export_img_name = f'seg_{timestamp}_{index}.jpg'
+    export_file_path = f'{export_folder}/{export_img_name}'
+
+    # Contour images are np.ndarray direct from cv2 functions.
+    # For JPEG file format the supported parameter is cv2.IMWRITE_JPEG_QUALITY
+    # with a possible value between 0 and 100, the default value being 95.
+    # The higher value produces a better quality image file.
+    if isinstance(img2exp, np.ndarray):
+        cv2.imwrite(filename=export_file_path,
+                    img=img2exp,
+                    params=[cv2.IMWRITE_JPEG_QUALITY, 100])
+    else:
+        print('The specified image needs to be a np.ndarray.')
 
 
 def display_report(frame: tk.Frame, report: str) -> None:

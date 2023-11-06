@@ -103,7 +103,7 @@ class ProcessImage(tk.Tk):
     reduce_noise
     filter_image
     watershed_segmentation
-    contour_rw_segments
+    contour_ws_segments
     """
 
     def __init__(self):
@@ -178,7 +178,7 @@ class ProcessImage(tk.Tk):
         self.metrics: dict = {}
 
         self.num_dt_segments: int = 0
-        self.watershed_contours: list = []
+        self.ws_basins: list = []
         self.sorted_size_list: list = []
         self.unit_per_px = tk.DoubleVar()
         self.num_sigfig: int = 0
@@ -439,10 +439,10 @@ class ProcessImage(tk.Tk):
 
         if not self.first_run:
             if self.slider_val['plm_footprint'].get() == 1:
-                _info = ('\nCompleted distance transform; looking for peaks...\n'
+                _info = ('Completed distance transform; looking for peaks...\n'
                          'A peak_local max footprint of 1 may take a while...\n\n')
             else:
-                _info = '\nCompleted distance transform; looking for peaks...\n\n\n'
+                _info = 'Completed distance transform; looking for peaks...\n\n\n'
 
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
@@ -464,7 +464,7 @@ class ProcessImage(tk.Tk):
                                             # p_norm=2,  # Euclidean distance
 
         if not self.first_run:
-            _info = '\nFound peaks; running watershed algorithm...\n\n\n'
+            _info = 'Found peaks; running watershed algorithm...\n\n\n'
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
 
@@ -478,7 +478,7 @@ class ProcessImage(tk.Tk):
         #  minus symbol turns distances into threshold.
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
-        # Need watershed_line to show boundaries on displayed watershed contours.
+        # Need watershed_line to show boundaries on displayed watershed contour_pointset.
         # compactness=1.0 based on: DOI:10.1109/ICPR.2014.181
         #   https://www.tu-chemnitz.de/etit/proaut/publications/cws_pSLIC_ICPR.pdf
         watershed_img: np.ndarray = watershed(image=-distances_img,
@@ -490,58 +490,34 @@ class ProcessImage(tk.Tk):
 
         return watershed_img
 
-    def contour_ws_segments(self, img: np.ndarray) -> None:
+    def contour_ws_segments(self, image: np.ndarray) -> None:
         """
-        Find and draw contours for watershed basins.
+        Find and draw contour_pointset for watershed ws_basins.
         Called from process_all() with a watershed_segmentation() arg.
         Calls update_image().
 
         Args:
-            img: A labeled ndarray of watershed basins.
+            image: A labeled ndarray of watershed ws_basins.
 
         Returns: None
         """
 
         # Inform user of progress when processing large images.
         if not self.first_run:
-            _info = '\nWatershed completed. Finding contours for sizing...\n\n\n'
+            _info = 'Watershed completed. Finding contour_pointset for sizing...\n\n\n'
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
 
-        # self.watershed_contours is used in select_and_size() to draw
-        #   enclosing circles and calculate sizes of ws objects.
-        # Note: This for loop is much more stable, and in most cases faster,
-        #  than using parallelization methods.
-        self.watershed_contours.clear()
-        for label in np.unique(ar=img):
-
-            # If the label is zero, we are examining the 'background',
-            #   so simply ignore it.
-            if label == 0:
-                continue
-
-            # ...otherwise, allocate memory for the label region and draw
-            #   it on the mask.
-            mask = np.zeros(shape=img.shape, dtype="uint8")
-            mask[img == label] = 255
-
-            # Detect contours in the mask and grab the largest one.
-            contours, _ = cv2.findContours(image=mask.copy(),
-                                           mode=cv2.RETR_EXTERNAL,
-                                           method=cv2.CHAIN_APPROX_SIMPLE)
-
-            # Add to the list used to draw circles around WS contours.
-            self.watershed_contours.append(max(contours, key=cv2.contourArea))
-
-        # Convert watershed array from int32 to uint8 data type to find contours.
+        # self.ws_basins is used in select_and_size() to draw enclosing circles.
+        # Convert image array from int32 to uint8 data type to find contour_pointset.
         # Conversion with cv2.convertScaleAbs(watershed_img) also works.
-        basins, _ = cv2.findContours(image=np.uint8(img),
-                                     mode=cv2.RETR_EXTERNAL,
-                                     method=cv2.CHAIN_APPROX_SIMPLE)
+        self.ws_basins, _ = cv2.findContours(image=np.uint8(image),
+                                             mode=cv2.RETR_EXTERNAL,
+                                             method=cv2.CHAIN_APPROX_SIMPLE)
 
-        # Convert watershed array data from int32 to allow colored contours.
-        watershed_img = cv2.cvtColor(np.uint8(img), cv2.COLOR_GRAY2BGR)
+        # Convert watershed array data from int32 to allow colored contour_pointset.
+        watershed_img = cv2.cvtColor(src=np.uint8(image), code=cv2.COLOR_GRAY2BGR)
 
         # Need to prevent a thickness value of 0, yet have it be a function
         #  of image size so that it looks good in scaled display. Because the
@@ -555,7 +531,7 @@ class ProcessImage(tk.Tk):
         else:
             line_thickness = self.metrics['line_thickness'] // 2
 
-        # Need to prevent black contours because they won't show on the
+        # Need to prevent black contour_pointset because they won't show on the
         #  black background of the watershed_img image.
         if self.cbox_val['color'].get() == 'black':
             line_color = const.COLORS_CV['blue']
@@ -563,8 +539,8 @@ class ProcessImage(tk.Tk):
             line_color = const.COLORS_CV[self.cbox_val['color'].get()]
 
         cv2.drawContours(image=watershed_img,
-                         contours=basins,
-                         contourIdx=-1,  # do all contours
+                         contours=self.ws_basins,
+                         contourIdx=-1,  # do all contour_pointset
                          color=line_color,
                          thickness=line_thickness,
                          lineType=cv2.LINE_AA)
@@ -574,12 +550,11 @@ class ProcessImage(tk.Tk):
 
         # Now draw enclosing circles around watershed segments and
         #  annotate with object sizes in ImageViewer.select_and_size().
-        #  The report isn't updated until select_and_size() runs, but
-        #  that doesn't take long, so it makes sense to post message here.
+
 
 class ImageViewer(ProcessImage):
     """
-    A suite of methods to display cv contours based on chosen settings
+    A suite of methods to display cv contour_pointset based on chosen settings
     and parameters as applied in ProcessImage().
     Methods:
     manage_main_win
@@ -684,14 +659,11 @@ class ImageViewer(ProcessImage):
 
         self.reset_btn = ttk.Button()
         self.save_btn = ttk.Button()
+        self.export_btn = ttk.Button()
 
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
         self.img_window: dict = {}
-
-        # Used to reset values that user may have tried to change during
-        #  prolonged processing times.
-        self.slider_values: list = []
 
         # Is an instance attribute here only because it is used in call
         #  to utils.save_settings_and_img() from the Save button.
@@ -974,8 +946,7 @@ class ImageViewer(ProcessImage):
             _info = ('That window cannot be closed from its window bar.\n'
                     'Minimize it if it is in the way.\n'
                     'Esc or Ctrl-Q keys will Quit the program.\n')
-            self.info_label.config(fg=const.COLORS_TK['vermilion'],
-                                   font=cv2.FONT_HERSHEY_SIMPLEX)
+            self.info_label.config(fg=const.COLORS_TK['vermilion'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             # Give user time to read the message before resetting it.
@@ -1106,17 +1077,17 @@ class ImageViewer(ProcessImage):
             None
         """
 
-        _info = ('When the entered pixel size is 1 and selected size standard\n'
-                 'is None, displayed sizes are pixels.\n'
-                 'Size units are millimeters for any pre-set size standard,\n'
-                 'and whatever you want for custom standards.\n')
+        _info = ('When the entered pixel size is 1 and selected size standard is None,\n'
+                 'displayed sizes are pixels. Size units are mm for any pre-set size standard,\n'
+                 'and undetermined for custom standards.\n')
 
         self.info_label.config(text=_info,
                                font=const.WIDGET_FONT,
                                bg=const.MASTER_BG,
                                fg='black')
         self.info_label.grid(column=1, row=2, rowspan=2,
-                             padx=0, sticky=tk.EW)
+                             pady=(10, 0),
+                             sticky=tk.NSEW)
 
     def setup_buttons(self) -> None:
         """
@@ -1127,6 +1098,8 @@ class ImageViewer(ProcessImage):
             None
         """
         manage.ttk_styles(mainloop=self)
+
+        _folder = str(Path(self.input_file).parent)
 
         def _save_results():
             """
@@ -1139,12 +1112,19 @@ class ImageViewer(ProcessImage):
                 txt2save=self.report_txt + _sizes,
                 caller=utils.program_name())
 
-            _folder = str(Path(self.input_file).parent)
-            _info = ('\nSettings report and result image have been saved to:\n'
-                     f'{utils.valid_path_to(_folder)}')
+            _info = ('Settings report and result image have been saved to:\n'
+                     f'{utils.valid_path_to(_folder)}\n\n')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(4444, self.show_info_messages)
+            app.after(5555, self.show_info_messages)
+
+        def _export():
+            _num = self.select_and_export(self.ws_basins)
+            _info = (f'{_num} selected objects were individually exported to:\n'
+                     f'{utils.valid_path_to(_folder)}\n\n')
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+            app.after(5555, self.show_info_messages)
 
         def _do_reset():
             """
@@ -1158,23 +1138,30 @@ class ImageViewer(ProcessImage):
             style='My.TButton',
             width=0,)
 
-        self.reset_btn.configure(text='Reset settings',
-                                 command=_do_reset,
-                                 **button_params)
-
         self.save_btn.configure(text='Save settings & sized image',
                                 command=_save_results,
                                 **button_params)
 
-        # Widget griding in the mainloop window.
-        self.reset_btn.grid(column=0, row=2,
-                            padx=10,
-                            pady=5,
-                            sticky=tk.W)
-        self.save_btn.grid(column=0, row=3,
-                           padx=10,
-                           pady=(0, 5),
+        self.reset_btn.configure(text='Reset settings',
+                                 command=_do_reset,
+                                 **button_params)
+
+        self.export_btn.configure(text='Export sized objects',
+                                command=_export,
+                                **button_params)
+
+        # Widget griding in the mainloop (settings) window.
+        self.save_btn.grid(column=0, row=2,
+                           padx=(10, 0),
                            sticky=tk.W)
+
+        self.reset_btn.grid(column=0, row=3,
+                            padx=(140, 0),
+                            sticky=tk.W)
+
+        self.export_btn.grid(column=0, row=3,
+                             padx=(10, 0),
+                             sticky=tk.W)
 
     def config_sliders(self) -> None:
         """
@@ -1256,7 +1243,7 @@ class ImageViewer(ProcessImage):
                                                   **const.LABEL_PARAMETERS)
 
         # Note: may need to adjust c_lim scaling with image size b/c
-        #   large contours cannot be selected if max limit is too small.
+        #   large contour_pointset cannot be selected if max limit is too small.
         circle_r_min = self.metrics['max_circle_r'] // 8
         circle_r_max = self.metrics['max_circle_r']
         self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
@@ -1397,9 +1384,6 @@ class ImageViewer(ProcessImage):
         """
         Used to disable settings widgets when processing is running.
         Provides a watch cursor while widgets are disabled.
-        Gets Scale() values at time of disabling and resets them upon
-        enabling, thus preventing user click events retained in memory
-        from changing slider position post-processing.
 
         Args:
             action: Either 'off' to disable widgets, or 'on' to enable.
@@ -1407,8 +1391,6 @@ class ImageViewer(ProcessImage):
         if action == 'off':
             for _name, _w in self.slider.items():
                 _w.configure(state=tk.DISABLED)
-                # if isinstance(_w, tk.Scale):
-                #     self.slider_values.append(self.slider_val[_name].get())
             for _, _w in self.cbox.items():
                 _w.configure(state=tk.DISABLED)
             for _, _w in self.size_std.items():
@@ -1416,15 +1398,12 @@ class ImageViewer(ProcessImage):
                     _w.configure(state=tk.DISABLED)
             self.reset_btn.grid_remove()
             self.save_btn.grid_remove()
+            self.export_btn.grid_remove()
             app.config(cursor='watch')
             app.update()
         else:  # is 'on'
-            idx = 0
             for _name, _w in self.slider.items():
                 _w.configure(state=tk.NORMAL)
-                # if self.slider_values and isinstance(_w, tk.Scale):
-                #     self.slider_val[_name].set(self.slider_values[idx])
-                #     idx += 1
             for _name, _w in self.cbox.items():
                 if isinstance(_w, tk.Label):
                     _w.configure(state=tk.NORMAL)
@@ -1435,10 +1414,9 @@ class ImageViewer(ProcessImage):
                     _w.configure(state=tk.NORMAL)
             self.reset_btn.grid()
             self.save_btn.grid()
-
+            self.export_btn.grid()
             app.config(cursor='')
             app.update()
-            self.slider_values.clear()
 
     def config_annotations(self) -> None:
         """
@@ -1450,23 +1428,23 @@ class ImageViewer(ProcessImage):
 
         def increase_font_size() -> None:
             self.metrics['font_scale'] *= 1.1
-            self.select_and_size(contour_pointset=self.watershed_contours)
+            self.select_and_size(contour_pointset=self.ws_basins)
 
         def decrease_font_size() -> None:
             self.metrics['font_scale'] *= 0.9
             if self.metrics['font_scale'] < 0.1:
                 self.metrics['font_scale'] = 0.1
-            self.select_and_size(contour_pointset=self.watershed_contours)
+            self.select_and_size(contour_pointset=self.ws_basins)
 
         def increase_line_thickness() -> None:
             self.metrics['line_thickness'] += 1
-            self.select_and_size(contour_pointset=self.watershed_contours)
+            self.select_and_size(contour_pointset=self.ws_basins)
 
         def decrease_line_thickness() -> None:
             self.metrics['line_thickness'] -= 1
             if self.metrics['line_thickness'] == 0:
                 self.metrics['line_thickness'] = 1
-            self.select_and_size(contour_pointset=self.watershed_contours)
+            self.select_and_size(contour_pointset=self.ws_basins)
 
         # Bindings are needed only for the settings and sized img windows,
         #  but is simpler to use bind_all() which does not depend on widget focus.
@@ -1680,9 +1658,9 @@ class ImageViewer(ProcessImage):
 
             # Provide user with a notice that a file was created.
             folder = str(Path(self.input_file).parent)
-            _info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
-                    f'{utils.valid_path_to(folder)}\n\n'
-                    'with a timestamp.')
+            _info = (f'The displayed image, "{image_name}", was saved to:\n'
+                    f'{utils.valid_path_to(folder)}\n'
+                    'with a timestamp.\n')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             # Give user time to read the message before resetting it.
@@ -1814,16 +1792,16 @@ class ImageViewer(ProcessImage):
 
     def select_and_size(self, contour_pointset: list) -> None:
         """
-        Select object contours based on area size and position,
-        draw an enclosing circle around contours, then display them
+        Select object contour_pointset based on area size and position,
+        draw an enclosing circle around contour_pointset, then display them
         on the input image. Objects are expected to be oblong so that
         circle diameter can represent the object's length.
         Called by process_all(), process_sizes().
         Calls update_image().
 
         Args:
-            contour_pointset: List of selected contours from
-             cv2.findContours in ProcessImage.contour_rw_segments().
+            contour_pointset: List of selected contour_pointset from
+             cv2.findContours in ProcessImage.draw_rw_segments().
 
         Returns:
             None
@@ -1843,7 +1821,7 @@ class ImageViewer(ProcessImage):
         c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
         c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
 
-        # Set coordinate point limits to find contours along a file border.
+        # Set coordinate point limits to find contour_pointset along a file border.
         bottom_edge = self.cvimg['gray'].shape[0] - 1
         right_edge = self.cvimg['gray'].shape[1] - 1
 
@@ -1854,9 +1832,9 @@ class ImageViewer(ProcessImage):
         flag = False
         for _c in contour_pointset:
 
-            # Exclude None elements (generated by multiprocessing.Pool).
-            # Exclude contours not in the specified size range.
-            # Exclude contours that have a coordinate point intersecting the img edge.
+            # Exclude None elements.
+            # Exclude contour_pointset not in the specified size range.
+            # Exclude contour_pointset that have a coordinate point intersecting the img edge.
             #  ... those that touch top or left edge or are background.
             #  ... those that touch bottom or right edge.
             if _c is None:
@@ -1928,6 +1906,71 @@ class ImageViewer(ProcessImage):
 
         self.update_image(img_name='sized',
                           img_array=self.cvimg['sized'])
+
+    def select_and_export(self, contour_pointset: list) -> int:
+        """
+        Takes a list of contour segments and places each in a bounding
+        rectangle for export to file via a utility module.
+        Calls utility_modules/utils.export_segments().
+        Called from Button command in setup_buttons().
+
+        Args:
+            contour_pointset: A list of contour pointsets of segmented objects.
+
+        Returns: Integer count of selected contour slices exported.
+        """
+
+        # Use the identical selection criteria as in select_and_size().
+        # The size range slider values are radii pixels. This is done b/c:
+        #  1) Displayed values have fewer digits, so a cleaner slide bar.
+        #  2) Sizes are diameters, so radii are conceptually easier than areas.
+        #  So, need to convert to area for the cv2.contourArea function.
+        c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
+        c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
+
+        # Set coordinate point limits to find contour_pointset along a file border.
+        bottom_edge = self.cvimg['gray'].shape[0] - 1
+        right_edge = self.cvimg['gray'].shape[1] - 1
+        flag = False
+
+        roi_idx = 0
+
+        for _c in contour_pointset:
+            # Identical selection criteria used in select_and_size().
+            # Exclude None elements.
+            # Exclude contour_pointset not in the specified size range.
+            # Exclude contour_pointset that have a coordinate point intersecting the img edge.
+            #  ... those that touch top or left edge or are background.
+            #  ... those that touch bottom or right edge.
+            if _c is None:
+                continue
+            if not c_area_max > cv2.contourArea(_c) >= c_area_min:
+                continue
+            if {0, 1}.intersection(set(_c.ravel())):
+                continue
+            # Break from inner loop when either edge touch is found.
+            for _p in _c:
+                for coord in _p:
+                    _x, _y = tuple(coord)
+                    if _x == right_edge or _y == bottom_edge:
+                        flag = True
+                if flag:
+                    break
+            if flag:
+                flag = False
+                continue
+
+            # Idea for segment extraction from:
+            #  https://stackoverflow.com/questions/21104664/
+            #   extract-all-bounding-boxes-using-opencv-python
+            # The ROI slice encompasses the watershed basin.
+            roi_idx += 1
+            _x, _y, _w, _h = cv2.boundingRect(_c)
+            roi = self.cvimg['input'][_y:_y + _h, _x:_x + _w]
+            utils.export_segments(input_path=self.input_file,
+                                  img2exp=roi,
+                                  index=roi_idx)
+        return roi_idx
 
     def report_results(self) -> None:
         """
@@ -2056,8 +2099,8 @@ class ImageViewer(ProcessImage):
         self.reduce_noise()
         self.filter_image()
         self.set_size_std()
-        self.contour_ws_segments(img=self.watershed_segmentation)
-        self.select_and_size(contour_pointset=self.watershed_contours)
+        self.contour_ws_segments(image=self.watershed_segmentation)
+        self.select_and_size(contour_pointset=self.ws_basins)
         self.report_results()
         self.widget_control('on')
 
@@ -2066,7 +2109,7 @@ class ImageViewer(ProcessImage):
             self.first_run = False
             self.show_info_messages()
         else:
-            _info = '\nContours found and sizes calculated. Report updated.\n\n\n'
+            _info = 'Contours found and sizes calculated. Report updated.\n\n\n'
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -2085,10 +2128,10 @@ class ImageViewer(ProcessImage):
             *event* as a formality; is functionally None.
         """
         self.set_size_std()
-        self.select_and_size(contour_pointset=self.watershed_contours)
+        self.select_and_size(contour_pointset=self.ws_basins)
         self.report_results()
 
-        _info = '\n\nNew object size range selected. Report updated.\n\n'
+        _info = 'New object size range selected. Report updated.\n\n\n'
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)

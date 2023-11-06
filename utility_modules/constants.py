@@ -49,7 +49,7 @@ WIN_NAME = {
     'input': 'Input image',
     'contrast': 'Adjusted contrast <- | -> Reduced noise',
     'filter': 'Filtered <- | -> Thresholded',
-    'dist_trans': 'Distances transformed <- | -> Watershed segments',
+    'dist_trans': 'Distance transformed <- | -> Watershed segments',
     'sized': 'Size-selected objects, circled with diameters.',
 }
 
@@ -58,7 +58,7 @@ WIN_NAME = {
 ALPHA_MAX = 400
 BETA_MAX = 254  # Provides a range of [-127 -- 127].
 
-# Scaling factors for contours, circles, and text; empirically determined.
+# Scaling factors for contour_pointset, circles, and text; empirically determined.
 #  Used in manage.py input_metrics().
 SIZE_FACTOR: float = 5.5e-4
 LINE_THICKNESS_FACTOR: float = 1.5e-3

@@ -106,7 +106,7 @@ class ProcessImage(tk.Tk):
     reduce_noise
     filter_image
     randomwalk_segmentation
-    contour_rw_segments
+    draw_rw_segments
     """
 
     def __init__(self):
@@ -157,6 +157,7 @@ class ProcessImage(tk.Tk):
             'filter': tk.PhotoImage(),
             'dist_trans': tk.PhotoImage(),
             'thresh': tk.PhotoImage(),
+            'rand_walk': tk.PhotoImage(),
             'sized': tk.PhotoImage(),
         }
 
@@ -168,6 +169,7 @@ class ProcessImage(tk.Tk):
             'filter': const.STUB_ARRAY,
             'dist_trans': const.STUB_ARRAY,
             'thresh': const.STUB_ARRAY,
+            'rand_walk': const.STUB_ARRAY,
             'sized': const.STUB_ARRAY,
         }
 
@@ -186,7 +188,7 @@ class ProcessImage(tk.Tk):
         self.info_label = tk.Label(self)
         self.time_start: float = 0
         self.elapsed: float = 0
-        self.first_run = True
+        self.first_run: bool = True
 
     def update_image(self,
                      img_name: str,
@@ -485,19 +487,20 @@ class ProcessImage(tk.Tk):
         # NOTE: beta and tolerances were empirically determined for best
         #  performance with the sample images running an Intel i9600k @ 4.8 GHz.
         #  Default beta & tol take ~8x longer to process for similar results.
-        rw_img = random_walker(data=self.cvimg['thresh'],
-                               labels=labeled_array,
-                               beta=5, # default: 130,
-                               mode='cg_mg',  # Need pyamg installed. Default: 'cg_j'.
-                               tol=0.1, # default: 1.e-3
-                               copy=True,
-                               return_full_prob=False,
-                               spacing=None,
-                               prob_tol=0.1,  # default: 1.e-3
-                               channel_axis=None)
+        # Need pyamg installed for mode='cg_mg'.
+        self.cvimg['rand_walk']: np.ndarray = random_walker(data=self.cvimg['thresh'],
+                                           labels=labeled_array,
+                                           beta=5, # default: 130,
+                                           mode='cg_mg', # default: 'cg_j'
+                                           tol=0.1, # default: 1.e-3
+                                           copy=True,
+                                           return_full_prob=False,
+                                           spacing=None,
+                                           prob_tol=0.1,  # default: 1.e-3
+                                           channel_axis=None)
 
         if not self.first_run:
-            _info = '\nRandom walker completed. Finding contours for sizing...\n\n\n'
+            _info = '\nRandom walker completed. Finding contour_pointset for sizing...\n\n\n'
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -507,7 +510,7 @@ class ProcessImage(tk.Tk):
         # Note: This for loop is much more stable, and in most cases faster,
         #  than using parallelization methods.
         self.randomwalk_contours.clear()
-        for label in np.unique(ar=rw_img):
+        for label in np.unique(ar=self.cvimg['rand_walk']):
 
             # If the label is zero, we are examining the 'background',
             #   so simply ignore it.
@@ -516,23 +519,56 @@ class ProcessImage(tk.Tk):
 
             # ...otherwise, allocate memory for the label region and draw
             #   it on the mask.
-            mask = np.zeros(shape=rw_img.shape, dtype="uint8")
-            mask[rw_img == label] = 255
+            mask = np.zeros(shape=self.cvimg['rand_walk'].shape, dtype="uint8")
+            mask[self.cvimg['rand_walk'] == label] = 255
 
-            # Detect contours in the mask and grab the largest one.
+            # Detect contour_pointset in the mask and grab the largest one.
             contours, _ = cv2.findContours(image=mask.copy(),
                                            mode=cv2.RETR_EXTERNAL,
                                            method=cv2.CHAIN_APPROX_SIMPLE)
 
-            # Add to the list used to draw circles around WS contours.
+            # Add to the list used to draw circles around contours ROI.
             self.randomwalk_contours.append(max(contours, key=cv2.contourArea))
 
         return self.randomwalk_contours
 
+    def draw_rw_segments(self) -> None:
+        """
+        Draw and display the random walker segments from
+        random_walker_segmentation().
+        Called from process_rw_and_sizes().
+
+        Returns: None
+        """
+
+        # Convert array data from int32 to allow colored contour_pointset.
+        rw_img = cv2.cvtColor(src=np.uint8(self.cvimg['rand_walk']),
+                              code=cv2.COLOR_GRAY2BGR)
+
+        # Need to prevent white or black contour_pointset because they
+        #  won't show on the white background with black segments.
+        if self.cbox_val['color'].get() in 'white, black':
+            line_color = const.COLORS_CV['blue']
+        else:
+            line_color = const.COLORS_CV[self.cbox_val['color'].get()]
+
+        # Note: this does not update until process_rw_and_sizes() is called.
+        #  It shares a window with the distance transform image, which
+        #  updates with slider or combobox preprocessing changes.
+        cv2.drawContours(image=rw_img,
+                         contours=self.randomwalk_contours,
+                         contourIdx=-1,  # do all contours
+                         color=line_color,
+                         thickness=self.metrics['line_thickness'],
+                         lineType=cv2.LINE_AA)
+
+        self.update_image(img_name='rand_walk',
+                          img_array=rw_img)
+
 
 class ImageViewer(ProcessImage):
     """
-    A suite of methods to display cv contours based on chosen settings
+    A suite of methods to display cv contour_pointset based on chosen settings
     and parameters as applied in ProcessImage().
     Methods:
     manage_main_win
@@ -636,6 +672,7 @@ class ImageViewer(ProcessImage):
             'reset': ttk.Button(),
             'save': ttk.Button(),
             'process': ttk.Button(),
+            'export': ttk.Button(),
         }
 
         # Dictionary items are populated in setup_image_windows(), with
@@ -929,7 +966,7 @@ class ImageViewer(ProcessImage):
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             # Give user time to read the message before resetting it.
-            app.after(ms=4444, func=self.show_info_messages)
+            app.after(ms=5555, func=self.show_info_messages)
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
         # Dictionary item order determines stack order of windows.
@@ -956,6 +993,7 @@ class ImageViewer(ProcessImage):
             'thresh': tk.Label(self.img_window['filter']),
 
             'dist_trans': tk.Label(self.img_window['dist_trans']),
+            'rand_walk': tk.Label(self.img_window['dist_trans']),
 
             'sized': tk.Label(self.img_window['sized']),
         }
@@ -980,12 +1018,11 @@ class ImageViewer(ProcessImage):
         except tk.TclError as _msg:
             pass
 
-        # Because sharing the constants.py module with size_it.py, need to
-        #  rename the window that does not display watershed segments
-        #  used in size_it.py.
-        # Random_walker segments display as an inverse threshold img, so
-        #   there is no need to show them alongside, as done in size_it.
-        const.WIN_NAME['dist_trans'] = 'Distances transformed'
+        # Because of sharing the constants.py module with size_it.py, need
+        #  to rename the 'dist_trans' window for random walker display.
+        # Random_walker segments display as an inverse threshold img.
+        # TODO: grid rand_walk label in a separate window? or with 'sized'?
+        const.WIN_NAME['dist_trans'] = 'Distance transformed <- | -> Random walker segments'
 
         for _name, toplevel in self.img_window.items():
             toplevel.wm_withdraw()
@@ -1063,10 +1100,9 @@ class ImageViewer(ProcessImage):
             None
         """
 
-        _info = ('When the entered pixel size is 1 and selected size standard\n'
-                 'is None, displayed sizes are pixels.\n'
-                 'Size units are millimeters for any pre-set size standard,\n'
-                 'and whatever you want for custom standards.\n'
+        _info = ('When the entered pixel size is 1 and selected size standard is None,\n'
+                 'displayed sizes are pixels. Size units are mm for any pre-set size standard,\n'
+                 'and undetermined for custom standards.\n'
                  f'(Processing time elapsed: {self.elapsed})')
 
         self.info_label.config(text=_info,
@@ -1086,6 +1122,8 @@ class ImageViewer(ProcessImage):
         """
         manage.ttk_styles(mainloop=self)
 
+        _folder = str(Path(self.input_file).parent)
+
         def _save_results():
             """
             A Button kw "command" caller to avoid messy lambda statements.
@@ -1097,12 +1135,19 @@ class ImageViewer(ProcessImage):
                 txt2save=self.report_txt + _sizes,
                 caller=utils.program_name())
 
-            _folder = str(Path(self.input_file).parent)
             _info = ('\nSettings report and result image have been saved to:\n'
+                     f'{utils.valid_path_to(_folder)}')
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+            app.after(5555, self.show_info_messages)
+
+        def _export():
+            _num = self.select_and_export(self.randomwalk_contours)
+            _info = (f'{_num} selected objects were individually exported to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(5000, self.show_info_messages)
+            app.after(5555, self.show_info_messages)
 
         def _do_reset():
             """
@@ -1136,6 +1181,10 @@ class ImageViewer(ProcessImage):
                                       command=self.process_rw_and_sizes,
                                       **button_params)
 
+        self.button['export'].configure(text='Export sized objects',
+                                command=_export,
+                                **button_params)
+
         # Widget griding in the mainloop window.
         self.button['reset'].grid(column=0, row=2,
                                   padx=10,
@@ -1151,7 +1200,12 @@ class ImageViewer(ProcessImage):
 
         self.button['save'].grid(column=0, row=3,
                                 padx=10,
-                                pady=(0, 5),
+                                pady=0,
+                                sticky=tk.W)
+
+        self.button['export'].grid(column=0, row=4,
+                                padx=10,
+                                pady=5,
                                 sticky=tk.W)
 
     def config_sliders(self) -> None:
@@ -1178,10 +1232,12 @@ class ImageViewer(ProcessImage):
             if self.slider_val['plm_footprint'].get() == 1:
                 self.info_label.config(fg=const.COLORS_TK['vermilion'])
 
-                _info = ('\nClick "Run Random Walker" to update counts and sizes.\n'
-                         'A peak_local_max footprint of 1 may take a while.\n\n')
+                _info = ('\nClick "Run Random Walker" to update the report and\n'
+                         '"Size-selected.." and "Random walker segments" displays.\n'
+                         'A peak_local_max footprint of 1 may take a while.\n')
             else:
-                _info = '\n\nClick "Run Random Walker" to update counts and sizes.\n\n'
+                _info = ('\nClick "Run Random Walker" to update the report and\n'
+                         '"Size-selected.." and "Random walker segments" displays.\n\n')
                 self.info_label.config(fg=const.COLORS_TK['blue'])
 
             manage.info_message(widget=self.info_label,
@@ -1258,7 +1314,7 @@ class ImageViewer(ProcessImage):
                                                   **const.LABEL_PARAMETERS)
 
         # Note: may need to adjust c_lim scaling with image size b/c
-        #   large contours cannot be selected if max limit is too small.
+        #   large contour_pointset cannot be selected if max limit is too small.
         circle_r_min = self.metrics['max_circle_r'] // 8
         circle_r_max = self.metrics['max_circle_r']
         self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
@@ -1396,7 +1452,7 @@ class ImageViewer(ProcessImage):
         Provides a watch cursor while widgets are disabled.
         Gets Scale() values at time of disabling and resets them upon
         enabling, thus preventing user click events retained in memory
-        from changing slider position post-processing.
+        during processing from changing slider position post-processing.
 
         Args:
             action: Either 'off' to disable widgets, or 'on' to enable.
@@ -1432,6 +1488,7 @@ class ImageViewer(ProcessImage):
             for _, _w in self.size_std.items():
                 if not isinstance(_w, tk.StringVar):
                     _w.configure(state=tk.NORMAL)
+
             app.config(cursor='')
             app.update()
             self.slider_values.clear()
@@ -1629,6 +1686,7 @@ class ImageViewer(ProcessImage):
         self.img_label['thresh'].grid(**const.PANEL_RIGHT)
 
         self.img_label['dist_trans'].grid(**const.PANEL_LEFT)
+        self.img_label['rand_walk'].grid(**const.PANEL_RIGHT)
 
         self.img_label['sized'].grid(**const.PANEL_LEFT)
 
@@ -1672,11 +1730,11 @@ class ImageViewer(ProcessImage):
             #  give user time to read the message before resetting it.
             folder = str(Path(self.input_file).parent)
             _info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
-                    f'{utils.valid_path_to(folder)}\n'
+                    f'{utils.valid_path_to(folder)},\n'
                     'with a timestamp.')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(4444, self.show_info_messages)
+            app.after(5555, self.show_info_messages)
 
         # macOS right mouse button has a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
@@ -1803,16 +1861,16 @@ class ImageViewer(ProcessImage):
 
     def select_and_size(self, contour_pointset: list) -> None:
         """
-        Select object contours based on area size and position,
-        draw an enclosing circle around contours, then display them
+        Select object contour_pointset based on area size and position,
+        draw an enclosing circle around contour_pointset, then display them
         on the input image. Objects are expected to be oblong so that
         circle diameter can represent the object's length.
         Called by process_rw_and_sizes(), process_sizes().
         Calls update_image().
 
         Args:
-            contour_pointset: List of selected contours from
-             cv2.findContours in ProcessImage.contour_rw_segments().
+            contour_pointset: List of selected contour_pointset from
+             cv2.findContours in ProcessImage.draw_rw_segments().
 
         Returns:
             None
@@ -1832,7 +1890,7 @@ class ImageViewer(ProcessImage):
         c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
         c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
 
-        # Set coordinate point limits to find contours along a file border.
+        # Set coordinate point limits to find contour_pointset along a file border.
         bottom_edge = self.cvimg['gray'].shape[0] - 1
         right_edge = self.cvimg['gray'].shape[1] - 1
 
@@ -1843,9 +1901,9 @@ class ImageViewer(ProcessImage):
         flag = False
         for _c in contour_pointset:
 
-            # Exclude None elements (generated by multiprocessing.Pool).
-            # Exclude contours not in the specified size range.
-            # Exclude contours that have a coordinate point intersecting the img edge.
+            # Exclude None elements.
+            # Exclude contour_pointset not in the specified size range.
+            # Exclude contour_pointset that have a coordinate point intersecting the img edge.
             #  ... those that touch top or left edge or are background.
             #  ... those that touch bottom or right edge.
             if _c is None:
@@ -1922,6 +1980,71 @@ class ImageViewer(ProcessImage):
         #  time is set in process_rw_and_sizes(). Preprocessing time is
         #  negligible, so it is ignored.
         self.elapsed = round(time() - self.time_start, 3)
+
+    def select_and_export(self, contour_pointset: list) -> int:
+        """
+        Takes a list of contour segments and places each in a bounding
+        rectangle for export to file via a utility module.
+        Calls utility_modules/utils.export_segments().
+        Called from Button command in setup_buttons().
+
+        Args:
+            contour_pointset: A list of contour pointsets of segmented objects.
+
+        Returns: Integer count of selected contour slices exported.
+        """
+
+        # Use the identical selection criteria as in select_and_size().
+        # The size range slider values are radii pixels. This is done b/c:
+        #  1) Displayed values have fewer digits, so a cleaner slide bar.
+        #  2) Sizes are diameters, so radii are conceptually easier than areas.
+        #  So, need to convert to area for the cv2.contourArea function.
+        c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
+        c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
+
+        # Set coordinate point limits to find contour_pointset along a file border.
+        bottom_edge = self.cvimg['gray'].shape[0] - 1
+        right_edge = self.cvimg['gray'].shape[1] - 1
+        flag = False
+
+        roi_idx = 0
+
+        for _c in contour_pointset:
+            # Identical selection criteria used in select_and_size().
+            # Exclude None elements.
+            # Exclude contour_pointset not in the specified size range.
+            # Exclude contour_pointset that have a coordinate point intersecting the img edge.
+            #  ... those that touch top or left edge or are background.
+            #  ... those that touch bottom or right edge.
+            if _c is None:
+                continue
+            if not c_area_max > cv2.contourArea(_c) >= c_area_min:
+                continue
+            if {0, 1}.intersection(set(_c.ravel())):
+                continue
+            # Break from inner loop when either edge touch is found.
+            for _p in _c:
+                for coord in _p:
+                    _x, _y = tuple(coord)
+                    if _x == right_edge or _y == bottom_edge:
+                        flag = True
+                if flag:
+                    break
+            if flag:
+                flag = False
+                continue
+
+            # Idea for segment extraction from:
+            #  https://stackoverflow.com/questions/21104664/
+            #   extract-all-bounding-boxes-using-opencv-python
+            # The ROI slice encompasses the selected random walker contour.
+            roi_idx += 1
+            _x, _y, _w, _h = cv2.boundingRect(_c)
+            roi = self.cvimg['input'][_y:_y + _h, _x:_x + _w]
+            utils.export_segments(input_path=self.input_file,
+                                  img2exp=roi,
+                                  index=roi_idx)
+        return roi_idx
 
     def report_results(self) -> None:
         """
@@ -2050,10 +2173,11 @@ class ImageViewer(ProcessImage):
         self.report_results()
 
         # Var first_run is reset to False in process_rw_and_sizes()
-        #   during the first run.
+        #  during the initial run.
         if not self.first_run:
             _info = ('\nPreprocessing completed.\n'
-                     'Click "Run Random Walker" to update counts and sizes.\n\n')
+                     'Click "Run Random Walker" to update the report and\n'
+                     '"Size-selected.." and "Random walker segments" displays.\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -2075,6 +2199,7 @@ class ImageViewer(ProcessImage):
         self.widget_control('off')
         self.time_start: float = time()
         self.select_and_size(contour_pointset=self.randomwalk_segmentation)
+        self.draw_rw_segments()
         self.report_results()
         self.widget_control('on')
 
@@ -2083,14 +2208,14 @@ class ImageViewer(ProcessImage):
         # self.elapsed is set at end of select_and_size().
         if self.first_run:
             self.first_run = False
-            _info = (f'Time to process image: {self.elapsed}\n'
+            _info = (f'Image processing time elapsed: {self.elapsed}\n'
                      'Default settings were used. Settings that increase or\n'
                      'decrease number of detected objects will respectively\n'
                      'increase or decrease the processing time.\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(ms=4444, func=self.show_info_messages)
+            app.after(ms=5555, func=self.show_info_messages)
         else:
             _info = ('\nContours found and sizes calculated. Report updated.\n'
                      f'Processing time elapsed: {self.elapsed}\n\n')
