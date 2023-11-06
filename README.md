@@ -78,26 +78,26 @@ As with all repository downloads, it is a good idea to install the requirements 
 ### Screenshots:
 Most screenshots are from an Ubuntu Linux platform. For Windows and macOS platforms, window and widget look or layout may be different.
 
-Below, initial file selection window. (The *_screenshot.jpg files are used for this README.)
+Below, initial file selection window. (The *_screenshot.jpg files in the `images` folder are used for this README.)
 Currently supported image file types are JPG, PNG, and TIFF.
 
 ![opening_screenshot.png](images/opening_screenshot.png)
 
 Once a file is selected, basic run parameters are set in a new pop-up window. The scale slider determines the screen size of the processed image windows. Available annotation colors are: blue, orange, sky blue, blueish green, vermilion, reddish purple, yellow, black, white, red, and green. All but red and green should be suitable for users with deuteranopia. The inverse selections are for the kind of object vs. background contrast the image has: "No" for light are dark, "Yes" for dark on light. This determines the initial cv2.threshold type, but can be changed later, if needed, in the main settings.
 
-![initial_settings_screenshot.png](images/initial_settings_screenshot.png)
+![initial settings screenshot](images/initial_settings_screenshot.png)
 
-When the "Process now" is clicked, the main settings and report window appears (below, from Windows system), along with multiple processed image windows. In this analysis, the Sacagawea dollar size standard was selected and its observed pixel diameter of 128 was entered. It was subsequently excluded from the reported object size metrics by reducing the 'Circled radius size maximum' until the coin no longer was annotated with its size (26.5 mm). The standard's pixel diameter of 129 was obtained from the initial result window when initial default settings were used. The report show that 31 object were found, with a mean of 12.9 mm, a median of 12.7 mm, covering a range of 7.70 to 18.4 mm.
+When the "Process now" is clicked, the main settings and report window appears (below), along with multiple processed image windows. In this analysis, the Sacagawea dollar size standard was selected and its observed pixel diameter of 128 was entered. It was subsequently excluded from the reported object size metrics by reducing the 'Circled radius size maximum' until the coin no longer was annotated with its size (26.5 mm). The standard's pixel diameter of 129 was obtained from the initial result window when initial default settings were used. The report show that 31 object were found, with a mean of 12.9 mm, a median of 12.7 mm, covering a range of 7.70 to 18.4 mm.
 
-![settings_report_screenshot.jpg](images/settings_report_screenshot.jpg)
+![settings and report screenshot](images%2Fsettings_report_screenshot.png)
 
 Below, the resulting annotated image. Clicking the "Save settings & sized image" button exports the annotated image (at its original resolution), and the settings report, including the 31 individual sizes, to the input image's folder.
 
-![sample1_result_screenshot](images/sample1_result_screenshot.jpg)
+![sample1 result screenshot](images/sample1_result_screenshot.jpg)
 
 Below, resulting annotated image for the input `sample3.jpg` and the text output from the saved settings. Note that objects that extend out of frame are excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was previously edited to fill in the shiny gold coin size standard with black for better contrast. The white circle is another coin that was edited to exclude it from analysis. The following report text includes parameter settings used, size metrics in millimeters, and a list of individual object sizes. Analyzed with `size_it_RW.py`, which uses the Random Walker algorithm.
 
-![sample3_size_it_RW_result.jpg](images/sample3_size_it_RW_result.jpg)
+![sample3 random walker result](images/sample3_RW_result_screenshot.jpg)
 
 <pre>
 Time saved: 12:53:49PM
@@ -136,6 +136,7 @@ Object size metrics,   mean: 12.3, median: 12.2, range: 6.92--18.1
 8. Large files or many segmentations can take a while to process. Be patient. An alternative approach that can greatly speed up processing is to reduce the size of the input image. This can be with any photo editing program or with this app by right-clicking on the "Input Image" to save the down-scaled display image. Then restart and select as input that smaller saved image.
 9. The better the separation of target objects in the displayed "Thresholded" image, the better will be the segmentation result. Complete threshold separation is not necessary. Settings to adjust for better threshold separation: "Contrast", "Reduce noise...", and "Filter...". Settings for "peak_local_max..." can then be adjusted to optimize segmentation of the annotated sized objects.
 10. Font size for annotated objects in the "Size-selected objects..." window can be changed with Ctrl + and Ctrl - keys. Annotation line thickness can be changed with Shift-Ctrl + and Shift-Ctrl -.
+11. The "Export sized objects" button will export each size-selected object to its own JPEG file. Each file will contain a rectangular slice from the input image that encloses a watershed or random-walker segment. Files are written to the input image's folder with a timestamp and index number in the file name. The intent is to aid in building your own training dataset of images for machine-learning applications.
 
 ### Known Issues:
 Waiting for user feedback.
