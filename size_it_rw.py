@@ -1021,7 +1021,6 @@ class ImageViewer(ProcessImage):
         # Because of sharing the constants.py module with size_it.py, need
         #  to rename the 'dist_trans' window for random walker display.
         # Random_walker segments display as an inverse threshold img.
-        # TODO: grid rand_walk label in a separate window? or with 'sized'?
         const.WIN_NAME['dist_trans'] = 'Distance transformed <- | -> Random walker segments'
 
         for _name, toplevel in self.img_window.items():
