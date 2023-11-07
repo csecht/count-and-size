@@ -500,7 +500,7 @@ class ProcessImage(tk.Tk):
                                            channel_axis=None)
 
         if not self.first_run:
-            _info = '\nRandom walker completed. Finding contour_pointset for sizing...\n\n\n'
+            _info = '\nRandom walker completed. Finding contours for sizing...\n\n\n'
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -522,7 +522,7 @@ class ProcessImage(tk.Tk):
             mask = np.zeros(shape=self.cvimg['rand_walk'].shape, dtype="uint8")
             mask[self.cvimg['rand_walk'] == label] = 255
 
-            # Detect contour_pointset in the mask and grab the largest one.
+            # Detect contours in the mask and grab the largest one.
             contours, _ = cv2.findContours(image=mask.copy(),
                                            mode=cv2.RETR_EXTERNAL,
                                            method=cv2.CHAIN_APPROX_SIMPLE)
@@ -541,11 +541,11 @@ class ProcessImage(tk.Tk):
         Returns: None
         """
 
-        # Convert array data from int32 to allow colored contour_pointset.
+        # Convert array data from int32 to allow colored contours.
         rw_img = cv2.cvtColor(src=np.uint8(self.cvimg['rand_walk']),
                               code=cv2.COLOR_GRAY2BGR)
 
-        # Need to prevent white or black contour_pointset because they
+        # Need to prevent white or black contours because they
         #  won't show on the white background with black segments.
         if self.cbox_val['color'].get() in 'white, black':
             line_color = const.COLORS_CV['blue']
@@ -568,7 +568,7 @@ class ProcessImage(tk.Tk):
 
 class ImageViewer(ProcessImage):
     """
-    A suite of methods to display cv contour_pointset based on chosen settings
+    A suite of methods to display cv segments based on chosen settings
     and parameters as applied in ProcessImage().
     Methods:
     manage_main_win
@@ -584,11 +584,13 @@ class ImageViewer(ProcessImage):
     config_annotations
     grid_widgets
     grid_img_labels
-    display_input_and_others
+    display_windows
     set_defaults
     set_size_std
     select_and_size
+    select_and_export
     report_results
+    preprocess
     process_rw_and_sizes
     process_sizes
     """
@@ -1312,8 +1314,7 @@ class ImageViewer(ProcessImage):
                                                        'maximum pixels:',
                                                   **const.LABEL_PARAMETERS)
 
-        # Note: may need to adjust c_lim scaling with image size b/c
-        #   large contour_pointset cannot be selected if max limit is too small.
+        # Note: may need to contours cannot be selected if max limit is too small.
         circle_r_min = self.metrics['max_circle_r'] // 8
         circle_r_max = self.metrics['max_circle_r']
         self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
@@ -1860,15 +1861,15 @@ class ImageViewer(ProcessImage):
 
     def select_and_size(self, contour_pointset: list) -> None:
         """
-        Select object contour_pointset based on area size and position,
-        draw an enclosing circle around contour_pointset, then display them
+        Select object contour based on area size and position,
+        draw an enclosing circle around contours, then display them
         on the input image. Objects are expected to be oblong so that
         circle diameter can represent the object's length.
         Called by process_rw_and_sizes(), process_sizes().
         Calls update_image().
 
         Args:
-            contour_pointset: List of selected contour_pointset from
+            contour_pointset: List of selected contours from
              cv2.findContours in ProcessImage.draw_rw_segments().
 
         Returns:
@@ -1889,7 +1890,7 @@ class ImageViewer(ProcessImage):
         c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
         c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
 
-        # Set coordinate point limits to find contour_pointset along a file border.
+        # Set coordinate point limits to find contours along a file border.
         bottom_edge = self.cvimg['gray'].shape[0] - 1
         right_edge = self.cvimg['gray'].shape[1] - 1
 
@@ -1901,8 +1902,8 @@ class ImageViewer(ProcessImage):
         for _c in contour_pointset:
 
             # Exclude None elements.
-            # Exclude contour_pointset not in the specified size range.
-            # Exclude contour_pointset that have a coordinate point intersecting the img edge.
+            # Exclude contours not in the specified size range.
+            # Exclude contours that have a coordinate point intersecting the img edge.
             #  ... those that touch top or left edge or are background.
             #  ... those that touch bottom or right edge.
             if _c is None:
@@ -2001,7 +2002,7 @@ class ImageViewer(ProcessImage):
         c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
         c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
 
-        # Set coordinate point limits to find contour_pointset along a file border.
+        # Set coordinate point limits to find contours along a file border.
         bottom_edge = self.cvimg['gray'].shape[0] - 1
         right_edge = self.cvimg['gray'].shape[1] - 1
         flag = False
@@ -2011,8 +2012,8 @@ class ImageViewer(ProcessImage):
         for _c in contour_pointset:
             # Identical selection criteria used in select_and_size().
             # Exclude None elements.
-            # Exclude contour_pointset not in the specified size range.
-            # Exclude contour_pointset that have a coordinate point intersecting the img edge.
+            # Exclude contours not in the specified size range.
+            # Exclude contours that have a coordinate point intersecting the img edge.
             #  ... those that touch top or left edge or are background.
             #  ... those that touch bottom or right edge.
             if _c is None:
