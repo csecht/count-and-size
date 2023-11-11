@@ -836,7 +836,11 @@ class ImageViewer(ProcessImage):
                                 variable=self.slider_val['scale'],
                                 length=int(self.winfo_screenwidth() * 0.2),
                                 **const.SCALE_PARAMETERS)
-        self.slider_val['scale'].set(0.5)
+
+        if self.metrics['img_area'] > 6*10e5:
+            self.slider_val['scale'].set(0.25)
+        else:
+            self.slider_val['scale'].set(0.5)
 
         color_label = tk.Label(master=start_win,
                                text='Annotation font color:',
@@ -1294,9 +1298,9 @@ class ImageViewer(ProcessImage):
 
         self.slider['plm_mindist_lbl'].configure(text='peak_local_max min_distance:',
                                                  **const.LABEL_PARAMETERS)
-        self.slider['plm_mindist'].configure(from_=1, to=400,
+        self.slider['plm_mindist'].configure(from_=1, to=500,
                                              length=scale_len,
-                                             tickinterval=30,
+                                             tickinterval=40,
                                              variable=self.slider_val['plm_mindist'],
                                              **const.SCALE_PARAMETERS)
 
@@ -1722,9 +1726,12 @@ class ImageViewer(ProcessImage):
             """Save the current window image (Label) that was rt-clicked."""
             tkimg = self.tkimg[image_name]
 
+            click_info = (f'The displayed {image_name} image was saved at'
+                          f' {self.slider_val["scale"].get()} scale.')
+
             utils.save_settings_and_img(input_path=self.input_file,
                                         img2save=tkimg,
-                                        txt2save='The displayed image',
+                                        txt2save=click_info,
                                         caller=image_name)
 
             # Provide user with a notice that a file was created and
@@ -1773,6 +1780,11 @@ class ImageViewer(ProcessImage):
         self.slider_val['circle_r_min'].set(8)
         self.slider_val['circle_r_max'].set(300)
 
+        # Increase PLM min distance for larger files to reduce the number
+        #  of contours, thus decreasing processing time.
+        if self.cvimg['gray'].size > 5*10^6:
+            self.slider_val['plm_mindist'].set(100)
+
         if self.do_inverse_th.get():
             self.cbox['th_type'].current(1)
             self.cbox_val['th_type'].set('cv2.THRESH_OTSU_INVERSE')
@@ -1787,6 +1799,7 @@ class ImageViewer(ProcessImage):
         self.cbox['dt_type'].current(1)  # 'cv2.DIST_L2' == 2
         self.cbox['dt_mask_size'].current(1)  # '3' == cv2.DIST_MASK_3
         self.cbox['size_std'].current(0)  # 'None'
+
 
         # Set to 1 to avoid division by 0.
         self.size_std['px_val'].set('1')
@@ -2076,7 +2089,8 @@ class ImageViewer(ProcessImage):
             result[roi_mask == 0] = 255
 
             utils.export_segments(input_path=self.input_file,
-                                  img2exp=result,
+                                  img2exp=result,  # Export random walker segment.
+                                  # img2exp=roi,  # Export segment's enlarged bounding box.
                                   index=roi_idx,
                                   timestamp=time_now)
         return roi_idx

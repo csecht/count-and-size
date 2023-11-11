@@ -84,6 +84,8 @@ def input_metrics(img: np.ndarray) -> dict:
         'gray_img', 'font_scale', 'line_thickness', 'max_circle_r'.
     """
 
+    img_area: int = img.shape[0] * img.shape[1]
+
     gray_img: np.ndarray = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
     fig_width: int = gray_img.shape[1]
 
@@ -97,6 +99,7 @@ def input_metrics(img: np.ndarray) -> dict:
     font_scale: float = max(fig_width * const.SIZE_FACTOR, 0.2)
 
     metrics = {
+        'img_area': img_area,
         'input_img': img,
         'gray_img': gray_img,
         'font_scale': font_scale,
