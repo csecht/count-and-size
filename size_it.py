@@ -37,6 +37,7 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 
 # Standard library imports.
 import sys
+from datetime import datetime
 from pathlib import Path
 from statistics import mean, median
 from typing import List
@@ -492,12 +493,12 @@ class ProcessImage(tk.Tk):
 
     def contour_ws_segments(self, image: np.ndarray) -> None:
         """
-        Find and draw contour_pointset for watershed ws_basins.
+        Find and draw contours for watershed basin segments.
         Called from process_all() with a watershed_segmentation() arg.
         Calls update_image().
 
         Args:
-            image: A labeled ndarray of watershed ws_basins.
+            image: A labeled ndarray of watershed segment contours.
 
         Returns: None
         """
@@ -512,9 +513,11 @@ class ProcessImage(tk.Tk):
         # self.ws_basins is used in select_and_size() to draw enclosing circles.
         # Convert image array from int32 to uint8 data type to find contour_pointset.
         # Conversion with cv2.convertScaleAbs(watershed_img) also works.
+        # NOTE: Use method=cv2.CHAIN_APPROX_NONE when masking individual segments
+        #   in select_and_export(). CHAIN_APPROX_NONE can work, but NONE is best?
         self.ws_basins, _ = cv2.findContours(image=np.uint8(image),
                                              mode=cv2.RETR_EXTERNAL,
-                                             method=cv2.CHAIN_APPROX_SIMPLE)
+                                             method=cv2.CHAIN_APPROX_NONE)
 
         # Convert watershed array data from int32 to allow colored contour_pointset.
         watershed_img = cv2.cvtColor(src=np.uint8(image), code=cv2.COLOR_GRAY2BGR)
@@ -1222,17 +1225,17 @@ class ImageViewer(ProcessImage):
 
         self.slider['plm_mindist_lbl'].configure(text='peak_local_max min_distance:',
                                                  **const.LABEL_PARAMETERS)
-        self.slider['plm_mindist'].configure(from_=1, to=220,
+        self.slider['plm_mindist'].configure(from_=1, to=400,
                                              length=scale_len,
-                                             tickinterval=20,
+                                             tickinterval=30,
                                              variable=self.slider_val['plm_mindist'],
                                              **const.SCALE_PARAMETERS)
 
         self.slider['plm_footprint_lbl'].configure(text='peak_local_max footprint:',
                                                    **const.LABEL_PARAMETERS)
-        self.slider['plm_footprint'].configure(from_=1, to=40,
+        self.slider['plm_footprint'].configure(from_=1, to=50,
                                                length=scale_len,
-                                               tickinterval=2,
+                                               tickinterval=5,
                                                variable=self.slider_val['plm_footprint'],
                                                **const.SCALE_PARAMETERS)
 
@@ -1910,39 +1913,41 @@ class ImageViewer(ProcessImage):
 
     def select_and_export(self, contour_pointset: list) -> int:
         """
-        Takes a list of contour segments and places each in a bounding
-        rectangle for export to file via a utility module.
+        Takes a list of contour segments, selects, masks and extracts
+        each, to a bounding rectangle, for export to file.
         Calls utility_modules/utils.export_segments().
         Called from Button command in setup_buttons().
 
         Args:
-            contour_pointset: A list of contour pointsets of segmented objects.
+            contour_pointset: A list of contour pointsets of segmented
+             objects, e.g., watershed basin contours.
 
-        Returns: Integer count of selected contour slices exported.
+        Returns: Integer count of exported segments.
         """
 
+        # Grab current time to pass to export_segments() utils module.
+        #  This is done here, outside the for loop, to avoid having the
+        #  export timestamp change (by one or two seconds) during processing.
+        # The index count is also passed as a export_segments() argument.
+        time_now = datetime.now().strftime('%Y%m%d%I%M%S')
+        roi_idx = 0
+
         # Use the identical selection criteria as in select_and_size().
-        # The size range slider values are radii pixels. This is done b/c:
-        #  1) Displayed values have fewer digits, so a cleaner slide bar.
-        #  2) Sizes are diameters, so radii are conceptually easier than areas.
-        #  So, need to convert to area for the cv2.contourArea function.
         c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
         c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
-
-        # Set coordinate point limits to find contours along a file border.
         bottom_edge = self.cvimg['gray'].shape[0] - 1
         right_edge = self.cvimg['gray'].shape[1] - 1
         flag = False
 
-        roi_idx = 0
-
         for _c in contour_pointset:
-            # Identical selection criteria used in select_and_size().
-            # Exclude None elements.
-            # Exclude contours not in the specified size range.
-            # Exclude contours that have a coordinate point intersecting the img edge.
-            #  ... those that touch top or left edge or are background.
-            #  ... those that touch bottom or right edge.
+
+            # As in select_and_size():
+            #  Exclude None elements.
+            #  Exclude contours not in the specified size range.
+            #  Exclude contours that have a coordinate point intersecting
+            #   the img edge, that is...
+            #   ...those that touch top or left edge or are background.
+            #   ...those that touch bottom or right edge.
             if _c is None:
                 continue
             if not c_area_max > cv2.contourArea(_c) >= c_area_min:
@@ -1961,16 +1966,50 @@ class ImageViewer(ProcessImage):
                 flag = False
                 continue
 
-            # Idea for segment extraction from:
+            roi_idx += 1
+
+            # Ideas for segment extraction from:
             #  https://stackoverflow.com/questions/21104664/
             #   extract-all-bounding-boxes-using-opencv-python
-            # The ROI slice encompasses the watershed basin.
-            roi_idx += 1
+            # The ROI slice encompasses the watershed basin, _c.
             _x, _y, _w, _h = cv2.boundingRect(_c)
-            roi = self.cvimg['input'][_y:_y + _h, _x:_x + _w]
+
+            # Slightly expand the _c segment roi from the input image.
+            roi = self.cvimg['input'][_y - 6:(_y + _h + 6), _x - 6:(_x + _w + 6), :]
+
+            # Idea for masking from: https://stackoverflow.com/questions/70209433/
+            #   opencv-creating-a-binary-mask-from-the-image
+            # Need to use full input img b/c that is what _c pointset refers to.
+            # Steps: Make a binary mask of segment on full input image.
+            #        Crop the mask to a 6px border around the segment.
+            mask = np.zeros_like(cv2.cvtColor(self.cvimg['input'], cv2.COLOR_BGR2GRAY))
+
+            cv2.drawContours(image=mask,
+                             contours=[_c],
+                             contourIdx=-1,
+                             color=255,
+                             thickness=cv2.FILLED)
+
+            # Note: this contour step provides a clean border around the segment.
+            cv2.drawContours(image=mask,
+                             contours=[_c],
+                             contourIdx=-1,
+                             color=0,
+                             thickness=4)
+
+            roi_mask = mask[_y - 6:(_y + _h + 6), _x - 6:(_x + _w + 6)]
+
+            # Idea for extraction from: https://stackoverflow.com/questions/59432324/
+            #   how-to-mask-image-with-binary-mask
+            # Extract the segment from input to a black background.
+            result = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
+            # Option: convert black background to white:
+            result[roi_mask == 0] = 255
+
             utils.export_segments(input_path=self.input_file,
-                                  img2exp=roi,
-                                  index=roi_idx)
+                                  img2exp=result,
+                                  index=roi_idx,
+                                  timestamp=time_now)
         return roi_idx
 
     def report_results(self) -> None:
