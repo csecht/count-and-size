@@ -11,7 +11,6 @@ quit_gui -  Error-free and informative exit from the program.
 no_objects_found - A simple messagebox when a contour pointset is empty.
 wait4it_msg - A messagebox explaining large images can take a long time.
 """
-import copy
 # Copyright (C) 2022-2023 C.S. Echt, under GNU General Public License'
 
 # Standard library imports.
@@ -207,7 +206,10 @@ def save_settings_and_img(input_path: str,
               f'{data2save}')
 
 
-def export_segments(input_path: str, img2exp: np.ndarray, index: int) -> None:
+def export_segments(input_path: str,
+                    img2exp: np.ndarray,
+                    index: int,
+                    timestamp: str) -> None:
     """
     Writes an image file for an individual contoured segments from a
     list of contour. File names include a timestamp and segment index
@@ -219,14 +221,11 @@ def export_segments(input_path: str, img2exp: np.ndarray, index: int) -> None:
         img2exp: An np.ndarray slice of a segmented (contoured) object,
                  from the input image, to be exported to file.
         index: The segmented contour index number.
+        timestamp: The starting time of the calling method.
 
     Returns: None
     """
 
-    curr_time = datetime.now().strftime('%Y%m%d%I%M%S')
-
-    # Freeze time so seconds in file name can't change during method execution.
-    timestamp = copy.deepcopy(curr_time)
     export_folder = Path(input_path).parent
     export_img_name = f'seg_{timestamp}_{index}.jpg'
     export_file_path = f'{export_folder}/{export_img_name}'
