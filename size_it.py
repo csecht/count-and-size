@@ -575,7 +575,7 @@ class ImageViewer(ProcessImage):
     grid_img_labels
     display_windows
     set_defaults
-    set_size_std
+    set_size_standard
     select_and_size
     select_and_export
     report_results
@@ -1127,7 +1127,7 @@ class ImageViewer(ProcessImage):
             app.after(5555, self.show_info_messages)
 
         def _export():
-            _num = self.select_and_export(self.ws_basins)
+            _num = self.select_and_export()
             _info = (f'{_num} selected objects were individually exported to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
             manage.info_message(widget=self.info_label,
@@ -1714,9 +1714,9 @@ class ImageViewer(ProcessImage):
         self.slider_val['circle_r_max'].set(300)
 
         # Increase PLM min distance for larger files to reduce the number
-        #  of contours, thus decreasing processing time.
-        if self.cvimg['gray'].size > 5*10^6:
-            self.slider_val['plm_mindist'].set(100)
+        #  of contours, thus decreasing initial processing time.
+        if self.metrics['img_area'] > 6*10e5:
+            self.slider_val['plm_mindist'].set(125)
 
         if self.do_inverse_th.get():
             self.cbox['th_type'].current(1)
@@ -1738,7 +1738,7 @@ class ImageViewer(ProcessImage):
         self.size_std['px_val'].set('1')
         self.size_std['custom_val'].set('0.0')
 
-    def set_size_std(self) -> None:
+    def set_size_standard(self) -> None:
         """
         Assign a unit conversion factor to the observed pixel diameter
         of the chosen size standard and calculate the number of significant
@@ -1879,7 +1879,7 @@ class ImageViewer(ProcessImage):
             object_size: float = _r * 2 * self.unit_per_px.get()
 
             # Need to set sig. fig. to display sizes in annotated image.
-            #  num_sigfig value is determined in set_size_std().
+            #  num_sigfig value is determined in set_size_standard().
             size2display: str = to_p.to_precision(value=object_size,
                                                   precision=self.num_sigfig)
 
@@ -2151,7 +2151,7 @@ class ImageViewer(ProcessImage):
         self.adjust_contrast()
         self.reduce_noise()
         self.filter_image()
-        self.set_size_std()
+        self.set_size_standard()
         self.contour_ws_segments(image=self.watershed_segmentation)
         self.select_and_size(contour_pointset=self.ws_basins)
         self.report_results()
@@ -2180,7 +2180,7 @@ class ImageViewer(ProcessImage):
         Returns:
             *event* as a formality; is functionally None.
         """
-        self.set_size_std()
+        self.set_size_standard()
         self.select_and_size(contour_pointset=self.ws_basins)
         self.report_results()
 

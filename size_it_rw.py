@@ -587,7 +587,7 @@ class ImageViewer(ProcessImage):
     grid_img_labels
     display_windows
     set_defaults
-    set_size_std
+    set_size_standard
     select_and_size
     select_and_export
     report_results
@@ -1148,7 +1148,7 @@ class ImageViewer(ProcessImage):
             app.after(5555, self.show_info_messages)
 
         def _export():
-            _num = self.select_and_export(self.randomwalk_contours)
+            _num = self.select_and_export()
             _info = (f'{_num} selected objects were individually exported to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
             manage.info_message(widget=self.info_label,
@@ -1319,7 +1319,8 @@ class ImageViewer(ProcessImage):
                                                        'maximum pixels:',
                                                   **const.LABEL_PARAMETERS)
 
-        # Note: may need to contours cannot be selected if max limit is too small.
+        # Note: may need to adjust c_lim scaling with image size b/c
+        #   large contours cannot be selected if max limit is too small.
         circle_r_min = self.metrics['max_circle_r'] // 8
         circle_r_max = self.metrics['max_circle_r']
         self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
@@ -1781,9 +1782,9 @@ class ImageViewer(ProcessImage):
         self.slider_val['circle_r_max'].set(300)
 
         # Increase PLM min distance for larger files to reduce the number
-        #  of contours, thus decreasing processing time.
-        if self.cvimg['gray'].size > 5*10^6:
-            self.slider_val['plm_mindist'].set(100)
+        #  of contours, thus decreasing initial processing time.
+        if self.metrics['img_area'] > 6*10e5:
+            self.slider_val['plm_mindist'].set(125)
 
         if self.do_inverse_th.get():
             self.cbox['th_type'].current(1)
@@ -1805,7 +1806,7 @@ class ImageViewer(ProcessImage):
         self.size_std['px_val'].set('1')
         self.size_std['custom_val'].set('0.0')
 
-    def set_size_std(self) -> None:
+    def set_size_standard(self) -> None:
         """
         Assign a unit conversion factor to the observed pixel diameter
         of the chosen size standard and calculate the number of significant
@@ -1882,10 +1883,6 @@ class ImageViewer(ProcessImage):
         Called by process_rw_and_sizes(), process_sizes().
         Calls update_image().
 
-        Args:
-            contour_pointset: List of selected contours from
-             cv2.findContours in ProcessImage.draw_rw_segments().
-
         Returns:
             None
         """
@@ -1946,7 +1943,7 @@ class ImageViewer(ProcessImage):
             object_size: float = _r * 2 * self.unit_per_px.get()
 
             # Need to set sig. fig. to display sizes in annotated image.
-            #  num_sigfig value is determined in set_size_std().
+            #  num_sigfig value is determined in set_size_standard().
             size2display: str = to_p.to_precision(value=object_size,
                                                   precision=self.num_sigfig)
 
@@ -2218,7 +2215,7 @@ class ImageViewer(ProcessImage):
         self.reduce_noise()
         self.filter_image()
         self.th_and_dist_trans()
-        self.set_size_std()
+        self.set_size_standard()
         self.report_results()
 
         # Var first_run is reset to False in process_rw_and_sizes()
@@ -2285,7 +2282,7 @@ class ImageViewer(ProcessImage):
         Returns:
             *event* as a formality; is functionally None.
         """
-        self.set_size_std()
+        self.set_size_standard()
         self.select_and_size(contour_pointset=self.randomwalk_contours)
         self.elapsed = 'n/a'
         self.report_results()
