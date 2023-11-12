@@ -665,6 +665,9 @@ class ImageViewer(ProcessImage):
         self.save_btn = ttk.Button()
         self.export_btn = ttk.Button()
 
+        # Flag for user's choice of segment export type.
+        self.export_segment: bool = True
+
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
         self.img_window: dict = {}
@@ -1127,6 +1130,12 @@ class ImageViewer(ProcessImage):
             app.after(5555, self.show_info_messages)
 
         def _export():
+            self.export_segment = messagebox.askyesnocancel(
+                title="Export objects' watershed segments?",
+                detail='Yes: only segments, on white background\n'
+                       "No: include image area around segments\n"
+                       'Cancel: export nothing and return')
+
             _num = self.select_and_export(self.ws_basins)
             _info = (f'{_num} selected objects were individually exported to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
@@ -1937,6 +1946,16 @@ class ImageViewer(ProcessImage):
         Returns: Integer count of exported segments.
         """
 
+        # Evaluate user's messagebox askyesnocancel answer, from setup_buttons().
+        if self.export_segment:
+            # Export masked ws basin segments.
+            export_this = 'result'
+        elif self.export_segment is False:
+            # Export enlarged bounding rectangles around segments.
+            export_this = 'roi'
+        else:  # user selected 'cancel', which returns None.
+            return 0
+
         # Grab current time to pass to export_segments() utils module.
         #  This is done here, outside the for loop, to avoid having the
         #  export timestamp change (by one or two seconds) during processing.
@@ -1986,15 +2005,19 @@ class ImageViewer(ProcessImage):
             # The ROI slice encompasses the watershed basin, _c.
             _x, _y, _w, _h = cv2.boundingRect(_c)
 
-            # Slightly expand the _c segment roi from the input image.
-            roi = self.cvimg['input'][_y - 6:(_y + _h + 6), _x - 6:(_x + _w + 6), :]
+            # Slightly expand the _c segment's ROI on the input image.
+            y_slice = slice(_y - 4, (_y + _h + 3))
+            x_slice = slice(_x - 4, (_x + _w + 3))
+            roi = self.cvimg['input'][y_slice, x_slice]
 
             # Idea for masking from: https://stackoverflow.com/questions/70209433/
             #   opencv-creating-a-binary-mask-from-the-image
             # Need to use full input img b/c that is what _c pointset refers to.
             # Steps: Make a binary mask of segment on full input image.
-            #        Crop the mask to a 6px border around the segment.
-            mask = np.zeros_like(cv2.cvtColor(self.cvimg['input'], cv2.COLOR_BGR2GRAY))
+            #        Crop the mask to a slim border around the segment.
+            mask = np.zeros_like(cv2.cvtColor(src=self.cvimg['input'],
+                                              code=cv2.COLOR_BGR2GRAY))
+            roi_mask = mask[y_slice, x_slice]
 
             cv2.drawContours(image=mask,
                              contours=[_c],
@@ -2009,8 +2032,6 @@ class ImageViewer(ProcessImage):
                              color=0,
                              thickness=4)
 
-            roi_mask = mask[_y - 6:(_y + _h + 6), _x - 6:(_x + _w + 6)]
-
             # Idea for extraction from: https://stackoverflow.com/questions/59432324/
             #   how-to-mask-image-with-binary-mask
             # Extract the segment from input to a black background.
@@ -2018,9 +2039,14 @@ class ImageViewer(ProcessImage):
             # Option: convert black background to white:
             result[roi_mask == 0] = 255
 
+            if export_this == 'result':
+                # Export ws_basin segment.
+                export_type = result
+            else: # is 'roi',  so export segment's enlarged bounding box.
+                export_type = roi
+
             utils.export_segments(input_path=self.input_file,
-                                  img2exp=result,  # Export segment's ws basin.
-                                  # img2exp=roi,  # Export segment's enlarged bounding box.
+                                  img2exp=export_type,
                                   index=roi_idx,
                                   timestamp=time_now)
         return roi_idx
