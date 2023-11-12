@@ -1148,7 +1148,7 @@ class ImageViewer(ProcessImage):
             app.after(5555, self.show_info_messages)
 
         def _export():
-            _num = self.select_and_export()
+            _num = self.select_and_export(self.randomwalk_contours)
             _info = (f'{_num} selected objects were individually exported to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
             manage.info_message(widget=self.info_label,
