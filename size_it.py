@@ -2006,8 +2006,6 @@ class ImageViewer(ProcessImage):
                 flag = False
                 continue
 
-            roi_idx += 1
-
             # Ideas for segment extraction from:
             #  https://stackoverflow.com/questions/21104664/
             #   extract-all-bounding-boxes-using-opencv-python
@@ -2052,18 +2050,21 @@ class ImageViewer(ProcessImage):
             # Extract the segment from input to a black background, then
             #  convert black background to white.
             result = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
-            result[roi_mask == 0] = 255
 
-            if export_this == 'result':
-                # Export ws_basin segment.
-                export_chosen = result
-            else: # is 'roi',  so export segment's enlarged bounding box.
-                export_chosen = roi
+            if result is not None:
+                roi_idx += 1
+                result[roi_mask == 0] = 255
 
-            utils.export_segments(input_path=self.input_file,
-                                  img2exp=export_chosen,
-                                  index=roi_idx,
-                                  timestamp=time_now)
+                if export_this == 'result':
+                    # Export ws_basin segment.
+                    export_chosen = result
+                else: # is 'roi',  so export segment's enlarged bounding box.
+                    export_chosen = roi
+
+                utils.export_segments(input_path=self.input_file,
+                                      img2exp=export_chosen,
+                                      index=roi_idx,
+                                      timestamp=time_now)
         return roi_idx
 
     def report_results(self) -> None:
