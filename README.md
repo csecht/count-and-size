@@ -125,6 +125,9 @@ Object size metrics,   mean: 12.3, median: 12.2, range: 6.92--18.1
 </pre>
 `6.92, 7.77, 8.04, 8.76, 9.17, 9.2, 9.64, 9.66, 9.68, 9.7, 9.8, 9.83, 9.88, 9.91, 9.93, 9.98, 10.0, 10.1, 10.2, 10.2, 10.3, 10.4, 10.4, 10.6, 10.6, 10.6, 10.7, 10.7, 10.8, 10.8, 10.8, 10.8, 10.9, 10.9, 11.0, 11.1, 11.1, 11.2, 11.2, 11.2, 11.2, 11.3, 11.3, 11.3, 11.4, 11.4, 11.4, 11.4, 11.5, 11.5, 11.5, 11.7, 11.7, 11.7, 11.8, 11.8, 11.9, 12.0, 12.0, 12.0, 12.1, 12.1, 12.1, 12.1, 12.2, 12.2, 12.3, 12.3, 12.4, 12.4, 12.4, 12.4, 12.5, 12.6, 12.6, 12.7, 12.7, 12.7, 12.8, 12.8, 12.8, 12.8, 12.8, 12.9, 13.0, 13.0, 13.1, 13.1, 13.2, 13.2, 13.3, 13.3, 13.3, 13.4, 13.5, 13.6, 13.7, 13.7, 13.9, 13.9, 14.0, 14.0, 14.3, 14.3, 14.4, 14.4, 14.4, 14.4, 14.5, 14.5, 14.6, 14.7, 14.7, 14.7, 14.8, 14.8, 14.9, 15.1, 15.1, 15.4, 15.4, 15.5, 15.9, 15.9, 16.4, 16.9, 17.1, 17.4, 18.1`
 
+Below, all image processing steps are displayed in five windows. Images update as settings are changed.
+![all image windows](images/all_image_windows.png)
+
 ### Tips:
 1. For best results, use a well-contrasted objects that are not in large overlapping clusters. Best results are obtained using a lightbox with minimal top lighting to photograph objects.
 2. Use a flat black or flat white object as a size standard.
