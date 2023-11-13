@@ -680,6 +680,7 @@ class ImageViewer(ProcessImage):
 
         # Flag for user's choice of segment export type.
         self.export_segment: bool = True
+        self.export_hull = False
 
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
@@ -1133,7 +1134,7 @@ class ImageViewer(ProcessImage):
 
         _folder = str(Path(self.input_file).parent)
 
-        def _save_results():
+        def _save():
             """
             A Button kw "command" caller to avoid messy lambda statements.
             """
@@ -1152,19 +1153,27 @@ class ImageViewer(ProcessImage):
 
         def _export():
             self.export_segment = messagebox.askyesnocancel(
-                title="Export objects' random walker segments?",
-                detail='Yes: only segments, on white background\n'
-                       "No: include image area around segments\n"
-                       'Cancel: export nothing and return')
+                title="Export only objects' segmented areas?",
+                detail='Yes: ...with a white background.\n'
+                       'No: Include area around object\n'
+                       "     ...with image's background.\n"
+                       'Cancel: Export nothing and return.')
+
+            if self.export_segment:
+                self.export_hull =  messagebox.askyesno(
+                title="Fill in partially segmented objects?",
+                detail='Yes: Try to include more object area;\n'
+                       '     may include some image background.\n'
+                       'No: Export just segments, on white.\n')
 
             _num = self.select_and_export(self.randomwalk_contours)
             _info = (f'{_num} selected objects were individually exported to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(5555, self.show_info_messages)
+            app.after(6666, self.show_info_messages)
 
-        def _do_reset():
+        def _reset():
             """
             Separates setting default values from lengthy process calls,
             thus shortening response time.
@@ -1185,11 +1194,11 @@ class ImageViewer(ProcessImage):
             width=0)
 
         self.button['reset'].config(text='Reset settings',
-                                    command=_do_reset,
+                                    command=_reset,
                                     **button_params)
 
         self.button['save'].config(text='Save settings & sized image',
-                                   command=_save_results,
+                                   command=_save,
                                    **button_params)
 
         self.button['process'].config(text='Run Random Walker',
@@ -2022,7 +2031,7 @@ class ImageViewer(ProcessImage):
         elif self.export_segment is False:
             # Export enlarged bounding rectangles around segments.
             export_this = 'roi'
-        else:  # user selected 'cancel', which returns None.
+        else:  # user selected 'cancel', which returns None, the default.
             return 0
 
         # Grab current time to pass to export_segments() utils module.
@@ -2049,7 +2058,7 @@ class ImageViewer(ProcessImage):
             #   ...those that touch top or left edge or are background.
             #   ...those that touch bottom or right edge.
             if _c is None:
-                continue
+                return 0
             if not c_area_max > cv2.contourArea(_c) >= c_area_min:
                 continue
             if {0, 1}.intersection(set(_c.ravel())):
@@ -2088,34 +2097,40 @@ class ImageViewer(ProcessImage):
                                               code=cv2.COLOR_BGR2GRAY))
             roi_mask = mask[y_slice, x_slice]
 
+            if self.export_hull:
+                hull = cv2.convexHull(_c)
+                chosen_contours = [hull]
+            else:  # is False, user selected "No".
+                chosen_contours = [_c]
+
             cv2.drawContours(image=mask,
-                             contours=[_c],
+                             contours=chosen_contours,
                              contourIdx=-1,
                              color=255,
                              thickness=cv2.FILLED)
 
             # Note: this contour step provides a clean border around the segment.
             cv2.drawContours(image=mask,
-                             contours=[_c],
+                             contours=chosen_contours,
                              contourIdx=-1,
                              color=0,
                              thickness=4)
 
             # Idea for extraction from: https://stackoverflow.com/questions/59432324/
-            #   how-to-mask-image-with-binary-mask
-            # Extract the segment from input to a black background.
+            #  how-to-mask-image-with-binary-mask
+            # Extract the segment from input to a black background, then
+            #  convert black background to white.
             result = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
-            # Option: convert black background to white:
             result[roi_mask == 0] = 255
 
             if export_this == 'result':
-                # Export random walker segment.
-                export_type = result
+                # Export ws_basin segment.
+                export_chosen = result
             else: # is 'roi',  so export segment's enlarged bounding box.
-                export_type = roi
+                export_chosen = roi
 
             utils.export_segments(input_path=self.input_file,
-                                  img2exp=export_type,
+                                  img2exp=export_chosen,
                                   index=roi_idx,
                                   timestamp=time_now)
         return roi_idx
