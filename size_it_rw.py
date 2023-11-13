@@ -2031,7 +2031,7 @@ class ImageViewer(ProcessImage):
         elif self.export_segment is False:
             # Export enlarged bounding rectangles around segments.
             export_this = 'roi'
-        else:  # user selected 'cancel', which returns None, the default.
+        else:  # user selected 'Cancel', which returns None, the default.
             return 0
 
         # Grab current time to pass to export_segments() utils module.
@@ -2081,10 +2081,11 @@ class ImageViewer(ProcessImage):
             # The ROI slice encompasses the selected random walker contour.
             _x, _y, _w, _h = cv2.boundingRect(_c)
 
-            # Slightly expand the _c segment's ROI on the input image.
+            # Slightly expand the _c segment's ROI bounding box on the input image.
             y_slice = slice(_y - 4, (_y + _h + 3))
             x_slice = slice(_x - 4, (_x + _w + 3))
             roi = self.cvimg['input'][y_slice, x_slice]
+            roi_idx += 1
 
             # Idea for masking from: https://stackoverflow.com/questions/70209433/
             #   opencv-creating-a-binary-mask-from-the-image
@@ -2116,8 +2117,8 @@ class ImageViewer(ProcessImage):
 
             # Idea for extraction from: https://stackoverflow.com/questions/59432324/
             #  how-to-mask-image-with-binary-mask
-            # Extract the segment from input to a black background, then
-            #  convert black background to white.
+            # Extract the segment from input to a black background, then if it's
+            #  valid, convert black background to white and export it.
             result = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
 
             if result is not None:
@@ -2127,13 +2128,17 @@ class ImageViewer(ProcessImage):
                 if export_this == 'result':
                     # Export ws_basin segment.
                     export_chosen = result
-                else: # is 'roi',  so export segment's enlarged bounding box.
+                else: # is 'roi', so export segment's enlarged bounding box.
                     export_chosen = roi
 
                 utils.export_segments(input_path=self.input_file,
                                       img2exp=export_chosen,
                                       index=roi_idx,
                                       timestamp=time_now)
+            else:
+                print(f'There was a problem with segment # {roi_idx},'
+                      ' so it was not exported.')
+
         return roi_idx
 
     def report_results(self) -> None:
