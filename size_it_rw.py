@@ -442,7 +442,7 @@ class ProcessImage(tk.Tk):
 
         min_dist: int = self.slider_val['plm_mindist'].get()
         p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
-                    self.slider_val['plm_footprint'].get())
+                           self.slider_val['plm_footprint'].get())
         plm_kernel = np.ones(shape=p_kernel, dtype=np.uint8)
 
         # Generate the markers as local maxima of the distance to the background.
@@ -453,13 +453,13 @@ class ProcessImage(tk.Tk):
         #   in ImageViewer.select_and_size().
         local_max: ndimage = peak_local_max(image=self.cvimg['dist_trans'],
                                             min_distance=min_dist,
-                                            exclude_border=False, # True is min_dist
+                                            exclude_border=False,  # True is min_dist
                                             num_peaks=np.inf,
                                             footprint=plm_kernel,
                                             labels=self.cvimg['thresh'],
                                             num_peaks_per_label=np.inf,
                                             p_norm=np.inf)  # Chebyshev distance
-                                            # p_norm=2,  # Euclidean distance
+        # p_norm=2,  # Euclidean distance
 
         mask = np.zeros(shape=self.cvimg['dist_trans'].shape, dtype=bool)
         # Set background to True (not zero: True or 1)
@@ -490,15 +490,15 @@ class ProcessImage(tk.Tk):
         #  Default beta & tol take ~8x longer to process for similar results.
         # Need pyamg installed for mode='cg_mg'.
         self.cvimg['rand_walk']: np.ndarray = random_walker(data=self.cvimg['thresh'],
-                                           labels=labeled_array,
-                                           beta=5, # default: 130,
-                                           mode='cg_mg', # default: 'cg_j'
-                                           tol=0.1, # default: 1.e-3
-                                           copy=True,
-                                           return_full_prob=False,
-                                           spacing=None,
-                                           prob_tol=0.1,  # default: 1.e-3
-                                           channel_axis=None)
+                                                            labels=labeled_array,
+                                                            beta=5,  # default: 130,
+                                                            mode='cg_mg',  # default: 'cg_j'
+                                                            tol=0.1,  # default: 1.e-3
+                                                            copy=True,
+                                                            return_full_prob=False,
+                                                            spacing=None,
+                                                            prob_tol=0.1,  # default: 1.e-3
+                                                            channel_axis=None)
 
         if not self.first_run:
             _info = '\nRandom walker completed. Finding contours for sizing...\n\n\n'
@@ -841,7 +841,7 @@ class ImageViewer(ProcessImage):
                                 length=int(self.winfo_screenwidth() * 0.2),
                                 **const.SCALE_PARAMETERS)
 
-        if self.metrics['img_area'] > 6*10e5:
+        if self.metrics['img_area'] > 6 * 10e5:
             self.slider_val['scale'].set(0.25)
         else:
             self.slider_val['scale'].set(0.5)
@@ -904,7 +904,7 @@ class ImageViewer(ProcessImage):
         menubar.add_cascade(label=utils.program_name(), menu=file)
         file.add_command(label='Process now',
                          command=_call_start,
-                         accelerator='Return') # macOS doesn't recognize 'Enter'
+                         accelerator='Return')  # macOS doesn't recognize 'Enter'
         file.add_command(label='Quit',
                          command=lambda: utils.quit_gui(app),
                          # macOS doesn't recognize 'Command+Q' as an accelerator
@@ -971,8 +971,8 @@ class ImageViewer(ProcessImage):
             Called locally from .protocol().
             """
             _info = ('\nThat window cannot be closed from its window bar.\n'
-                    'Minimize it if it is in the way.\n'
-                    'Esc or Ctrl-Q keys will Quit the program.\n')
+                     'Minimize it if it is in the way.\n'
+                     'Esc or Ctrl-Q keys will Quit the program.\n')
             self.info_label.config(fg=const.COLORS_TK['vermilion'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -1083,7 +1083,6 @@ class ImageViewer(ProcessImage):
         self.contour_report_frame.columnconfigure(0, weight=1)
         self.contour_selectors_frame.columnconfigure(1, weight=2)
 
-
         self.contour_report_frame.grid(column=0, row=0,
                                        columnspan=2,
                                        padx=(5, 5), pady=(5, 5),
@@ -1160,11 +1159,11 @@ class ImageViewer(ProcessImage):
                        'Cancel: Export nothing and return.')
 
             if self.export_segment:
-                self.export_hull =  messagebox.askyesno(
-                title="Fill in partially segmented objects?",
-                detail='Yes: Try to include more object area;\n'
-                       '     may include some image background.\n'
-                       'No: Export just segments, on white.\n')
+                self.export_hull = messagebox.askyesno(
+                    title="Fill in partially segmented objects?",
+                    detail='Yes: Try to include more object area;\n'
+                           '     may include some image background.\n'
+                           'No: Export just segments, on white.\n')
 
             _num = self.select_and_export(self.randomwalk_contours)
             _info = (f'{_num} selected objects were individually exported to:\n'
@@ -1206,8 +1205,8 @@ class ImageViewer(ProcessImage):
                                       **button_params)
 
         self.button['export'].configure(text='Export sized objects',
-                                command=_export,
-                                **button_params)
+                                        command=_export,
+                                        **button_params)
 
         # Widget griding in the mainloop window.
         self.button['reset'].grid(column=0, row=2,
@@ -1223,14 +1222,14 @@ class ImageViewer(ProcessImage):
                                     sticky=tk.W)
 
         self.button['save'].grid(column=0, row=3,
-                                padx=10,
-                                pady=0,
-                                sticky=tk.W)
+                                 padx=10,
+                                 pady=0,
+                                 sticky=tk.W)
 
         self.button['export'].grid(column=0, row=4,
-                                padx=10,
-                                pady=5,
-                                sticky=tk.W)
+                                   padx=10,
+                                   pady=5,
+                                   sticky=tk.W)
 
     def config_sliders(self) -> None:
         """
@@ -1757,8 +1756,8 @@ class ImageViewer(ProcessImage):
             #  give user time to read the message before resetting it.
             folder = str(Path(self.input_file).parent)
             _info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
-                    f'{utils.valid_path_to(folder)},\n'
-                    'with a timestamp.')
+                     f'{utils.valid_path_to(folder)},\n'
+                     'with a timestamp.')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             app.after(5555, self.show_info_messages)
@@ -1801,7 +1800,7 @@ class ImageViewer(ProcessImage):
 
         # Increase PLM min distance for larger files to reduce the number
         #  of contours, thus decreasing initial processing time.
-        if self.metrics['img_area'] > 6*10e5:
+        if self.metrics['img_area'] > 6 * 10e5:
             self.slider_val['plm_mindist'].set(125)
 
         if self.do_inverse_th.get():
@@ -1818,7 +1817,6 @@ class ImageViewer(ProcessImage):
         self.cbox['dt_type'].current(1)  # 'cv2.DIST_L2' == 2
         self.cbox['dt_mask_size'].current(1)  # '3' == cv2.DIST_MASK_3
         self.cbox['size_std'].current(0)  # 'None'
-
 
         # Set to 1 to avoid division by 0.
         self.size_std['px_val'].set('1')
@@ -2127,7 +2125,7 @@ class ImageViewer(ProcessImage):
                 if export_this == 'result':
                     # Export random walker segment.
                     export_chosen = result
-                else: # is 'roi', so export segment's enlarged bounding box.
+                else:  # is 'roi', so export segment's enlarged bounding box.
                     export_chosen = roi
 
                 utils.export_segments(input_path=self.input_file,
@@ -2153,7 +2151,7 @@ class ImageViewer(ProcessImage):
         # Note: recall that *_val dict are inherited from ProcessImage().
         px_w, px_h = self.cvimg['gray'].shape
         alpha: float = self.slider_val['alpha'].get()
-        beta:int = self.slider_val['beta'].get()
+        beta: int = self.slider_val['beta'].get()
         noise_iter: int = self.slider_val['noise_iter'].get()
         morph_op: str = self.cbox_val['morphop'].get()
         morph_shape: str = self.cbox_val['morphshape'].get()
@@ -2349,7 +2347,7 @@ if __name__ == "__main__":
     #   argument --about is used, which prints info, then exits.
     # check_platform() also enables display scaling on Windows.
     utils.check_platform()
-    vcheck.minversion('3.7')   # comment for PyInstaller
+    vcheck.minversion('3.7')  # comment for PyInstaller
     vcheck.maxversion('3.11')  # comment for PyInstaller
 
     manage.arguments()  # comment for Pyinstaller
