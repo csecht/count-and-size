@@ -2102,14 +2102,14 @@ class ImageViewer(ProcessImage):
             else:  # is False, user selected "No".
                 chosen_contours = [_c]
 
-            cv2.drawContours(image=roi_mask,
+            cv2.drawContours(image=mask,
                              contours=chosen_contours,
                              contourIdx=-1,
                              color=255,
                              thickness=cv2.FILLED)
 
             # Note: this contour step provides a clean border around the segment.
-            cv2.drawContours(image=roi_mask,
+            cv2.drawContours(image=mask,
                              contours=chosen_contours,
                              contourIdx=-1,
                              color=0,
