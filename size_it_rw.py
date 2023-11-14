@@ -2102,14 +2102,14 @@ class ImageViewer(ProcessImage):
             else:  # is False, user selected "No".
                 chosen_contours = [_c]
 
-            cv2.drawContours(image=mask,
+            cv2.drawContours(image=roi_mask,
                              contours=chosen_contours,
                              contourIdx=-1,
                              color=255,
                              thickness=cv2.FILLED)
 
             # Note: this contour step provides a clean border around the segment.
-            cv2.drawContours(image=mask,
+            cv2.drawContours(image=roi_mask,
                              contours=chosen_contours,
                              contourIdx=-1,
                              color=0,
@@ -2122,11 +2122,10 @@ class ImageViewer(ProcessImage):
             result = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
 
             if result is not None:
-                roi_idx += 1
                 result[roi_mask == 0] = 255
 
                 if export_this == 'result':
-                    # Export ws_basin segment.
+                    # Export random walker segment.
                     export_chosen = result
                 else: # is 'roi', so export segment's enlarged bounding box.
                     export_chosen = roi
