@@ -93,9 +93,39 @@ When the "Process now" is clicked, the main settings and report window appears (
 
 Below, the resulting annotated image. Clicking the "Save settings & sized image" button exports the annotated image (at its original resolution), and the settings report, including the 31 individual sizes, to the input image's folder.
 
-![sample1 result screenshot](images/sample1_result_screenshot.jpg)
+![sample1 result](images/sample1_result_screenshot.jpg)
 
-Below, resulting annotated image for the input `sample3.jpg` and the text output from the saved settings. Note that objects that extend out of frame are excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was previously edited to fill in the shiny gold coin size standard with black for better contrast. The white circle is another coin that was edited to exclude it from analysis. The following report text includes parameter settings used, size metrics in millimeters, and a list of individual object sizes. Analyzed with `size_it_RW.py`, which uses the Random Walker algorithm.
+Below, resulting annotated image for the input `sample3.jpg` and the text output of its saved settings. Note that object groups, formed by the initial analysis with default settings, were well-segmented by increasing the contrast (alpha) from 1 to 1.6, lowering noise reduction iterations from 3 to 1, and lowering the peak_local_max minimum distance from 125 (default for larger images) to 62. Keep in mind that different settings may have achieved similar results. Analyzed with `size_it.py`, which uses the Watershed algorithm.
+
+![sample2 result](images/sample2_result_screenshot.jpg)
+
+<pre>
+Time saved: 2023/11/15 07:16:19AM
+Saved image file: sample2_size_it_20231115071619.jpg
+Image: /home/craig/PycharmProjects/count-and-size/images/examples/sample2.jpg
+Image size: 2629x2627
+Contrast:              convertScaleAbs alpha=1.6, beta=0
+Noise reduction:       cv2.getStructuringElement ksize=7,
+                       cv2.getStructuringElement shape=cv2.MORPH_ELLIPSE
+                       cv2.morphologyEx iterations=1
+                       cv2.morphologyEx op=cv2.MORPH_OPEN,
+Filter:                cv2.blur ksize=(5, 5)
+cv2.threshold:         type=cv2.THRESH_OTSU_INVERSE
+cv2.distanceTransform: distanceType=cv2.DIST_L2, maskSize=3
+skimage functions:
+   peak_local_max:     min_distance=62
+                       footprint=np.ones((5, 5), np.uint8)
+   watershed:          connectivity=4
+                       compactness=1.0
+════════════════════
+# distTrans segments:  174
+Selected size range:   8--83 pixels, diameter
+Selected size std.:    Sacagawea $, 26.5 mm diameter
+                       Pixel diameter entered: 236, unit/px factor: 0.112
+# Selected objects:    158
+Object size metrics,   mean: 10.9, median: 11.0, range: 7.29--14.4
+</pre>
+Below, annotated result for the input `sample3.jpg` and text output of its saved settings. Note that objects that extended out of frame were excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was previously edited to fill in the shiny gold coin size standard with black for better contrast. The white circle is another coin that was edited to exclude it from analysis. The following report text includes parameter settings used, size metrics in millimeters, and a list of individual object sizes. Analyzed with `size_it_RW.py`, which uses the Random Walker algorithm.
 
 ![sample3 random walker result](images/sample3_RW_result_screenshot.jpg)
 
@@ -138,9 +168,9 @@ Below, all image processing steps are displayed in five windows. Images update a
 7. Right-click on an image in one of the windows to save it to file. The image, saved to original image's folder, will be at the specified scale for screen display, not the image file's original resolution. To save the annotated result image (sized & circled) at its original resolution, use the 'Save settings...' button. 
 8. Large files or many segmentations can take a while to process. Be patient. An alternative approach that can greatly speed up processing is to reduce the size of the input image. This can be with any photo editing program or with this app by right-clicking on the "Input Image" to save the down-scaled display image. Then restart and select as input that smaller saved image.
 9. The better the separation of target objects in the displayed "Thresholded" image, the better will be the segmentation result. Complete threshold separation is not necessary. Settings to adjust for better threshold separation: "Contrast", "Reduce noise...", and "Filter...". Settings for "peak_local_max..." can then be adjusted to optimize segmentation of the annotated sized objects.
-10. Font size for annotated objects in the "Size-selected objects..." window can be changed with Ctrl + and Ctrl - keys. Annotation line thickness can be changed with Shift-Ctrl + and Shift-Ctrl -.
-11. If closely spaced objects are being grouped (segmented) together, then reduce the "peak_local_max min distance" slider value. If lager objects have multiple segments, then increase that value. 
-12. The "Export sized objects" button will export each size-selected object to its own JPEG file. Each file is proportional in size to the size of the object, or its segmented area. Pop-up options allow the export to be: 1) Just the objects' segments (as seen in the "...segments" window) on a white background, 2) all or most of the object surrounded by the image background, and 3) more of each object's area, as filled by the cv2.convexHull function, on a white background, but may include slices of image background in concaved object areas. You can increase the export area around objects by increasing the "Filter kernel size" slider value. Files are written to the input image's folder and named with a timestamp and each segment's index number. The intent of exporting individual images is to aid in building custom training datasets to use in AI/machine-learning/neural-network applications.
+10. If closely spaced or touching objects are being grouped (segmented) together, then reduce the "peak_local_max min distance" slider value. If lager objects have multiple segments, then increase that value. Also, try reducing noise reduction values, or increasing the contrast, to split up groups of close or touching objects.
+11.  Font size for annotated objects in the "Size-selected objects..." window can be changed with Ctrl + and Ctrl - keys. Annotation line thickness can be changed with Shift-Ctrl + and Shift-Ctrl -.
+12. The "Export sized objects" button will export each selected object to its own JPEG file (without annotation). Each file is proportional in size to the size of the object, or its segmented area. Pop-up options allow the export to be: 1) Just the objects' segments (as seen in the "...segments" window) on a white background, 2) all or most of the object surrounded by the image background, and 3) more of each object's area, as filled by the cv2.convexHull function, on a white background, but may include slices of image background in concave object areas. You can increase the export area around objects by increasing the "Filter kernel size" slider value. Files are written to the input image's folder and named with a timestamp and each segment's index number. The intent of exporting individual images is to aid in building custom training datasets to use in AI/machine-learning/neural-network applications.
 
 ### Known Issues:
 Waiting for user feedback.
