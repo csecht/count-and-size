@@ -24,16 +24,20 @@ scaling, and annotation color cannot be changed after the "Process now"
 button is clicked. Once image processing begins, if the run settings are
 not to your liking, just quit, restart, and choose different values.
 
-Quit program with Esc key, Ctrl-Q key, the close window icon of the
-settings windows, or from command line with Ctrl-C.
+After changing slider or pull-down settings, click the "Run settings"
+button to initiate a processing cycle for the new settings.
 
 Save settings report and the annotated image with the "Save" button.
+
+Quit program with Esc key, Ctrl-Q key, the close window icon of the
+settings windows, or from command line with Ctrl-C.
 
 Requires Python 3.7 or later and the packages opencv-python, numpy,
 scikit-image, scipy, and psutil.
 See this distribution's requirements.txt file for details.
 Developed in Python 3.8 and 3.9, tested up to 3.11.
 """
+# Copyright (C) 2023 C.S. Echt, under GNU General Public License
 
 # Standard library imports.
 import sys
@@ -41,6 +45,7 @@ from datetime import datetime
 from pathlib import Path
 from statistics import mean, median
 from typing import List
+from time import time
 
 # Local application imports.
 # pylint: disable=import-error
@@ -49,8 +54,6 @@ from utility_modules import (vcheck,
                              manage,
                              constants as const,
                              to_precision as to_p)
-
-# Copyright (C) 2023 C.S. Echt, under GNU General Public License
 
 # Third party imports.
 # tkinter(Tk/Tcl) is included with most Python3 distributions,
@@ -104,7 +107,7 @@ class ProcessImage(tk.Tk):
     reduce_noise
     filter_image
     watershed_segmentation
-    contour_ws_segments
+    draw_ws_segments
     """
 
     def __init__(self):
@@ -184,7 +187,9 @@ class ProcessImage(tk.Tk):
         self.unit_per_px = tk.DoubleVar()
         self.num_sigfig: int = 0
         self.info_label = tk.Label(self)
-        self.first_run = True
+        self.time_start: float = 0
+        self.elapsed: float = 0
+        self.first_run: bool = True
 
     def update_image(self,
                      img_name: str,
@@ -215,7 +220,7 @@ class ProcessImage(tk.Tk):
         Adjust contrast of the input self.cvimg['gray'] image.
         Updates contrast and brightness via alpha and beta sliders.
         Displays contrasted and redux noise images.
-        Called by process_all(). Calls update_image().
+        Called by process_ws_and_sizes(). Calls update_image().
 
         Returns:
             None
@@ -224,7 +229,6 @@ class ProcessImage(tk.Tk):
         # https://docs.opencv2.org/3.4/d3/dc1/tutorial_basic_linear_transform.html
         # https://stackoverflow.com/questions/39308030/
         #   how-do-i-increase-the-contrast-of-an-image-in-python-opencv
-
         self.cvimg['contrast'] = (
             cv2.convertScaleAbs(
                 src=self.cvimg['gray'],
@@ -240,7 +244,7 @@ class ProcessImage(tk.Tk):
         """
         Reduce noise in the contrast adjust image erode and dilate actions
         of cv2.morphologyEx operations.
-        Called by process_all(). Calls update_image().
+        Called by process_ws_and_sizes(). Calls update_image().
 
         Returns:
             None
@@ -293,7 +297,7 @@ class ProcessImage(tk.Tk):
         Applies a filter selection to blur the reduced noise image
         to prepare for threshold segmentation. Can also serve as a
         specialized noise reduction step.
-        Called from watershed_segmentation() and process_all().
+        Called from watershed_segmentation() and process_ws_and_sizes().
         Calls update_image().
 
         Returns:
@@ -340,7 +344,8 @@ class ProcessImage(tk.Tk):
         #  will not have much effect, whereas if they are large (> 150),
         #  they will have a very strong effect, making the image look "cartoonish".
         # NOTE: The larger the sigma the greater the effect of kernel size d.
-        # NOTE: filtered image dtype is uint8.
+        # NOTE: filtered image dtype is uint8
+
         if filter_selected == 'cv2.bilateralFilter':
             self.cvimg['filter'] = cv2.bilateralFilter(
                 src=image2filter,
@@ -374,33 +379,20 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='filter',
                           img_array=self.cvimg['filter'])
 
-    @property
-    def watershed_segmentation(self) -> np.ndarray:
+    def th_and_dist_trans(self) -> None:
         """
-        Segment objects with cv2.threshold(), cv2.distanceTransform,
-        and skimage.segmentation._watershed. Threshold types limited to
-        Otsu and Triangle. For larger images, progress notifications are
-        printed to Terminal.
-        Called by process_all().
-        Calls select_and_size() and update_image().
-
+        Produces a threshold image from the filtered image. This image
+        is used for masking in watershed_segmentation(). It is separate
+        here so that its display can be updated independently of running
+        watershed_segmentation().
         Returns:
             None
         """
-        # watershed code inspiration sources:
-        #   https://pyimagesearch.com/2015/11/02/watershed-opencv/
-        # see also: http://scipy-lectures.org/packages/scikit-image/index.html
-
-        connections = int(self.cbox_val['ws_connect'].get())  # 1, 4 or 8.
         th_type: int = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
-        dt_type: int = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
-        mask_size = int(self.cbox_val['dt_mask_size'].get())
-        min_dist: int = self.slider_val['plm_mindist'].get()
-        p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
-                    self.slider_val['plm_footprint'].get())
-        plm_kernel = np.ones(shape=p_kernel, dtype=np.uint8)
         filter_k = self.slider_val['filter_k'].get()
         noise_iter = self.slider_val['noise_iter'].get()
+        dt_type: int = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
+        mask_size = int(self.cbox_val['dt_mask_size'].get())
 
         # Note from doc: Currently, the Otsu's and Triangle methods
         #   are implemented only for 8-bit single-channel images.
@@ -415,83 +407,101 @@ class ProcessImage(tk.Tk):
         else:
             image2threshold = self.cvimg['filter']
 
-        _, thresh_img = cv2.threshold(src=image2threshold,
-                                      thresh=0,
-                                      maxval=255,
-                                      type=th_type)
+        _, self.cvimg['thresh'] = cv2.threshold(src=image2threshold,
+                                                thresh=0,
+                                                maxval=255,
+                                                type=th_type)
 
-        # Now we want to segment objects in the image.
-        # Generate the markers as local maxima of the distance to the background.
         # Calculate the distance transform of the input, by replacing each
         #   foreground (non-zero) element, with its shortest distance to
         #   the background (any zero-valued element).
         #   Returns a float64 ndarray.
         # Note that maskSize=0 calculates the precise mask size only for
         #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
-        distances_img: np.ndarray = cv2.distanceTransform(
-            src=thresh_img,
+        self.cvimg['dist_trans']: np.ndarray = cv2.distanceTransform(
+            src=self.cvimg['thresh'],
             distanceType=dt_type,
             maskSize=mask_size)
 
         self.update_image(img_name='thresh',
-                          img_array=thresh_img)
+                          img_array=self.cvimg['thresh'])
         self.update_image(img_name='dist_trans',
-                          img_array=np.uint8(distances_img))
+                          img_array=np.uint8(self.cvimg['dist_trans']))
 
-        if not self.first_run:
-            if self.slider_val['plm_footprint'].get() == 1:
-                _info = ('Completed distance transform; looking for peaks...\n'
-                         'A peak_local max footprint of 1 may take a while...\n\n')
-            else:
-                _info = 'Completed distance transform; looking for peaks...\n\n\n'
+    # @property
+    def watershed_segmentation(self) -> None: #np.ndarray:
+        """
+        Segment objects with skimage.feature.peak_local_max() and
+        skimage.segmentation.random_walker().
+        Called as arg for select_and_size() from process_ws_and_sizes().
+        Calls update_image().
 
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
+        Returns:
+            The contour pointset list from parallel.MultiProc(rw_img).pool_it
+        """
 
+        min_dist: int = self.slider_val['plm_mindist'].get()
+        p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
+                           self.slider_val['plm_footprint'].get())
+        plm_kernel = np.ones(shape=p_kernel, dtype=np.uint8)
+        connections = int(self.cbox_val['ws_connect'].get())  # 1, 4 or 8.
+
+        # Generate the markers as local maxima of the distance to the background.
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Generate the markers as local maxima of the distance to the background.
         # Don't use exclude_border; objects touching image border will be excluded
         #   in ImageViewer.select_and_size().
-        local_max: ndimage = peak_local_max(image=distances_img,
+        local_max: ndimage = peak_local_max(image=self.cvimg['dist_trans'],
                                             min_distance=min_dist,
-                                            exclude_border=False, # True is min_dist
+                                            exclude_border=False,  # True is min_dist
                                             num_peaks=np.inf,
                                             footprint=plm_kernel,
-                                            labels=thresh_img,
+                                            labels=self.cvimg['thresh'],
                                             num_peaks_per_label=np.inf,
                                             p_norm=np.inf)  # Chebyshev distance
-                                            # p_norm=2,  # Euclidean distance
+        # p_norm=2,  # Euclidean distance
 
-        if not self.first_run:
-            _info = 'Found peaks; running watershed algorithm...\n\n\n'
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-
-        mask = np.zeros(shape=distances_img.shape, dtype=bool)
+        mask = np.zeros(shape=self.cvimg['dist_trans'].shape, dtype=bool)
         # Set background to True (not zero: True or 1)
         mask[tuple(local_max.T)] = True
+
         # Note that markers are single px, colored in grayscale by their label index?
         labeled_array, self.num_dt_segments = ndimage.label(input=mask)
 
-        # WHY minus sign? It separates objects much better than without it,
-        #  minus symbol turns distances into threshold.
+        # Source: http://scipy-lectures.org/packages/scikit-image/index.html
+        # From the doc: labels: array of ints, of same shape as data without channels dimension.
+        #  Array of seed markers labeled with different positive integers for
+        #  different phases. Zero-labeled pixels are unlabeled pixels.
+        #  Negative labels correspond to inactive pixels that are not taken into
+        #  account (they are removed from the graph).
+
+        # Replace thresh_img background with -1 to ignore those pixels.
+        labeled_array[labeled_array == self.cvimg['thresh']] = -1
+
+        if not self.first_run:
+            _info = ('\nFound peaks from distance transform.\n'
+                     'Running watershed algorithm, please wait...\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+
+        # Note that the minus symbol with distances_img converts distance
+        #  transform into a threshold. Watershed can work without the
+        #  conversion, but does a better job identifying segments with it.
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Need watershed_line to show boundaries on displayed watershed contour_pointset.
         # compactness=1.0 based on: DOI:10.1109/ICPR.2014.181
-        #   https://www.tu-chemnitz.de/etit/proaut/publications/cws_pSLIC_ICPR.pdf
-        watershed_img: np.ndarray = watershed(image=-distances_img,
-                                              markers=labeled_array,
-                                              connectivity=connections,
-                                              mask=thresh_img,
-                                              compactness=1.0,
-                                              watershed_line=True)
+        self.cvimg['watershed']: np.ndarray = watershed(
+            image=-self.cvimg['dist_trans'],
+            markers=labeled_array,
+            connectivity=connections,
+            mask=self.cvimg['thresh'],
+            compactness=1.0,
+            watershed_line=True)
 
-        return watershed_img
-
-    def contour_ws_segments(self, image: np.ndarray) -> None:
+    def contour_ws_segments(self) -> None:
         """
         Find and draw contours for watershed basin segments.
         Called from process_all() with a watershed_segmentation() arg.
@@ -515,12 +525,13 @@ class ProcessImage(tk.Tk):
         # Conversion with cv2.convertScaleAbs(watershed_img) also works.
         # NOTE: Use method=cv2.CHAIN_APPROX_NONE when masking individual segments
         #   in select_and_export(). CHAIN_APPROX_NONE can work, but NONE is best?
-        self.ws_basins, _ = cv2.findContours(image=np.uint8(image),
+        self.ws_basins, _ = cv2.findContours(image=np.uint8(self.cvimg['watershed']),
                                              mode=cv2.RETR_EXTERNAL,
                                              method=cv2.CHAIN_APPROX_NONE)
 
         # Convert watershed array data from int32 to allow colored contour_pointset.
-        watershed_img = cv2.cvtColor(src=np.uint8(image), code=cv2.COLOR_GRAY2BGR)
+        watershed_img = cv2.cvtColor(src=np.uint8(self.cvimg['watershed']),
+                                     code=cv2.COLOR_GRAY2BGR)
 
         # Need to prevent a thickness value of 0, yet have it be a function
         #  of image size so that it looks good in scaled display. Because the
@@ -579,7 +590,8 @@ class ImageViewer(ProcessImage):
     select_and_size
     select_and_export
     report_results
-    process_all
+    preprocess
+    process_ws_and_sizes
     process_sizes
     """
 
@@ -661,17 +673,24 @@ class ImageViewer(ProcessImage):
             'custom_lbl': tk.Label(self.contour_selectors_frame),
         }
 
-        self.reset_btn = ttk.Button()
-        self.save_btn = ttk.Button()
-        self.export_btn = ttk.Button()
+        self.button = {
+            'reset': ttk.Button(),
+            'save': ttk.Button(),
+            'process': ttk.Button(),
+            'export': ttk.Button(),
+        }
 
-        # Flag for user's choice of segment export formats.
-        self.export_segment = None
+        # Flag for user's choice of segment export type.
+        self.export_segment: bool = True
         self.export_hull = False
 
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
         self.img_window: dict = {}
+
+        # Used to reset values that user may have tried to change during
+        #  prolonged processing times.
+        self.slider_values: list = []
 
         # Is an instance attribute here only because it is used in call
         #  to utils.save_settings_and_img() from the Save button.
@@ -681,7 +700,7 @@ class ImageViewer(ProcessImage):
         #  then proceed with image processing and sizing.
         # This order of events allows macOS implementation to flow well.
         self.manage_main_window()
-        self.input_file: str = ''  # defined by filedialog in setup_start_window()
+        self.input_file: str = ''
         self.setup_start_window()
 
     def manage_main_window(self):
@@ -745,10 +764,8 @@ class ImageViewer(ProcessImage):
             """
             # Provide some info to user for why the start screen appears
             #  frozen when processing larger images.
-            if max(self.cvimg['gray'].shape) > const.SIZE_TO_WAIT:
-                start_win.config(cursor='watch')
-                process_btn_txt.set('Processing started, wait...')
-
+            process_btn_txt.set('Processing started, wait...')
+            start_win.config(cursor='watch')
             self.start_now()
             start_win.destroy()
             return event
@@ -826,7 +843,7 @@ class ImageViewer(ProcessImage):
                                 length=int(self.winfo_screenwidth() * 0.2),
                                 **const.SCALE_PARAMETERS)
 
-        if self.metrics['img_area'] > 6*10e5:
+        if self.metrics['img_area'] > 6 * 10e5:
             self.slider_val['scale'].set(0.25)
         else:
             self.slider_val['scale'].set(0.5)
@@ -881,7 +898,7 @@ class ImageViewer(ProcessImage):
         process_now_button.grid(row=3, column=1, **padding, sticky=tk.E)
 
         # Create menu instance and add pull-down menus.
-        menubar = tk.Menu(master=start_win)
+        menubar = tk.Menu(master=start_win, )
         start_win.config(menu=menubar)
 
         os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
@@ -889,7 +906,7 @@ class ImageViewer(ProcessImage):
         menubar.add_cascade(label=utils.program_name(), menu=file)
         file.add_command(label='Process now',
                          command=_call_start,
-                         accelerator='Return') # macOS doesn't recognize 'Enter'
+                         accelerator='Return')  # macOS doesn't recognize 'Enter'
         file.add_command(label='Quit',
                          command=lambda: utils.quit_gui(app),
                          # macOS doesn't recognize 'Command+Q' as an accelerator
@@ -926,7 +943,6 @@ class ImageViewer(ProcessImage):
         #  simultaneously for a visually cleaner start.
         self.setup_image_windows()
         self.configure_main_window()
-        # utils.wait4it_msg(size_limit=max(self.cvimg['gray'].shape))
         self.show_info_messages()
         self.setup_buttons()
         self.config_sliders()
@@ -936,9 +952,10 @@ class ImageViewer(ProcessImage):
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
-        # Place process_all() and display_windows() last, in this sequence,
-        #  for best performance.
-        self.process_all()
+        # Place preprocess(), process_ws_and_sizes() and display_windows(),
+        # in this sequence, to be called last for best performance.
+        self.preprocess()
+        self.process_ws_and_sizes()
         self.display_windows()
 
     def setup_image_windows(self) -> None:
@@ -955,14 +972,14 @@ class ImageViewer(ProcessImage):
             Provide a notice in report (mainloop, app) window.
             Called locally from .protocol().
             """
-            _info = ('That window cannot be closed from its window bar.\n'
-                    'Minimize it if it is in the way.\n'
-                    'Esc or Ctrl-Q keys will Quit the program.\n')
+            _info = ('\nThat window cannot be closed from its window bar.\n'
+                     'Minimize it if it is in the way.\n'
+                     'Esc or Ctrl-Q keys will Quit the program.\n')
             self.info_label.config(fg=const.COLORS_TK['vermilion'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             # Give user time to read the message before resetting it.
-            app.after(3000, self.show_info_messages)
+            app.after(ms=5555, func=self.show_info_messages)
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
         # Dictionary item order determines stack order of windows.
@@ -1014,22 +1031,27 @@ class ImageViewer(ProcessImage):
         except tk.TclError as _msg:
             pass
 
-        for _name, toplevel in self.img_window.items():
-            toplevel.wm_withdraw()
+        # Because of sharing the constants.py module with size_it.py, need
+        #  to rename the 'dist_trans' window for watershed display.
+        # Random_walker segments display as an inverse threshold img.
+        const.WIN_NAME['dist_trans'] = 'Distance transformed <- | -> Watershed segments'
+
+        for _name, _toplevel in self.img_window.items():
+            _toplevel.wm_withdraw()
             if icon_path:
-                toplevel.iconphoto(True, icon_path)
-            toplevel.minsize(width=200, height=100)
-            toplevel.protocol(name='WM_DELETE_WINDOW', func=_window_info)
-            toplevel.columnconfigure(index=0, weight=1)
-            toplevel.columnconfigure(index=1, weight=1)
-            toplevel.rowconfigure(index=0, weight=1)
-            toplevel.title(const.WIN_NAME[_name])
-            toplevel.config(bg=const.MASTER_BG,
+                _toplevel.iconphoto(True, icon_path)
+            _toplevel.minsize(width=200, height=100)
+            _toplevel.protocol(name='WM_DELETE_WINDOW', func=_window_info)
+            _toplevel.columnconfigure(index=0, weight=1)
+            _toplevel.columnconfigure(index=1, weight=1)
+            _toplevel.rowconfigure(index=0, weight=1)
+            _toplevel.title(const.WIN_NAME[_name])
+            _toplevel.config(bg=const.MASTER_BG,
                             highlightthickness=5,
                             highlightcolor=const.COLORS_TK['yellow'],
                             highlightbackground=const.DRAG_GRAY)
-            toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(app))
-            toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
+            _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(app))
+            _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
 
     def configure_main_window(self) -> None:
         """
@@ -1058,10 +1080,10 @@ class ImageViewer(ProcessImage):
                                                borderwidth=5)
 
         # Config columns to allow only sliders to expand with window.
-        self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=2)
-        self.contour_report_frame.columnconfigure(0, weight=1)
-        self.contour_selectors_frame.columnconfigure(1, weight=2)
+        self.columnconfigure(index=0, weight=1)
+        self.columnconfigure(index=1, weight=2)
+        self.contour_report_frame.columnconfigure(index=0, weight=1)
+        self.contour_selectors_frame.columnconfigure(index=1, weight=2)
 
         self.contour_report_frame.grid(column=0, row=0,
                                        columnspan=2,
@@ -1091,15 +1113,15 @@ class ImageViewer(ProcessImage):
 
         _info = ('When the entered pixel size is 1 and selected size standard is None,\n'
                  'displayed sizes are pixels. Size units are mm for any pre-set size standard,\n'
-                 'and undetermined for custom standards.\n')
+                 'and undetermined for custom standards.\n'
+                 f'(Processing time elapsed: {self.elapsed})')
 
         self.info_label.config(text=_info,
                                font=const.WIDGET_FONT,
                                bg=const.MASTER_BG,
                                fg='black')
-        self.info_label.grid(column=1, row=2, rowspan=2,
-                             pady=(10, 0),
-                             sticky=tk.NSEW)
+        self.info_label.grid(column=1, row=2, rowspan=4,
+                             padx=0, sticky=tk.EW)
 
     def setup_buttons(self) -> None:
         """
@@ -1124,11 +1146,11 @@ class ImageViewer(ProcessImage):
                 txt2save=self.report_txt + _sizes,
                 caller=utils.program_name())
 
-            _info = ('Settings report and result image have been saved to:\n'
-                     f'{utils.valid_path_to(_folder)}\n\n')
+            _info = ('\nSettings report and result image have been saved to:\n'
+                     f'{utils.valid_path_to(_folder)}')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            app.after(6666, self.show_info_messages)
+            app.after(5555, self.show_info_messages)
 
         def _export():
             self.export_segment = messagebox.askyesnocancel(
@@ -1139,11 +1161,11 @@ class ImageViewer(ProcessImage):
                        'Cancel: Export nothing and return.')
 
             if self.export_segment:
-                self.export_hull =  messagebox.askyesno(
-                title="Fill in partially segmented objects?",
-                detail='Yes: Try to include more object area;\n'
-                       '     may include some image background.\n'
-                       'No: Export just segments, on white.\n')
+                self.export_hull = messagebox.askyesno(
+                    title="Fill in partially segmented objects?",
+                    detail='Yes: Try to include more object area;\n'
+                           '     may include some image background.\n'
+                           'No: Export just segments, on white.\n')
 
             _num = self.select_and_export(self.ws_basins)
             _info = (f'{_num} selected objects were individually exported to:\n'
@@ -1154,40 +1176,62 @@ class ImageViewer(ProcessImage):
 
         def _reset():
             """
-            Separates setting default values from process calls during
-            startup, thus shortening startup time.
+            Separates setting default values from lengthy process calls,
+            thus shortening response time.
             """
+            self.slider_values.clear()
             self.set_defaults()
-            self.process_all()
+            self.widget_control('off')  # is turned 'on' in preprocess().
+            self.preprocess()
+
+            _info = ('\nClick "Run Watershed" to update counts and sizes\n'
+                     'with default settings.\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
 
         button_params = dict(
             style='My.TButton',
-            width=0,)
+            width=0)
 
-        self.save_btn.configure(text='Save settings & sized image',
-                                command=_save,
-                                **button_params)
+        self.button['reset'].config(text='Reset settings',
+                                    command=_reset,
+                                    **button_params)
 
-        self.reset_btn.configure(text='Reset settings',
-                                 command=_reset,
-                                 **button_params)
+        self.button['save'].config(text='Save settings & sized image',
+                                   command=_save,
+                                   **button_params)
 
-        self.export_btn.configure(text='Export sized objects',
-                                command=_export,
-                                **button_params)
+        self.button['process'].config(text='Run Watershed',
+                                      command=self.process_ws_and_sizes,
+                                      **button_params)
 
-        # Widget griding in the mainloop (settings) window.
-        self.save_btn.grid(column=0, row=2,
-                           padx=(10, 0),
-                           sticky=tk.W)
+        self.button['export'].configure(text='Export sized objects',
+                                        command=_export,
+                                        **button_params)
 
-        self.reset_btn.grid(column=0, row=3,
-                            padx=(140, 0),
-                            sticky=tk.W)
+        # Widget griding in the mainloop window.
+        self.button['reset'].grid(column=0, row=2,
+                                  padx=10,
+                                  pady=5,
+                                  sticky=tk.W)
 
-        self.export_btn.grid(column=0, row=3,
-                             padx=(10, 0),
-                             sticky=tk.W)
+        # Need to use cross-platform padding.
+        process_padx = (self.button['reset'].winfo_reqwidth() + 20, 0)
+        self.button['process'].grid(column=0, row=2,
+                                    padx=process_padx,
+                                    pady=5,
+                                    sticky=tk.W)
+
+        self.button['save'].grid(column=0, row=3,
+                                 padx=10,
+                                 pady=0,
+                                 sticky=tk.W)
+
+        self.button['export'].grid(column=0, row=4,
+                                   padx=10,
+                                   pady=5,
+                                   sticky=tk.W)
 
     def config_sliders(self) -> None:
         """
@@ -1204,7 +1248,32 @@ class ImageViewer(ProcessImage):
         #  for one Scale() in each Toplevel().
         scale_len = int(self.winfo_screenwidth() * 0.25)
 
-        # All Scale widgets use a mouse bind to call process_all() or process_sizes().
+        def _need_to_click(event=None):
+            """
+            Post notice when selecting peak_local_max, because plm slider
+            values are used in watershed_segmentation(), which is called
+            only from a Button().
+            """
+            if self.slider_val['plm_footprint'].get() == 1:
+                self.info_label.config(fg=const.COLORS_TK['vermilion'])
+
+                _info = ('\nClick "Run Watershed" to update the report and\n'
+                         '"Size-selected.." and "Watershed segments" displays.\n'
+                         'A peak_local_max footprint of 1 may take a while.\n')
+            else:
+                _info = ('\nClick "Run Watershed" to update the report and\n'
+                         '"Size-selected.." and "Watershed segments" displays.\n\n')
+                self.info_label.config(fg=const.COLORS_TK['blue'])
+
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+
+            return event
+
+        # Scale widgets that are pre-random_walker (contrast, noise,
+        # filter and threshold) and size max/min are called with mouse
+        # button release.
+        # Peak-local-max params and select_and_size() are called with Button.
         self.slider['alpha_lbl'].configure(text='Contrast/gain/alpha:',
                                            **const.LABEL_PARAMETERS)
         self.slider['alpha'].configure(from_=0.0, to=4.0,
@@ -1232,6 +1301,7 @@ class ImageViewer(ProcessImage):
         self.slider['noise_iter_lbl'].configure(text='Reduce noise, iterations\n'
                                                      '(0 may extend processing time):',
                                                 **const.LABEL_PARAMETERS)
+
         self.slider['noise_iter'].configure(from_=0, to=5,
                                             tickinterval=1,
                                             variable=self.slider_val['noise_iter'],
@@ -1281,21 +1351,24 @@ class ImageViewer(ProcessImage):
                                               variable=self.slider_val['circle_r_max'],
                                               **const.SCALE_PARAMETERS)
 
-        # To avoid grabbing all the intermediate values between normal
-        #  click and release movements, bind sliders to call processing
-        #  functions only on left button release.
-        # Most are bound to process_all(), but to speed program
-        # responsiveness when changing the size range, only call the
-        # sizing method to avoid image processing overhead.
-        # Note that the isinstance condition doesn't improve performance,
+        # To avoid processing all the intermediate values between normal
+        #  slider movements, bind sliders to call functions only on
+        #  left button release.
+        # Most are bound to preprocess(); process_all() is initiated
+        #  only with a Button(). To speed program responsiveness when
+        #  changing the size range, only the sizing and reporting methods
+        #  are called on mouse button release.
+        # Note that the isinstance() condition doesn't improve performance,
         #  but is there for clarity's sake.
         for _name, _w in self.slider.items():
             if isinstance(_w, tk.Label):
                 continue
             if 'circle_r' in _name:
                 _w.bind('<ButtonRelease-1>', self.process_sizes)
-            else:  # is alpha, beta, noise_*, filter_k, & plm_*
-                _w.bind('<ButtonRelease-1>', self.process_all)
+            elif 'plm_' in _name:
+                _w.bind('<ButtonRelease-1>', _need_to_click)
+            else:  # is alpha, beta, noise_k, noise_iter, filter_k.
+                _w.bind('<ButtonRelease-1>', self.preprocess)
 
     def config_comboboxes(self) -> None:
         """
@@ -1311,8 +1384,7 @@ class ImageViewer(ProcessImage):
         #  and padding in different systems.
         width_correction = 2 if const.MY_OS == 'win' else 0  # is Linux or macOS
 
-        # Note: functions are bound to Combobox actions at the end of this method.
-        #   Combobox styles are set in manage.ttk_styles(), called in setup_buttons().
+        # Combobox styles are set in manage.ttk_styles(), called in setup_buttons().
         self.cbox['morphop_lbl'].config(text='Reduce noise, morphology operator:',
                                         **const.LABEL_PARAMETERS)
         self.cbox['morphop'].config(textvariable=self.cbox_val['morphop'],
@@ -1371,15 +1443,15 @@ class ImageViewer(ProcessImage):
                                      **const.COMBO_PARAMETERS)
 
         # Now bind functions to all Comboboxes.
-        # Note that the isinstance condition doesn't seem to be needed for
+        # Note that the isinstance() condition isn't needed for
         # performance; it just clarifies the bind intention.
         for _name, _w in self.cbox.items():
             if isinstance(_w, tk.Label):
                 continue
             if 'size_' in _name:
                 _w.bind('<<ComboboxSelected>>', func=self.process_sizes)
-            else:  # is morphop, morphshape, filter, th_type, dt_*, ws_connect
-                _w.bind('<<ComboboxSelected>>', func=self.process_all)
+            else:  # is morphop, morphshape, filter, th_type, dt_type, dt_mask_size.
+                _w.bind('<<ComboboxSelected>>', func=self.preprocess)
 
     def config_entries(self) -> None:
         """
@@ -1408,8 +1480,11 @@ class ImageViewer(ProcessImage):
 
     def widget_control(self, action: str) -> None:
         """
-        Used to disable settings widgets when processing is running.
+        Used to disable settings widgets when watershed is running.
         Provides a watch cursor while widgets are disabled.
+        Gets Scale() values at time of disabling and resets them upon
+        enabling, thus preventing user click events retained in memory
+        during processing from changing slider position post-processing.
 
         Args:
             action: Either 'off' to disable widgets, or 'on' to enable.
@@ -1417,32 +1492,38 @@ class ImageViewer(ProcessImage):
         if action == 'off':
             for _name, _w in self.slider.items():
                 _w.configure(state=tk.DISABLED)
+                if isinstance(_w, tk.Scale):
+                    self.slider_values.append(self.slider_val[_name].get())
             for _, _w in self.cbox.items():
                 _w.configure(state=tk.DISABLED)
+            for _, _w in self.button.items():
+                _w.grid_remove()
             for _, _w in self.size_std.items():
                 if not isinstance(_w, tk.StringVar):
                     _w.configure(state=tk.DISABLED)
-            self.reset_btn.grid_remove()
-            self.save_btn.grid_remove()
-            self.export_btn.grid_remove()
             app.config(cursor='watch')
             app.update()
         else:  # is 'on'
+            idx = 0
             for _name, _w in self.slider.items():
                 _w.configure(state=tk.NORMAL)
-            for _name, _w in self.cbox.items():
+                if self.slider_values and isinstance(_w, tk.Scale):
+                    self.slider_val[_name].set(self.slider_values[idx])
+                    idx += 1
+            for _, _w in self.cbox.items():
                 if isinstance(_w, tk.Label):
                     _w.configure(state=tk.NORMAL)
                 else:
                     _w.configure(state='readonly')
+            for _, _w in self.button.items():
+                _w.grid()
             for _, _w in self.size_std.items():
                 if not isinstance(_w, tk.StringVar):
                     _w.configure(state=tk.NORMAL)
-            self.reset_btn.grid()
-            self.save_btn.grid()
-            self.export_btn.grid()
+
             app.config(cursor='')
             app.update()
+            self.slider_values.clear()
 
     def config_annotations(self) -> None:
         """
@@ -1560,6 +1641,7 @@ class ImageViewer(ProcessImage):
                                            sticky=tk.W)
 
         # The label widget is gridded to the left, based on this widget's width.
+        # self.cbox['ws_connect'].grid(column=1, row=10, **east_grid_params)
         self.cbox['ws_connect'].grid(column=1, row=10, **east_grid_params)
 
         self.slider['plm_mindist_lbl'].grid(column=0, row=12, **east_grid_params)
@@ -1603,11 +1685,6 @@ class ImageViewer(ProcessImage):
                                        padx=mask_lbl_padx,
                                        pady=(4, 0),
                                        sticky=tk.W)
-
-        ws_connect_padx = (0, self.cbox['ws_connect'].winfo_reqwidth() + 10)
-        self.cbox['ws_connect_lbl'].grid(column=1, row=10,
-                                         padx=ws_connect_padx,
-                                         **east_params_relative)
 
         size_std_padx = (0, self.cbox['size_std'].winfo_reqwidth() + 10)
         self.cbox['size_std_lbl'].grid(column=1, row=19,
@@ -1685,15 +1762,15 @@ class ImageViewer(ProcessImage):
                                         txt2save=click_info,
                                         caller=image_name)
 
-            # Provide user with a notice that a file was created.
+            # Provide user with a notice that a file was created and
+            #  give user time to read the message before resetting it.
             folder = str(Path(self.input_file).parent)
-            _info = (f'The displayed image, "{image_name}", was saved to:\n'
-                    f'{utils.valid_path_to(folder)}\n'
-                    'with a timestamp.\n')
+            _info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
+                     f'{utils.valid_path_to(folder)},\n'
+                     'with a timestamp.')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
-            # Give user time to read the message before resetting it.
-            app.after(4444, self.show_info_messages)
+            app.after(5555, self.show_info_messages)
 
         # macOS right mouse button has a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
@@ -1733,7 +1810,7 @@ class ImageViewer(ProcessImage):
 
         # Increase PLM min distance for larger files to reduce the number
         #  of contours, thus decreasing initial processing time.
-        if self.metrics['img_area'] > 6*10e5:
+        if self.metrics['img_area'] > 6 * 10e5:
             self.slider_val['plm_mindist'].set(125)
 
         if self.do_inverse_th.get():
@@ -1761,7 +1838,7 @@ class ImageViewer(ProcessImage):
         Assign a unit conversion factor to the observed pixel diameter
         of the chosen size standard and calculate the number of significant
         figure in any custom size entry.
-        Called from process_all(), process_sizes(), __init__.
+        Called from process_ws_and_sizes(), process_sizes(), __init__.
 
         Returns:
             None
@@ -1826,16 +1903,12 @@ class ImageViewer(ProcessImage):
 
     def select_and_size(self, contour_pointset: list) -> None:
         """
-        Select object contours based on area size and position,
+        Select object contour based on area size and position,
         draw an enclosing circle around contours, then display them
         on the input image. Objects are expected to be oblong so that
         circle diameter can represent the object's length.
-        Called by process_all(), process_sizes().
+        Called by process_ws_and_sizes(), process_sizes().
         Calls update_image().
-
-        Args:
-            contour_pointset: List of selected contours from
-             cv2.findContours in ProcessImage.draw_rw_segments().
 
         Returns:
             None
@@ -1941,6 +2014,11 @@ class ImageViewer(ProcessImage):
         self.update_image(img_name='sized',
                           img_array=self.cvimg['sized'])
 
+        # Record total time to process for user's info message. Start
+        #  time is set in process_ws_and_sizes(). Preprocessing time is
+        #  negligible, so it is ignored.
+        self.elapsed = round(time() - self.time_start, 3)
+
     def select_and_export(self, contour_pointset: list) -> int:
         """
         Takes a list of contour segments, selects, masks and extracts
@@ -1950,14 +2028,14 @@ class ImageViewer(ProcessImage):
 
         Args:
             contour_pointset: A list of contour pointsets of segmented
-             objects, e.g., watershed basin contours.
+             objects, e.g., watershed segment contours.
 
         Returns: Integer count of exported segments.
         """
 
-        # Evaluate user's messagebox askyesnocancel answers, from setup_buttons().
+        # Evaluate user's messagebox askyesnocancel answer, from setup_buttons().
         if self.export_segment:
-            # Export masked ws basin segments.
+            # Export masked watershed segments.
             export_this = 'result'
         elif self.export_segment is False:
             # Export enlarged bounding rectangles around segments.
@@ -2006,10 +2084,10 @@ class ImageViewer(ProcessImage):
                 flag = False
                 continue
 
-            # Ideas for segment extraction from:
+            # Idea for segment extraction from:
             #  https://stackoverflow.com/questions/21104664/
             #   extract-all-bounding-boxes-using-opencv-python
-            # The ROI slice encompasses the watershed basin, _c.
+            # The ROI slice encompasses the selected watershed contour.
             _x, _y, _w, _h = cv2.boundingRect(_c)
 
             # Slightly expand the _c segment's ROI bounding box on the input image.
@@ -2032,6 +2110,8 @@ class ImageViewer(ProcessImage):
                 chosen_contours = [hull]
             else:  # is False, user selected "No".
                 chosen_contours = [_c]
+
+            # chosen_contours = np.asarray(chosen_contours)
 
             cv2.drawContours(image=mask,
                              contours=chosen_contours,
@@ -2056,9 +2136,9 @@ class ImageViewer(ProcessImage):
                 result[roi_mask == 0] = 255
 
                 if export_this == 'result':
-                    # Export ws_basin segment.
+                    # Export watershed segment.
                     export_chosen = result
-                else: # is 'roi', so export segment's enlarged bounding box.
+                else:  # is 'roi', so export segment's enlarged bounding box.
                     export_chosen = roi
 
                 utils.export_segments(input_path=self.input_file,
@@ -2181,7 +2261,38 @@ class ImageViewer(ProcessImage):
         utils.display_report(frame=self.contour_report_frame,
                              report=self.report_txt)
 
-    def process_all(self, event=None) -> None:
+    def preprocess(self, event=None) -> None:
+        """
+        Run processing functions prior to watershed_segmentation() to
+        allow calling them and updating their images independently of the
+        lengthy processing time of watershed_segmentation().
+        Args:
+            event: Implicit widget event.
+
+        Returns:
+            *event* as a formality; functionally None.
+        """
+        self.widget_control('on')
+        self.adjust_contrast()
+        self.reduce_noise()
+        self.filter_image()
+        self.th_and_dist_trans()
+        self.set_size_standard()
+        self.report_results()
+
+        # Var first_run is reset to False in process_ws_and_sizes()
+        #  during the initial run.
+        if not self.first_run:
+            _info = ('\nPreprocessing completed.\n'
+                     'Click "Run Watershed" to update the report and\n'
+                     '"Size-selected.." and "Watershed segments" displays.\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+
+        return event
+
+    def process_ws_and_sizes(self, event=None) -> None:
         """
         Runs all image processing methods from ProcessImage(), plus
         sizing and reporting methods.
@@ -2192,23 +2303,31 @@ class ImageViewer(ProcessImage):
         Returns:
             *event* as a formality; is functionally None.
         """
-        if not self.first_run:
-            self.widget_control('off')
-        self.adjust_contrast()
-        self.reduce_noise()
-        self.filter_image()
-        self.set_size_standard()
-        self.contour_ws_segments(image=self.watershed_segmentation)
+
+        self.widget_control('off')
+        self.time_start: float = time()
+        self.watershed_segmentation()
+        self.contour_ws_segments()
         self.select_and_size(contour_pointset=self.ws_basins)
         self.report_results()
         self.widget_control('on')
 
-        # This last progress msg remains until another setting is changed.
+        # Here, at the end of the processing pipeline, is where the
+        #  first_run flag is set to False.
+        # self.elapsed is set at end of select_and_size().
         if self.first_run:
             self.first_run = False
-            self.show_info_messages()
+            _info = (f'Image processing time elapsed: {self.elapsed}\n'
+                     'Default settings were used. Settings that increase or\n'
+                     'decrease number of detected objects will respectively\n'
+                     'increase or decrease the processing time.\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            manage.info_message(widget=self.info_label,
+                                toplevel=app, infotxt=_info)
+            app.after(ms=5555, func=self.show_info_messages)
         else:
-            _info = 'Contours found and sizes calculated. Report updated.\n\n\n'
+            _info = ('\nContours found and sizes calculated. Report updated.\n'
+                     f'Processing time elapsed: {self.elapsed}\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -2228,9 +2347,10 @@ class ImageViewer(ProcessImage):
         """
         self.set_size_standard()
         self.select_and_size(contour_pointset=self.ws_basins)
+        self.elapsed = 'n/a'
         self.report_results()
 
-        _info = 'New object size range selected. Report updated.\n\n\n'
+        _info = '\n\nNew object size range selected. Report updated.\n\n'
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
@@ -2244,10 +2364,10 @@ if __name__ == "__main__":
     #   argument --about is used, which prints info, then exits.
     # check_platform() also enables display scaling on Windows.
     utils.check_platform()
-    vcheck.minversion('3.7')   # comment for PyInstaller
-    vcheck.maxversion('3.11')  # comment for PyInstaller
+    vcheck.minversion('3.7')  # not needed for PyInstaller
+    vcheck.maxversion('3.11')  # not needed for PyInstaller
 
-    manage.arguments()  # comment for Pyinstaller
+    manage.arguments()  # not needed for Pyinstaller
 
     try:
         print(f'{utils.program_name()} has launched...')
