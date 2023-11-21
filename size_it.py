@@ -1686,6 +1686,11 @@ class ImageViewer(ProcessImage):
                                        pady=(4, 0),
                                        sticky=tk.W)
 
+        ws_connect_padx = (0, self.cbox['ws_connect'].winfo_reqwidth() + 10)
+        self.cbox['ws_connect_lbl'].grid(column=1, row=10,
+                                         padx=ws_connect_padx,
+                                         **east_params_relative)
+
         size_std_padx = (0, self.cbox['size_std'].winfo_reqwidth() + 10)
         self.cbox['size_std_lbl'].grid(column=1, row=19,
                                        padx=size_std_padx,
@@ -2111,15 +2116,13 @@ class ImageViewer(ProcessImage):
             else:  # is False, user selected "No".
                 chosen_contours = [_c]
 
-            # chosen_contours = np.asarray(chosen_contours)
-
             cv2.drawContours(image=mask,
                              contours=chosen_contours,
                              contourIdx=-1,
                              color=255,
                              thickness=cv2.FILLED)
 
-            # Note: this contour step provides a clean border around the segment.
+            # Note: this contour step provides a cleaner border around the segment.
             cv2.drawContours(image=mask,
                              contours=chosen_contours,
                              contourIdx=-1,
