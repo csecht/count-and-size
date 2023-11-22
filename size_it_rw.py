@@ -138,7 +138,6 @@ class ProcessImage(tk.Tk):
             'th_type': tk.StringVar(),
             'dt_type': tk.StringVar(),
             'dt_mask_size': tk.StringVar(),
-            'ws_connect': tk.StringVar(),
             'size_std': tk.StringVar(),
             # For color_cbox textvariable in setup_start_window()...
             'color': tk.StringVar(),
@@ -507,7 +506,7 @@ class ProcessImage(tk.Tk):
                                 toplevel=app, infotxt=_info)
 
         # self.randomwalk_contours is used in select_and_size() to draw
-        #   enclosing circles and calculate sizes of ws objects.
+        #   enclosing circles and calculate sizes of segmented objects.
         # Note: This for loop is much more stable, and in most cases faster,
         #  than using parallelization methods.
         self.randomwalk_contours.clear()
@@ -1530,8 +1529,8 @@ class ImageViewer(ProcessImage):
 
         def decrease_font_size() -> None:
             self.metrics['font_scale'] *= 0.9
-            if self.metrics['font_scale'] < 0.1:
-                self.metrics['font_scale'] = 0.1
+            if self.metrics['font_scale'] < 0.25:
+                self.metrics['font_scale'] = 0.25
             self.select_and_size(contour_pointset=self.randomwalk_contours)
 
         def increase_line_thickness() -> None:
@@ -1632,8 +1631,6 @@ class ImageViewer(ProcessImage):
                                            sticky=tk.W)
 
         # The label widget is gridded to the left, based on this widget's width.
-        # self.cbox['ws_connect'].grid(column=1, row=10, **east_grid_params)
-
         self.slider['plm_mindist_lbl'].grid(column=0, row=12, **east_grid_params)
         self.slider['plm_mindist'].grid(column=1, row=12, **slider_grid_params)
 
