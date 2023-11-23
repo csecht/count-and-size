@@ -13,10 +13,10 @@ image file of labeled objects.
 
 USAGE
 For command line execution, from within the count-and-size-main folder:
-python3 -m size_it --about
-python3 -m size_it --help
-python3 -m size_it
-python3 -m size_it --terminal
+python3 -m size_it_rw --about
+python3 -m size_it_rw --help
+python3 -m size_it_rw
+python3 -m size_it_rw --terminal
 Windows systems may need to substitute 'python3' with 'py' or 'python'.
 
 Note that from the initial "Set starting parameters" window, the file,
