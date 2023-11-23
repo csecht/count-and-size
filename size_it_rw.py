@@ -836,10 +836,12 @@ class ImageViewer(ProcessImage):
                                 from_=0.05, to=2,
                                 resolution=0.05,
                                 tickinterval=0.2,
-                                variable=self.slider_val['scale'],
+                                 variable=self.slider_val['scale'],
                                 length=int(self.winfo_screenwidth() * 0.2),
                                 **const.SCALE_PARAMETERS)
 
+        # As a convenience for user, estimate default scale factor based
+        #   on image size.
         if self.metrics['img_area'] > 6 * 10e5:
             self.slider_val['scale'].set(0.25)
         else:
@@ -848,6 +850,10 @@ class ImageViewer(ProcessImage):
         color_label = tk.Label(master=start_win,
                                text='Annotation font color:',
                                **const.LABEL_PARAMETERS)
+        color_msg_lbl = tk.Label(master=start_win,
+                                 text='Use Ctrl-up & Ctrl-down to change'
+                                      ' in result window.',
+                                 **const.LABEL_PARAMETERS)
         color_cbox = ttk.Combobox(master=start_win,
                                   values=list(const.COLORS_CV.keys()),
                                   textvariable=self.cbox_val['color'],
@@ -878,7 +884,7 @@ class ImageViewer(ProcessImage):
                                         command=_call_start)
 
         # Window grid settings; sorted by row.
-        padding = dict(padx=6, pady=6)
+        padding = dict(padx=5, pady=5)
 
         file_label.grid(row=0, column=0,
                         **padding, columnspan=2, sticky=tk.EW)
@@ -888,6 +894,7 @@ class ImageViewer(ProcessImage):
 
         color_label.grid(row=2, column=0, **padding, sticky=tk.E)
         color_cbox.grid(row=2, column=1, **padding, sticky=tk.W)
+        color_msg_lbl.grid(row=2, column=1, **padding, sticky=tk.E)
 
         inverse_label.grid(row=3, column=0, **padding, sticky=tk.E)
         inverse_no.grid(row=3, column=1, **padding, sticky=tk.W)
@@ -1517,8 +1524,8 @@ class ImageViewer(ProcessImage):
 
     def config_annotations(self) -> None:
         """
-        Set key bindings to change font size and line thickness of
-        annotations in the 'sized' cv2 image.
+        Set key bindings to change font size, color, and line thickness
+        of annotations in the 'sized' cv2 image.
 
         Returns: None
         """
@@ -1543,6 +1550,31 @@ class ImageViewer(ProcessImage):
                 self.metrics['line_thickness'] = 1
             self.select_and_size(contour_pointset=self.randomwalk_contours)
 
+        # TODO Make msg in start win that color can be changed in result with keys.
+        colors = list(const.COLORS_CV.keys())
+        num_colors = len(colors)
+
+        def next_font_color() -> None:
+            curr_color = self.cbox_val['color'].get()
+            curr_idx = colors.index(curr_color)
+            if curr_idx == num_colors:
+                curr_idx = num_colors - 1
+            next_color = colors[curr_idx + 1]
+            self.cbox_val['color'].set(next_color)
+            print('Font color is now:', next_color)
+            self.select_and_size(contour_pointset=self.randomwalk_contours)
+
+        def prev_font_color() -> None:
+            curr_color = self.cbox_val['color'].get()
+            curr_idx = colors.index(curr_color)
+            if curr_idx == 0:
+                curr_idx = 1
+            prev_color = colors[curr_idx - 1]
+            self.cbox_val['color'].set(prev_color)
+            print('Font color is now:', prev_color)
+            self.select_and_size(contour_pointset=self.randomwalk_contours)
+
+
         # Bindings are needed only for the settings and sized img windows,
         #  but is simpler to use bind_all() which does not depend on widget focus.
         # NOTE: On Windows, KP_* is not a recognized keysym string; works on Linux.
@@ -1554,6 +1586,9 @@ class ImageViewer(ProcessImage):
         self.bind_all('<Shift-Control-plus>', lambda _: increase_line_thickness())
         self.bind_all('<Shift-Control-KP_Add>', lambda _: increase_line_thickness())
         self.bind_all('<Shift-Control-underscore>', lambda _: decrease_line_thickness())
+
+        self.bind_all('<Control-Up>', lambda _: next_font_color())
+        self.bind_all('<Control-Down>', lambda _: prev_font_color())
 
         # Need platform-specific keypad keysym.
         if const.MY_OS == 'win':
