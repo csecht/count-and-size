@@ -1562,26 +1562,26 @@ class ImageViewer(ProcessImage):
         colors = list(const.COLORS_CV.keys())
         num_colors = len(colors)
         def next_font_color() -> None:
-            curr_color = self.cbox_val['color'].get()
-            curr_idx = colors.index(curr_color)
+            current_color = self.cbox_val['color'].get()
+            current_index = colors.index(current_color)
             # Need to stop increasing idx at the end of colors list.
-            if curr_idx == num_colors - 1:
+            if current_index == num_colors - 1:
                 next_color = colors[num_colors - 1]
             else:
-                next_color = colors[curr_idx + 1]
+                next_color = colors[current_index + 1]
             self.cbox_val['color'].set(next_color)
             print('Font color is now:', next_color)
             self.select_and_size(contour_pointset=self.ws_basins)
 
-        def prev_font_color() -> None:
-            curr_color = self.cbox_val['color'].get()
-            curr_idx = colors.index(curr_color)
+        def preceding_font_color() -> None:
+            current_color = self.cbox_val['color'].get()
+            current_index = colors.index(current_color)
             # Need to stop decreasing idx at the beginning of colors list.
-            if curr_idx == 0:
-                curr_idx = 1
-            prev_color = colors[curr_idx - 1]
-            self.cbox_val['color'].set(prev_color)
-            print('Font color is now :', prev_color)
+            if current_index == 0:
+                current_index = 1
+            preceding_color = colors[current_index - 1]
+            self.cbox_val['color'].set(preceding_color)
+            print('Font color is now :', preceding_color)
             self.select_and_size(contour_pointset=self.ws_basins)
 
         # Bindings are needed only for the settings and sized img windows,
@@ -1597,7 +1597,7 @@ class ImageViewer(ProcessImage):
         self.bind_all('<Shift-Control-underscore>', lambda _: decrease_line_thickness())
 
         self.bind_all('<Control-Up>', lambda _: next_font_color())
-        self.bind_all('<Control-Down>', lambda _: prev_font_color())
+        self.bind_all('<Control-Down>', lambda _: preceding_font_color())
 
         # Need platform-specific keypad keysym.
         if const.MY_OS == 'win':
