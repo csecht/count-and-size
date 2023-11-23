@@ -20,12 +20,13 @@ python3 -m size_it --terminal
 Windows systems may need to substitute 'python3' with 'py' or 'python'.
 
 Note that from the initial "Set starting parameters" window, the file,
-scaling, and annotation color cannot be changed after the "Process now"
-button is clicked. Once image processing begins, if the run settings are
-not to your liking, just quit, restart, and choose different values.
+scaling cannot be changed after the "Process now" button is clicked.
+Once image processing begins, if the scale setting is not to your
+liking, just quit, restart, and choose different values.
 
-After changing slider or pull-down settings, click the "Run settings"
-button to initiate a processing cycle for the new settings.
+Image preprocessing functions do live updates as most settings are changed.
+For some slider settings however, when prompted, click the
+"Run Random Walker" button to initiate the final processing step.
 
 Save settings report and the annotated image with the "Save" button.
 
