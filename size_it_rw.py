@@ -851,8 +851,7 @@ class ImageViewer(ProcessImage):
                                text='Annotation font color:',
                                **const.LABEL_PARAMETERS)
         color_msg_lbl = tk.Label(master=start_win,
-                                 text='Use Ctrl-up & Ctrl-down to change'
-                                      ' in result window.',
+                                 text='<- Can use ctrl-up & ctrl-down to change later.',
                                  **const.LABEL_PARAMETERS)
         color_cbox = ttk.Combobox(master=start_win,
                                   values=list(const.COLORS_CV.keys()),
@@ -1550,13 +1549,12 @@ class ImageViewer(ProcessImage):
                 self.metrics['line_thickness'] = 1
             self.select_and_size(contour_pointset=self.randomwalk_contours)
 
-        # TODO Make msg in start win that color can be changed in result with keys.
         colors = list(const.COLORS_CV.keys())
         num_colors = len(colors)
-
         def next_font_color() -> None:
             curr_color = self.cbox_val['color'].get()
             curr_idx = colors.index(curr_color)
+            # Need to stop increasing idx at the end of colors list.
             if curr_idx == num_colors:
                 curr_idx = num_colors - 1
             next_color = colors[curr_idx + 1]
@@ -1567,13 +1565,13 @@ class ImageViewer(ProcessImage):
         def prev_font_color() -> None:
             curr_color = self.cbox_val['color'].get()
             curr_idx = colors.index(curr_color)
+            # Need to stop decreasing idx at the beginning of colors list.
             if curr_idx == 0:
                 curr_idx = 1
             prev_color = colors[curr_idx - 1]
             self.cbox_val['color'].set(prev_color)
             print('Font color is now:', prev_color)
             self.select_and_size(contour_pointset=self.randomwalk_contours)
-
 
         # Bindings are needed only for the settings and sized img windows,
         #  but is simpler to use bind_all() which does not depend on widget focus.
