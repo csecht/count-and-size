@@ -1261,6 +1261,10 @@ class ImageViewer(ProcessImage):
             values are used in watershed_segmentation(), which is called
             only from a Button().
             """
+
+            # Update report with current plm_* slider values; don't wait
+            #  for Watershed to run before updating.
+            self.report_results()
             if self.slider_val['plm_footprint'].get() == 1:
                 self.info_label.config(fg=const.COLORS_TK['vermilion'])
 
@@ -1571,7 +1575,7 @@ class ImageViewer(ProcessImage):
             else:
                 next_color = colors[current_index + 1]
             self.cbox_val['color'].set(next_color)
-            print('Font color is now:', next_color)
+            print('Annotation font is now:', next_color)
             self.select_and_size(contour_pointset=self.ws_basins)
 
         def preceding_font_color() -> None:
@@ -1582,7 +1586,7 @@ class ImageViewer(ProcessImage):
                 current_index = 1
             preceding_color = colors[current_index - 1]
             self.cbox_val['color'].set(preceding_color)
-            print('Font color is now :', preceding_color)
+            print('Annotation font is now :', preceding_color)
             self.select_and_size(contour_pointset=self.ws_basins)
 
         # Bindings are needed only for the settings and sized img windows,
