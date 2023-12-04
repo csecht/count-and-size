@@ -335,31 +335,37 @@ class ProcessImage(tk.Tk):
         # cv2.GaussianBlur and cv2.medianBlur need to have odd kernels,
         #   but cv2.blur and cv2.bilateralFilter will shift image between
         #   even and odd kernels, so just make it odd for everything.
+        # NOTE: don't allow a filter kernel value of 0 to be passed to
+        #  cv2.bilateralFilter b/c it is too CPU intensive; a _k of zero
+        #  results in a method return (above).
         filter_k = _k + 1 if _k % 2 == 0 else _k
 
-        # Apply a filter to blur edges:
+        # Apply a filter to blur edges or image interior.
+        # NOTE: filtered image dtype is uint8
         # Bilateral parameters:
-        # https://docs.opencv2.org/3.4/d4/d86/group__imgproc__filter.html
+        # https://docs.opencv.org/3.4/d4/d86/group__imgproc__filter.html#ga9d7064d478c95d60003cf839430737ed
         # from doc: Sigma values: For simplicity, you can set the 2 sigma
         #  values to be the same. If they are small (< 10), the filter
         #  will not have much effect, whereas if they are large (> 150),
         #  they will have a very strong effect, making the image look "cartoonish".
-        # NOTE: The larger the sigma the greater the effect of kernel size d.
-        # NOTE: filtered image dtype is uint8
-
-        if filter_selected == 'cv2.bilateralFilter':
+        #  NOTE: The larger the sigma the greater the effect of kernel size d.
+        #  NOTE: d=-1 or 0, is very CPU intensive.
+        # Gaussian parameters:
+        #  see: https://theailearner.com/tag/cv-gaussianblur/
+        #  see: https://dsp.stackexchange.com/questions/32273/
+        #  how-to-get-rid-of-ripples-from-a-gradient-image-of-a-smoothed-image
+        if filter_selected == 'cv2.blur':
+            self.cvimg['filter'] = cv2.blur(
+                src=image2filter,
+                ksize=(filter_k, filter_k),
+                borderType=border_type)
+        elif filter_selected == 'cv2.bilateralFilter':
             self.cvimg['filter'] = cv2.bilateralFilter(
                 src=image2filter,
-                # d=-1 or 0, is very CPU intensive.
                 d=filter_k,
-                sigmaColor=19,
-                sigmaSpace=19,
+                sigmaColor=100,
+                sigmaSpace=100,
                 borderType=border_type)
-
-        # Gaussian parameters:
-        # see: https://theailearner.com/tag/cv-gaussianblur/
-        # see: https://dsp.stackexchange.com/questions/32273/
-        #  how-to-get-rid-of-ripples-from-a-gradient-image-of-a-smoothed-image
         elif filter_selected == 'cv2.GaussianBlur':
             self.cvimg['filter'] = cv2.GaussianBlur(
                 src=image2filter,
@@ -371,11 +377,6 @@ class ProcessImage(tk.Tk):
             self.cvimg['filter'] = cv2.medianBlur(
                 src=image2filter,
                 ksize=filter_k)
-        elif filter_selected == 'cv2.blur':
-            self.cvimg['filter'] = cv2.blur(
-                src=image2filter,
-                ksize=(filter_k, filter_k),
-                borderType=border_type)
 
         self.update_image(img_name='filter',
                           img_array=self.cvimg['filter'])
