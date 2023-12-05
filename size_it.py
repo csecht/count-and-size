@@ -306,7 +306,7 @@ class ProcessImage(tk.Tk):
         """
 
         filter_selected = self.cbox_val['filter'].get()
-        border_type = cv2.BORDER_DEFAULT
+        border_type = cv2.BORDER_ISOLATED  #cv2.BORDER_REPLICATE #cv2.BORDER_DEFAULT
         noise_iter = self.slider_val['noise_iter'].get()
 
         _k = self.slider_val['filter_k'].get()
