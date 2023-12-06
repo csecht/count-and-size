@@ -89,71 +89,70 @@ Once a file is selected, basic run parameters are set in a new pop-up window. Th
 
 When the "Process now" is clicked, the main settings and report window appears (below), along with multiple processed image windows. In this analysis, the Sacagawea dollar size standard was selected and its observed pixel diameter of 128 was entered. It was subsequently excluded from the reported object size metrics by reducing the 'Circled radius size maximum' until the coin no longer was annotated with its size (26.5 mm). The standard's pixel diameter of 129 was obtained from the initial result window when initial default settings were used. The report show that 31 object were found, with a mean of 12.9 mm, a median of 12.7 mm, covering a range of 7.70 to 18.5 mm.
 
-![settings and report screenshot](images%2Fsettings_report_screenshot.png)
+![settings and report screenshot](images/settings_report_screenshot.png)
 
 Below, the resulting annotated image. Clicking the "Save settings & sized image" button exports the annotated image (at its original resolution), and the settings report, including the 31 individual sizes, to the input image's folder.
 
 ![sample1 result](images/sample1_result_screenshot.jpg)
 
-Below, resulting annotated image for the input `sample3.jpg` and the text output of its saved settings. Note that object groups, formed by the initial analysis with default settings, were well-segmented by increasing the contrast (alpha) from 1 to 1.6, lowering noise reduction iterations from 3 to 1, and lowering the peak_local_max minimum distance from 125 (default for larger images) to 62. Keep in mind that different settings may have achieved similar results. Analyzed with `size_it.py`, which uses the Watershed algorithm.
+Below, resulting annotated image for the input `sample2.jpg` and the text output of its saved settings. Objects were properly segmented by adjusting (from their defaults) the values for contrast, noise reduction, filter, and peak local maximum. Values for the selected size range and standard were then applied.  Analyzed with `size_it.py`, which uses the Watershed algorithm.
 
-![sample2 result](images/sample2_result_screenshot.jpg)
-
+![sample2 size_it result image](images/sample2_size_it_20231206105628.jpg)
 <pre>
-Time saved: 2023/11/15 07:16:19AM
-Saved image file: sample2_size_it_20231115071619.jpg
+Time saved: 2023/12/06 10:56:28AM
+Saved image file: sample2_size_it_20231206105628.jpg
 Image: /home/craig/PycharmProjects/count-and-size/images/examples/sample2.jpg
 Image size: 2629x2627
-Contrast:              convertScaleAbs alpha=1.6, beta=0
+Contrast:              convertScaleAbs alpha=1.5, beta=0
+Noise reduction:       cv2.getStructuringElement ksize=9,
+                       cv2.getStructuringElement shape=cv2.MORPH_ELLIPSE
+                       cv2.morphologyEx iterations=1
+                       cv2.morphologyEx op=cv2.MORPH_OPEN,
+Filter:                cv2.bilateralFilter ksize=(5, 5)
+cv2.threshold:         type=cv2.THRESH_OTSU_INVERSE
+cv2.distanceTransform: distanceType=cv2.DIST_L2, maskSize=3
+skimage functions:
+   peak_local_max:     min_distance=64
+                       footprint=np.ones((3, 3), np.uint8)
+   watershed:          connectivity=4
+                       compactness=1.0
+════════════════════
+# distTrans segments:  181
+Selected size range:   8--84 pixels, diameter
+Selected size std.:    Sacagawea $, 26.5 mm diameter
+                       Pixel diameter entered: 236, unit/px factor: 0.112
+# Selected objects:    158
+Object size metrics,   mean: 11.0, median: 11.0, range: 7.67--14.5
+</pre>
+Below, annotated result for the input `sample3.jpg` and text output of its saved settings. Note that objects that extended out of frame were excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was previously edited to fill in the shiny gold coin size standard with black for better contrast. The white circle is another coin that was edited to exclude it from analysis. The following report text includes parameter settings used, size metrics in millimeters, and a list of individual object sizes. Analyzed with `size_it_RW.py`, which uses the Random Walker algorithm.
+
+![sample3 size_it_rw result image](images/sample3_size_it_rw_20231206121625.jpg)
+
+<pre>
+Time saved: 2023/12/06 12:16:25PM
+Saved image file: sample3_size_it_rw_20231206121625.jpg
+Image: /home/craig/PycharmProjects/count-and-size/images/examples/sample3.jpg
+Image size: 967x840
+Contrast:              convertScaleAbs alpha=1.8, beta=0
 Noise reduction:       cv2.getStructuringElement ksize=7,
                        cv2.getStructuringElement shape=cv2.MORPH_ELLIPSE
                        cv2.morphologyEx iterations=1
                        cv2.morphologyEx op=cv2.MORPH_OPEN,
-Filter:                cv2.blur ksize=(5, 5)
-cv2.threshold:         type=cv2.THRESH_OTSU_INVERSE
-cv2.distanceTransform: distanceType=cv2.DIST_L2, maskSize=3
-skimage functions:
-   peak_local_max:     min_distance=62
-                       footprint=np.ones((5, 5), np.uint8)
-   watershed:          connectivity=4
-                       compactness=1.0
-════════════════════
-# distTrans segments:  174
-Selected size range:   8--83 pixels, diameter
-Selected size std.:    Sacagawea $, 26.5 mm diameter
-                       Pixel diameter entered: 236, unit/px factor: 0.112
-# Selected objects:    158
-Object size metrics,   mean: 10.9, median: 11.0, range: 7.29--14.4
-</pre>
-Below, annotated result for the input `sample3.jpg` and text output of its saved settings. Note that objects that extended out of frame were excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was previously edited to fill in the shiny gold coin size standard with black for better contrast. The white circle is another coin that was edited to exclude it from analysis. The following report text includes parameter settings used, size metrics in millimeters, and a list of individual object sizes. Analyzed with `size_it_RW.py`, which uses the Random Walker algorithm.
-
-![sample3 random walker result](images/sample3_RW_result_screenshot.jpg)
-
-<pre>
-Time saved: 12:53:49PM
-Saved image file: sample3_size_it_RW_125349.jpg
-Image: /home/craig/count-and-size-main/images/sample3.jpg
-Image size: 967x840
-Contrast:              convertScaleAbs alpha=1.8, beta=0
-Noise reduction:       cv2.getStructuringElement ksize=5,
-                       cv2.getStructuringElement shape=cv2.MORPH_ELLIPSE
-                       cv2.morphologyEx iterations=1
-                       cv2.morphologyEx op=cv2.MORPH_OPEN,
-Filter:                cv2.blur ksize=(5, 5)
+Filter:                cv2.blur ksize=(7, 7)
 cv2.threshold:         type=cv2.THRESH_OTSU_INVERSE
 cv2.distanceTransform: distanceType=cv2.DIST_L2, maskSize=5
 skimage functions:
-   peak_local_max:     min_distance=34
-                       footprint=np.ones((3, 3), np.uint8)
+   peak_local_max:     min_distance=30
+                       footprint=np.ones((12, 12), np.uint8)
 ════════════════════
-# distTrans segments:  159
-Selected size range:   8--48 pixels, diameter
+# distTrans segments:  229
+Selected size range:   7--38 pixels, diameter
 Selected size std.:    Sacagawea $, 26.5 mm diameter
                        Pixel diameter entered: 117, unit/px factor: 0.226
 # Selected objects:    129
-Object size metrics,   mean: 12.3, median: 12.2, range: 6.92--18.1
+Object size metrics,   mean: 12.3, median: 12.2, range: 6.74--18.1
 </pre>
-`6.92, 7.77, 8.04, 8.76, 9.17, 9.2, 9.64, 9.66, 9.68, 9.7, 9.8, 9.83, 9.88, 9.91, 9.93, 9.98, 10.0, 10.1, 10.2, 10.2, 10.3, 10.4, 10.4, 10.6, 10.6, 10.6, 10.7, 10.7, 10.8, 10.8, 10.8, 10.8, 10.9, 10.9, 11.0, 11.1, 11.1, 11.2, 11.2, 11.2, 11.2, 11.3, 11.3, 11.3, 11.4, 11.4, 11.4, 11.4, 11.5, 11.5, 11.5, 11.7, 11.7, 11.7, 11.8, 11.8, 11.9, 12.0, 12.0, 12.0, 12.1, 12.1, 12.1, 12.1, 12.2, 12.2, 12.3, 12.3, 12.4, 12.4, 12.4, 12.4, 12.5, 12.6, 12.6, 12.7, 12.7, 12.7, 12.8, 12.8, 12.8, 12.8, 12.8, 12.9, 13.0, 13.0, 13.1, 13.1, 13.2, 13.2, 13.3, 13.3, 13.3, 13.4, 13.5, 13.6, 13.7, 13.7, 13.9, 13.9, 14.0, 14.0, 14.3, 14.3, 14.4, 14.4, 14.4, 14.4, 14.5, 14.5, 14.6, 14.7, 14.7, 14.7, 14.8, 14.8, 14.9, 15.1, 15.1, 15.4, 15.4, 15.5, 15.9, 15.9, 16.4, 16.9, 17.1, 17.4, 18.1`
+`6.74, 7.98, 8.25, 8.71, 9.02, 9.04, 9.56, 9.59, 9.6, 9.8, 9.8, 9.88, 9.9, 9.95, 10.0, 10.0, 10.1, 10.1, 10.1, 10.2, 10.4, 10.4, 10.5, 10.5, 10.5, 10.6, 10.7, 10.7, 10.8, 10.8, 10.8, 10.9, 10.9, 10.9, 11.0, 11.1, 11.1, 11.2, 11.2, 11.2, 11.3, 11.3, 11.3, 11.3, 11.4, 11.4, 11.4, 11.5, 11.5, 11.5, 11.5, 11.6, 11.6, 11.7, 11.9, 11.9, 11.9, 12.0, 12.0, 12.1, 12.1, 12.1, 12.2, 12.2, 12.2, 12.2, 12.3, 12.3, 12.4, 12.4, 12.5, 12.5, 12.5, 12.5, 12.6, 12.7, 12.7, 12.7, 12.8, 12.8, 12.8, 12.8, 12.9, 12.9, 13.0, 13.0, 13.0, 13.2, 13.3, 13.3, 13.3, 13.3, 13.4, 13.5, 13.5, 13.6, 13.6, 13.7, 13.8, 14.0, 14.0, 14.2, 14.2, 14.3, 14.3, 14.4, 14.4, 14.4, 14.5, 14.5, 14.5, 14.6, 14.6, 14.7, 14.8, 14.8, 14.9, 15.1, 15.2, 15.3, 15.4, 15.5, 16.0, 16.2, 16.4, 16.9, 17.0, 17.4, 18.1`
 
 Below, all image processing steps are displayed in five windows. Images update as settings are changed.
 ![all image windows](images/all_image_windows.png)
