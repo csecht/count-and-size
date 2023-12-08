@@ -1476,6 +1476,7 @@ class ImageViewer(ProcessImage):
         """
 
         self.size_std['px_entry'].config(textvariable=self.size_std['px_val'],
+                                         font=const.WIDGET_FONT,
                                          width=6)
         self.size_std['px_lbl'].config(text='Enter px diameter of size standard:',
                                        **const.LABEL_PARAMETERS)

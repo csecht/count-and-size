@@ -173,7 +173,7 @@ def ttk_styles(mainloop: tk.Tk) -> None:
     elif const.MY_OS == 'win':
         font_size = 7
     else:  # is macOS
-        font_size = 11
+        font_size = 9
 
     bstyle.configure("My.TButton", font=('TkTooltipFont', font_size))
     mainloop.option_add("*TCombobox*Font", ('TkTooltipFont', font_size))

@@ -228,7 +228,7 @@ LABEL_PARAMETERS = dict(
 )
 
 SCALE_PARAMETERS = dict(
-    width=8,
+    width=6,
     orient='horizontal',
     showvalue=False,
     sliderlength=20,
