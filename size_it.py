@@ -436,10 +436,8 @@ class ProcessImage(tk.Tk):
         Segment objects with skimage.feature.peak_local_max() and
         skimage.segmentation.random_walker().
         Called as arg for select_and_size() from process_ws_and_sizes().
-        Calls update_image().
 
-        Returns:
-            The contour pointset list from parallel.MultiProc(rw_img).pool_it
+        Returns: None
         """
 
         min_dist: int = self.slider_val['plm_mindist'].get()
@@ -503,14 +501,11 @@ class ProcessImage(tk.Tk):
             compactness=1.0,
             watershed_line=True)
 
-    def contour_ws_segments(self) -> None:
+    def draw_ws_segments(self) -> None:
         """
         Find and draw contours for watershed basin segments.
         Called from process_all() with a watershed_segmentation() arg.
         Calls update_image().
-
-        Args:
-            image: A labeled ndarray of watershed segment contours.
 
         Returns: None
         """
@@ -564,7 +559,7 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='watershed',
                           img_array=watershed_img)
 
-        # Now draw enclosing circles around watershed segments and
+        # Now need to draw enclosing circles around watershed segments and
         #  annotate with object sizes in ImageViewer.select_and_size().
 
 
@@ -2351,7 +2346,7 @@ class ImageViewer(ProcessImage):
         self.widget_control('off')
         self.time_start: float = time()
         self.watershed_segmentation()
-        self.contour_ws_segments()
+        self.draw_ws_segments()
         self.select_and_size(contour_pointset=self.ws_basins)
         self.report_results()
         self.widget_control('on')
@@ -2391,6 +2386,10 @@ class ImageViewer(ProcessImage):
         """
         self.set_size_standard()
         self.select_and_size(contour_pointset=self.ws_basins)
+
+        # Set "n/a" elapsed time here, to prevent the default msg in
+        #  show_info_messages() showing cumulative time since the
+        #  previous process_ws_and_sizes() call.
         self.elapsed = 'n/a'
         self.report_results()
 

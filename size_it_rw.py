@@ -429,16 +429,11 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='dist_trans',
                           img_array=np.uint8(self.cvimg['dist_trans']))
 
-    @property
-    def randomwalk_segmentation(self) -> list:
+    def randomwalk_segmentation(self) -> None:
         """
         Segment objects with skimage.feature.peak_local_max() and
         skimage.segmentation.random_walker().
-        Called as arg for select_and_size() from process_rw_and_sizes().
-        Calls update_image().
-
-        Returns:
-            The contour pointset list from parallel.MultiProc(rw_img).pool_it
+        Called from process_rw_and_sizes().
         """
 
         min_dist: int = self.slider_val['plm_mindist'].get()
@@ -490,16 +485,17 @@ class ProcessImage(tk.Tk):
         #  performance with the sample images running an Intel i9600k @ 4.8 GHz.
         #  Default beta & tol take ~8x longer to process for similar results.
         # Need pyamg installed for mode='cg_mg'.
-        self.cvimg['rand_walk']: np.ndarray = random_walker(data=self.cvimg['thresh'],
-                                                            labels=labeled_array,
-                                                            beta=5,  # default: 130,
-                                                            mode='cg_mg',  # default: 'cg_j'
-                                                            tol=0.1,  # default: 1.e-3
-                                                            copy=True,
-                                                            return_full_prob=False,
-                                                            spacing=None,
-                                                            prob_tol=0.1,  # default: 1.e-3
-                                                            channel_axis=None)
+        self.cvimg['rand_walk']: np.ndarray = random_walker(
+            data=self.cvimg['thresh'],
+            labels=labeled_array,
+            beta=5,  # default: 130,
+            mode='cg_mg',  # default: 'cg_j'
+            tol=0.1,  # default: 1.e-3
+            copy=True,
+            return_full_prob=False,
+            spacing=None,
+            prob_tol=0.1,  # default: 1.e-3
+            channel_axis=None)
 
         if not self.first_run:
             _info = '\nRandom walker completed. Finding contours for sizing...\n\n\n'
@@ -532,13 +528,12 @@ class ProcessImage(tk.Tk):
             # Add to the list used to draw circles around contours ROI.
             self.randomwalk_contours.append(max(contours, key=cv2.contourArea))
 
-        return self.randomwalk_contours
-
     def draw_rw_segments(self) -> None:
         """
         Draw and display the random walker segments from
         random_walker_segmentation().
         Called from process_rw_and_sizes().
+        Calls update_image().
 
         Returns: None
         """
@@ -566,6 +561,9 @@ class ProcessImage(tk.Tk):
 
         self.update_image(img_name='rand_walk',
                           img_array=rw_img)
+
+        # Now need to draw enclosing circles around RW segments and
+        #  annotate with object sizes in ImageViewer.select_and_size().
 
 
 class ImageViewer(ProcessImage):
@@ -2327,7 +2325,8 @@ class ImageViewer(ProcessImage):
 
         self.widget_control('off')
         self.time_start: float = time()
-        self.select_and_size(contour_pointset=self.randomwalk_segmentation)
+        self.randomwalk_segmentation()
+        self.select_and_size(contour_pointset=self.randomwalk_contours)
         self.draw_rw_segments()
         self.report_results()
         self.widget_control('on')
@@ -2367,6 +2366,10 @@ class ImageViewer(ProcessImage):
         """
         self.set_size_standard()
         self.select_and_size(contour_pointset=self.randomwalk_contours)
+
+        # Set "n/a" elapsed time here, to prevent the default msg in
+        #  show_info_messages() showing cumulative time since the
+        #  previous process_ws_and_sizes() call.
         self.elapsed = 'n/a'
         self.report_results()
 
