@@ -728,10 +728,10 @@ class ImageViewer(ProcessImage):
 
         # Need to provide exit info msg to Terminal.
         self.protocol(name='WM_DELETE_WINDOW',
-                      func=lambda: utils.quit_gui(app))
+                      func=lambda: utils.quit_gui(mainloop=self))
 
-        self.bind('<Escape>', func=lambda _: utils.quit_gui(app))
-        self.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
+        self.bind('<Escape>', func=lambda _: utils.quit_gui(mainloop=self))
+        self.bind('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
     def setup_start_window(self) -> None:
@@ -786,10 +786,10 @@ class ImageViewer(ProcessImage):
         # Need to allow complete tk mainloop shutdown from the system's
         #   window manager 'close' icon in the start window bar.
         start_win.protocol(name='WM_DELETE_WINDOW',
-                           func=lambda: utils.quit_gui(app))
+                           func=lambda: utils.quit_gui(mainloop=app))
 
-        start_win.bind('<Escape>', lambda _: utils.quit_gui(app))
-        start_win.bind('<Control-q>', lambda _: utils.quit_gui(app))
+        start_win.bind('<Escape>', lambda _: utils.quit_gui(mainloop=app))
+        start_win.bind('<Control-q>', lambda _: utils.quit_gui(mainloop=app))
         start_win.bind('<Return>', func=_call_start)
         start_win.bind('<KP_Enter>', func=_call_start)
 
@@ -813,9 +813,9 @@ class ImageViewer(ProcessImage):
             self.cvimg['input'] = cv2.imread(self.input_file)
             self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
                                               code=cv2.COLOR_RGBA2GRAY)
-            self.metrics = manage.input_metrics(self.cvimg['input'])
+            self.metrics = manage.input_metrics(img=self.cvimg['input'])
         else:  # User has closed the filedialog window instead of selecting a file.
-            utils.quit_gui(self)
+            utils.quit_gui(mainloop=self)
 
         # Once a file is selected, the file dialog is removed, and the
         #  start window setup can proceed, now with its active title.
