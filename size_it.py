@@ -48,14 +48,6 @@ from statistics import mean, median
 from typing import List
 from time import time
 
-# Local application imports.
-# pylint: disable=import-error
-from utility_modules import (vcheck,
-                             utils,
-                             manage,
-                             constants as const,
-                             to_precision as to_p)
-
 # Third party imports.
 # tkinter(Tk/Tcl) is included with most Python3 distributions,
 #  but may sometimes need to be regarded as third-party.
@@ -94,7 +86,17 @@ except (ImportError, ModuleNotFoundError) as import_err:
         'See also: https://numpy.org/install/\n'
         '  https://tkdocs.com/tutorial/install.html\n'
         '  https://docs.opencv2.org/4.6.0/d5/de5/tutorial_py_setup_in_windows.html\n\n'
+        'Consider running this app and installing missing packages in a virtual environment.\n'
         f'Error message:\n{import_err}')
+
+# Local application imports.
+# pylint: disable=import-error
+# Need to place local imports after try...except to ensure exit messaging.
+from utility_modules import (vcheck,
+                             utils,
+                             manage,
+                             constants as const,
+                             to_precision as to_p)
 
 
 class ProcessImage(tk.Tk):
