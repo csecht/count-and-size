@@ -838,7 +838,7 @@ class ImageViewer(ProcessImage):
                                 from_=0.05, to=2,
                                 resolution=0.05,
                                 tickinterval=0.2,
-                                 variable=self.slider_val['scale'],
+                                variable=self.slider_val['scale'],
                                 length=int(self.winfo_screenwidth() * 0.2),
                                 **const.SCALE_PARAMETERS)
 
@@ -1041,22 +1041,22 @@ class ImageViewer(ProcessImage):
         # Random_walker segments display as an inverse threshold img.
         const.WIN_NAME['dist_trans'] = 'Distance transformed <- | -> Random walker segments'
 
-        for _name, toplevel in self.img_window.items():
-            toplevel.wm_withdraw()
+        for _name, _toplevel in self.img_window.items():
+            _toplevel.wm_withdraw()
             if icon_path:
-                toplevel.iconphoto(True, icon_path)
-            toplevel.minsize(width=200, height=100)
-            toplevel.protocol(name='WM_DELETE_WINDOW', func=_window_info)
-            toplevel.columnconfigure(index=0, weight=1)
-            toplevel.columnconfigure(index=1, weight=1)
-            toplevel.rowconfigure(index=0, weight=1)
-            toplevel.title(const.WIN_NAME[_name])
-            toplevel.config(bg=const.MASTER_BG,
+                _toplevel.iconphoto(True, icon_path)
+            _toplevel.minsize(width=200, height=100)
+            _toplevel.protocol(name='WM_DELETE_WINDOW', func=_window_info)
+            _toplevel.columnconfigure(index=0, weight=1)
+            _toplevel.columnconfigure(index=1, weight=1)
+            _toplevel.rowconfigure(index=0, weight=1)
+            _toplevel.title(const.WIN_NAME[_name])
+            _toplevel.config(bg=const.MASTER_BG,
                             highlightthickness=5,
                             highlightcolor=const.COLORS_TK['yellow'],
                             highlightbackground=const.DRAG_GRAY)
-            toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(app))
-            toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
+            _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(app))
+            _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
 
     def configure_main_window(self) -> None:
         """
@@ -1085,10 +1085,10 @@ class ImageViewer(ProcessImage):
                                                borderwidth=5)
 
         # Config columns to allow only sliders to expand with window.
-        self.columnconfigure(0, weight=1)
-        self.columnconfigure(1, weight=2)
-        self.contour_report_frame.columnconfigure(0, weight=1)
-        self.contour_selectors_frame.columnconfigure(1, weight=2)
+        self.columnconfigure(index=0, weight=1)
+        self.columnconfigure(index=1, weight=2)
+        self.contour_report_frame.columnconfigure(index=0, weight=1)
+        self.contour_selectors_frame.columnconfigure(index=1, weight=2)
 
         self.contour_report_frame.grid(column=0, row=0,
                                        columnspan=2,
@@ -1562,9 +1562,10 @@ class ImageViewer(ProcessImage):
             current_color = self.cbox_val['color'].get()
             current_index = colors.index(current_color)
             # Need to stop increasing idx at the end of colors list.
-            if current_index == num_colors:
-                current_index = num_colors - 1
-            next_color = colors[current_index + 1]
+            if current_index == num_colors - 1:
+                next_color = colors[num_colors - 1]
+            else:
+                next_color = colors[current_index + 1]
             self.cbox_val['color'].set(next_color)
             print('Annotation font is now:', next_color)
             self.select_and_size(contour_pointset=self.randomwalk_contours)
@@ -2143,7 +2144,7 @@ class ImageViewer(ProcessImage):
                              color=255,
                              thickness=cv2.FILLED)
 
-            # Note: this contour step provides a clean border around the segment.
+            # Note: this contour step provides a cleaner border around the segment.
             cv2.drawContours(image=mask,
                              contours=chosen_contours,
                              contourIdx=-1,
@@ -2328,8 +2329,8 @@ class ImageViewer(ProcessImage):
         self.widget_control('off')
         self.time_start: float = time()
         self.randomwalk_segmentation()
-        self.select_and_size(contour_pointset=self.randomwalk_contours)
         self.draw_rw_segments()
+        self.select_and_size(contour_pointset=self.randomwalk_contours)
         self.report_results()
         self.widget_control('on')
 
@@ -2389,10 +2390,10 @@ if __name__ == "__main__":
     #   argument --about is used, which prints info, then exits.
     # check_platform() also enables display scaling on Windows.
     utils.check_platform()
-    vcheck.minversion('3.7')  # comment for PyInstaller
-    vcheck.maxversion('3.11')  # comment for PyInstaller
+    vcheck.minversion('3.7')  # not needed for PyInstaller
+    vcheck.maxversion('3.11')  # not needed for PyInstaller
 
-    manage.arguments()  # comment for Pyinstaller
+    manage.arguments()  # not needed for Pyinstaller
 
     try:
         print(f'{utils.program_name()} has launched...')
