@@ -2558,6 +2558,8 @@ if __name__ == "__main__":
     #  --about is used, which prints 'about' info, then exits.
     # check_platform() also enables display scaling on Windows.
     utils.check_platform()
+
+    # NOTE: Comment out these three calls when running PyInstaller.
     vcheck.minversion('3.7')
     vcheck.maxversion('3.11')
     manage.arguments()
