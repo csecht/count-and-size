@@ -49,7 +49,7 @@ WIN_NAME = {
     'input': 'Input image',
     'contrast': 'Adjusted contrast <- | -> Reduced noise',
     'filter': 'Filtered <- | -> Thresholded',
-    'dist_trans': 'Distance transformed <- | -> Watershed segments',
+    'dist_trans': 'Distance transformed <- | -> Segmented objects',
     'sized': 'Size-selected objects, circled with diameters.',
 }
 
