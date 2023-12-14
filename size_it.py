@@ -483,13 +483,6 @@ class ProcessImage(tk.Tk):
         # Replace thresh_img background with -1 to ignore those pixels.
         labeled_array[labeled_array == self.cvimg['thresh']] = -1
 
-        if not self.first_run:
-            _info = ('\n\nFound peaks from distance transform.\n'
-                     'Running segmentation algorithm, please wait...\n\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-
         return labeled_array
 
     def watershed_segmentation(self, array: int) -> None:
@@ -1091,7 +1084,7 @@ class ImageViewer(ProcessImage):
             """
             _info = ('\nThat window cannot be closed from its window bar.\n'
                      'Minimize it if it is in the way.\n'
-                     'Esc or Ctrl-Q keys will Quit the program.\n')
+                     'Esc or Ctrl-Q keys will Quit the program.\n\n')
             self.info_label.config(fg=const.COLORS_TK['vermilion'])
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -1279,7 +1272,7 @@ class ImageViewer(ProcessImage):
                            'No: Export just segments, on white.\n')
 
             _num = self.select_and_export()
-            _info = (f'\n{_num} selected objects were individually exported to:\n'
+            _info = (f'\n\n{_num} selected objects were individually exported to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -2484,7 +2477,7 @@ class ImageViewer(ProcessImage):
         Returns: None
         """
 
-        _info = '\n\nSegmentation processing underway...\n\n\n'
+        _info = '\n\nRunning segmentation algorithm...\n\n\n'
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
@@ -2513,14 +2506,14 @@ class ImageViewer(ProcessImage):
         # self.elapsed is set at end of select_and_size().
         if self.first_run:
             self.first_run = False
-            _info = (f'Initial processing time elapsed: {self.elapsed}\n'
+            _info = (f'\nInitial processing time elapsed: {self.elapsed}\n'
                      'Default settings were used. Settings that increase or\n'
                      'decrease number of detected objects will respectively\n'
                      'increase or decrease the processing time.\n')
         else:
             _info = (f'\n{algorithm} segments found and sizes calculated.\n'
                      'Report updated.\n'
-                     f'Processing time elapsed: {self.elapsed}\n\n')
+                     f'Processing seconds elapsed: {self.elapsed}\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
 
         manage.info_message(widget=self.info_label,
@@ -2551,7 +2544,7 @@ class ImageViewer(ProcessImage):
         self.elapsed = 'n/a'
         self.report_results()
 
-        _info = '\n\nNew object size range selected. Report updated.\n\n'
+        _info = '\n\nNew object size range selected. Report updated.\n\n\n'
         self.info_label.config(fg=const.COLORS_TK['blue'])
         manage.info_message(widget=self.info_label,
                             toplevel=app, infotxt=_info)
