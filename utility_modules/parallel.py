@@ -63,30 +63,30 @@ class MultiProc:
         # Idea and explanation for using Lock() from @dano at:
         #  https://stackoverflow.com/questions/25557686/
         #   python-sharing-a-lock-between-processes/25558333#25558333
-        # if const.MY_OS == 'lin':
-        #     def init(lock):
-        #         self.lock = lock
-        #
-        #     lock_it = Lock()
-        #
-        #     # chunksize=40 was empirically optimized for speed using the
-        #     #  sample images on a 6-core HP Pavilion Windows 11 laptop.
-        #     with Pool(processes=const.NCPU,
-        #               initializer=init,
-        #               initargs=(lock_it, )) as mpool:
-        #         contours: list = mpool.map(func=self.contour_the_segments,
-        #                                    iterable=np.unique(ar=self.image),
-        #                                    chunksize=40)
-        #         mpool.close()
-        #         mpool.join()
-        #
-        #     return contours
-        #
-        # # For Windows and macOS...
-        # with Pool(processes=const.NCPU) as mpool:
-        #     contours: list = mpool.map(func=self.contour_the_segments,
-        #                                iterable=np.unique(ar=self.image),
-        #                                chunksize=40)
+        if const.MY_OS == 'lin':
+            def init(lock):
+                self.lock = lock
+
+            lock_it = Lock()
+
+            # chunksize=40 was empirically optimized for speed using the
+            #  sample images on a 6-core HP Pavilion Windows 11 laptop.
+            with Pool(processes=const.NCPU,
+                      initializer=init,
+                      initargs=(lock_it, )) as mpool:
+                contours: list = mpool.map(func=self.contour_the_segments,
+                                           iterable=np.unique(ar=self.image),
+                                           chunksize=40)
+                mpool.close()
+                mpool.join()
+
+            return contours
+
+        # For Windows and macOS...
+        with Pool(processes=const.NCPU) as mpool:
+            contours: list = mpool.map(func=self.contour_the_segments,
+                                       iterable=np.unique(ar=self.image),
+                                       chunksize=40)
 
         # Stability is ensured with chunksize=1 even though it is slower.
         # The multiprocess 'spawn' method is needed to ensure stability
