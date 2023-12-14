@@ -4,8 +4,8 @@ These constants are used with the --about command line argument or button.
 
 # Development status standards: https://pypi.org/classifiers/
 __author__ = 'Craig S. Echt'
-__version__: str = '0.0.79'
-__status__ = 'Development Status :: 3 - Alpha'
+__version__: str = '0.1.0'
+__status__ = 'Development Status :: 4 - Beta'
 __copyright__ = 'Copyright (C) 2023 C.S. Echt, under GNU General Public License'
 __license__ = """
     This program is free software: you can redistribute it and/or modify
