@@ -4,9 +4,9 @@
 <sub>Farmed oyster population sample (top); the analyzed back lit image, with annotations (bottom), using a U.S. quarter dollar for the size standard. Sample mean was 93.1 mm, n=27.</sub>
 
 The interactive Python program, `size_it.py`, is a tkinter GUI for OpenCV processing of an image to obtain sizes, means,
-and ranges of objects in a sample population. The distance transform and
-watershed algorithms are used interactively by setting their parameter
-values with slide bars and pull-down menus. Related image processing
+and ranges of objects in a sample population. Distance transform and either
+watershed or random walker algorithms are used interactively by setting their parameter
+values with slide bars and pull-down menus. Related image preprocessing
 factors like contrast, brightness, noise reduction, and filtering are 
 also adjusted interactively, with live updating of the resulting images.
 
@@ -14,9 +14,9 @@ A report is provided of parameter settings, object count, individual
 object sizes, and sample size mean and range, along with an annotated
 image file of labeled objects.
 
-The program `size_it_RW.py` accomplishes object segmentation with the random walker algorithm in place of watershed. While random walker may provide better object segmentation for some images, it can increase processing times by about 8-fold. Large images with many objects may take minutes to process. The main difference in using `size_it_RW.py` is that interactive processing of counts and sizes is triggered from a Button command instead of the action of individual sliders and pull-downs. This allows the distance transform and peak-local-max parameters to be changed and executed as a group. This approach can save time when you already have some idea about the combination of these settings you need. Pre-processing functions, such as noise reduction, filtering, and thresholding, still provide live updates when their individual slider or pull-down values are changed.
+While random walker may provide better object segmentation than watershet for some images, it can increase processing times up to 8-fold; large images with many objects may take several minutes to process. With either segmentation algorithm, interactive processing of counts and sizes is triggered from a Button command instead of the action of individual sliders and pull-downs, as with the preprocessing steps. This approach can save time when you already have some idea about the combination of parameter settings needed.
 
-This Project was developed to sample oyster populations at various stages of aquaculture production, but can be used to measure any group of round or oblong objects on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can usually be segmented. While segmentation of objects in large or poorly contrasted overlapping clusters is unlikely, such clusters may be screened out by limiting the size range to provide fairly accurate metrics for the remaining individually segmented objects.
+This Project was developed to sample oyster populations at various stages of aquaculture production, but can be used to measure any sample population of round or oblong objects photographed on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can be successfully segmented. When segmentation of objects in large or poorly contrasted overlapping clusters is no possible, such clusters can be screened out by limiting the size range to provide fairly accurate metrics for the remaining well-segmented objects.
 
 Sizing standards are chosen from a pull-down menu. Pre-set standards include a 3-inch hockey puck and various U.S. coins. Sizing units are millimeters when one of the pre-set size standards is used, pixels when not, or determined by the user when using a custom standard. If "None" is chosen as a standard and the pixel diameter entry is kept as 1 (default settings), then displayed sizes are in pixel units. Users have an option for a custom size standard that requires entry of the known size in whatever units are needed.
 
@@ -36,7 +36,7 @@ https://github.com/BebeSparkelSparkel/to-precision/releases/tag/0.0.0
 Development environment was Linux Ubuntu 20.04 (Python 3.8), Windows 11 (Python 3.11), and macOS 13.2 (Python 3.9).
 
 ### Usage examples:
-From within the downloaded repository folder, recommended command line invocation is : `python3 -m size_it` or `python3 -m size_it_RW`.
+From within the downloaded repository folder, recommended command line invocation is : `python3 -m size_it`
 
 To view basic information, author, version, license, etc.: `python3 -m size_it --about`
 
@@ -71,9 +71,7 @@ Alternative commands (system dependent):
     py -m pip install -r requirements.txt (Windows)
     python -m pip install -r requirements.txt (Windows)
 
-Note that the PyAMG package listed in requirements.txt is used only with `size_it_RW.py` and is not required for `size_it.py`. See https://pypi.org/project/pyamg/ for information.
-
-As with all repository downloads, it is a good idea to install the requirements in a Python virtual environment to avoid undesired changes in your system's Python library.
+As with all repository downloads, it is good practice to install the required packages in a Python virtual environment to avoid undesired changes in your system's Python library.
 
 ### Screenshots:
 Most screenshots are from an Ubuntu Linux platform. For Windows and macOS platforms, window and widget look or layout may be different.
@@ -95,14 +93,16 @@ Below, the resulting annotated image. Clicking the "Save settings & sized image"
 
 ![sample1 result](images/sample1_result_screenshot.jpg)
 
-Below, resulting annotated image for the input `sample2.jpg` and the text output of its saved settings. Objects were properly segmented by adjusting (from their defaults) the values for contrast, noise reduction, filter, and peak local maximum. Values for the selected size range and standard were then applied.  Analyzed with `size_it.py`, which uses the Watershed algorithm.
+Below, resulting annotated image for the input `sample2.jpg` and the text output of its saved settings. Objects were properly segmented by adjusting (from their defaults) the values for contrast, noise reduction, filter, and peak local maximum. Values for the selected size range and standard were then applied.
 
-![sample2 size_it result image](images/sample2_size_it_20231206105628.jpg)
+![sample2 size_it result](images/sample2_size_it_20231206105628.jpg)
 <pre>
 Time saved: 2023/12/06 10:56:28AM
 Saved image file: sample2_size_it_20231206105628.jpg
 Image: /home/craig/PycharmProjects/count-and-size/images/examples/sample2.jpg
 Image size: 2629x2627
+Segmentation algorithm: Watershed
+════════════════════
 Contrast:              convertScaleAbs alpha=1.5, beta=0
 Noise reduction:       cv2.getStructuringElement ksize=9,
                        cv2.getStructuringElement shape=cv2.MORPH_ELLIPSE
@@ -112,27 +112,26 @@ Filter:                cv2.bilateralFilter ksize=(5, 5)
 cv2.threshold:         type=cv2.THRESH_OTSU_INVERSE
 cv2.distanceTransform: distanceType=cv2.DIST_L2, maskSize=3
 skimage functions:
-   peak_local_max:     min_distance=64
-                       footprint=np.ones((3, 3), np.uint8)
-   watershed:          connectivity=4
-                       compactness=1.0
+   peak_local_max:     min_distance=64, footprint=np.ones((3, 3))
+   watershed:          connectivity=4, compactness=1.0
 ════════════════════
-# distTrans segments:  181
+# Selected objects:    158, out of 181 total segments
 Selected size range:   8--84 pixels, diameter
 Selected size std.:    Sacagawea $, 26.5 mm diameter
                        Pixel diameter entered: 236, unit/px factor: 0.112
-# Selected objects:    158
 Object size metrics,   mean: 11.0, median: 11.0, range: 7.67--14.5
 </pre>
-Below, annotated result for the input `sample3.jpg` and text output of its saved settings. Note that objects that extended out of frame were excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was previously edited to fill in the shiny gold coin size standard with black for better contrast. The white circle is another coin that was edited to exclude it from analysis. The following report text includes parameter settings used, size metrics in millimeters, and a list of individual object sizes. Analyzed with `size_it_RW.py`, which uses the Random Walker algorithm.
+Below, annotated result for the input `sample3.jpg` and text output of its saved settings. Note that objects that extended out of frame were excluded from analysis. This exclusion feature provides more accurate size metrics by not analyzing partial objects. The original photo was previously edited to fill in the shiny gold coin size standard with black for better contrast. The white circle is another coin that was edited to exclude it from analysis. The following report text includes parameter settings used, size metrics in millimeters, and a list of individual object sizes. Run with Random Walker segmentation algorithm option.
 
-![sample3 size_it_rw result image](images/sample3_size_it_rw_20231206121625.jpg)
+![sample3 size_it with random walker result](images/sample3_size_it_rw_20231206121625.jpg)
 
 <pre>
 Time saved: 2023/12/06 12:16:25PM
 Saved image file: sample3_size_it_rw_20231206121625.jpg
 Image: /home/craig/PycharmProjects/count-and-size/images/examples/sample3.jpg
 Image size: 967x840
+Segmentation algorithm: Random Walker
+════════════════════
 Contrast:              convertScaleAbs alpha=1.8, beta=0
 Noise reduction:       cv2.getStructuringElement ksize=7,
                        cv2.getStructuringElement shape=cv2.MORPH_ELLIPSE
@@ -142,14 +141,13 @@ Filter:                cv2.blur ksize=(7, 7)
 cv2.threshold:         type=cv2.THRESH_OTSU_INVERSE
 cv2.distanceTransform: distanceType=cv2.DIST_L2, maskSize=5
 skimage functions:
-   peak_local_max:     min_distance=30
-                       footprint=np.ones((12, 12), np.uint8)
+   peak_local_max:     min_distance=30, footprint=np.ones((12, 12))
+   watershed:          connectivity=n/a, compactness=n/a
 ════════════════════
-# distTrans segments:  229
+# Selected objects:    129, out of 229 total segments
 Selected size range:   7--38 pixels, diameter
 Selected size std.:    Sacagawea $, 26.5 mm diameter
                        Pixel diameter entered: 117, unit/px factor: 0.226
-# Selected objects:    129
 Object size metrics,   mean: 12.3, median: 12.2, range: 6.74--18.1
 </pre>
 `6.74, 7.98, 8.25, 8.71, 9.02, 9.04, 9.56, 9.59, 9.6, 9.8, 9.8, 9.88, 9.9, 9.95, 10.0, 10.0, 10.1, 10.1, 10.1, 10.2, 10.4, 10.4, 10.5, 10.5, 10.5, 10.6, 10.7, 10.7, 10.8, 10.8, 10.8, 10.9, 10.9, 10.9, 11.0, 11.1, 11.1, 11.2, 11.2, 11.2, 11.3, 11.3, 11.3, 11.3, 11.4, 11.4, 11.4, 11.5, 11.5, 11.5, 11.5, 11.6, 11.6, 11.7, 11.9, 11.9, 11.9, 12.0, 12.0, 12.1, 12.1, 12.1, 12.2, 12.2, 12.2, 12.2, 12.3, 12.3, 12.4, 12.4, 12.5, 12.5, 12.5, 12.5, 12.6, 12.7, 12.7, 12.7, 12.8, 12.8, 12.8, 12.8, 12.9, 12.9, 13.0, 13.0, 13.0, 13.2, 13.3, 13.3, 13.3, 13.3, 13.4, 13.5, 13.5, 13.6, 13.6, 13.7, 13.8, 14.0, 14.0, 14.2, 14.2, 14.3, 14.3, 14.4, 14.4, 14.4, 14.5, 14.5, 14.5, 14.6, 14.6, 14.7, 14.8, 14.8, 14.9, 15.1, 15.2, 15.3, 15.4, 15.5, 16.0, 16.2, 16.4, 16.9, 17.0, 17.4, 18.1`
@@ -166,10 +164,10 @@ Below, all image processing steps are displayed in five windows. Images update a
 6. The number of significant figures reported are determined by standard's unit size or its pixel diameter, whichever has fewer sig. fig. This limit also holds when a custom size standard is used. See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained. Depending on the magnitude of the entered custom size, displayed size values may be in power notation. Saved individual size lists, however, are converted to decimal numbers.
 7. Right-click on an image in one of the windows to save it to file. The image, saved to original image's folder, will be at the specified scale for screen display, not the image file's original resolution. To save the annotated result image (sized & circled) at its original resolution, use the 'Save settings...' button. 
 8. Large files or many segmentations can take a while to process. Be patient. An alternative approach that can greatly speed up processing is to reduce the size of the input image. This can be with any photo editing program or with this app by right-clicking on the "Input Image" to save the down-scaled display image. Then restart and select as input that smaller saved image.
-9. The better the separation of target objects in the displayed "Thresholded" image, the better will be the segmentation result. Complete threshold separation is not necessary. Settings to adjust for better threshold separation: "Contrast", "Reduce noise...", and "Filter...". Settings for "peak_local_max..." can then be adjusted to optimize segmentation of the annotated sized objects.
+9. The better the separation of target objects in the displayed "Thresholded" image, the better will be the segmentation result. Complete threshold separation of objects is not necessary. Adjust these settings for better threshold separation: "Contrast", "Reduce noise...", and "Filter...". Parameters for "peak_local_max..." can then be adjusted to optimize segmentation of annotated sized objects.
 10. If closely spaced or touching objects are being grouped (segmented) together, then reduce the "peak_local_max min distance" slider value. If lager objects have multiple segments, then increase that value. Also, try reducing noise reduction values, or increasing the contrast, to split up groups of close or touching objects.
-11.  Font size for annotated objects in the "Size-selected objects..." window can be changed with Ctrl + and Ctrl - keys. Annotation line thickness can be changed with Shift-Ctrl + and Shift-Ctrl -.
-12. The "Export sized objects" button will export each selected object to its own JPEG file (without annotation). Each file is proportional in size to the size of the object, or its segmented area. Pop-up options allow the export to be: 1) Just the objects' segments (as seen in the "...segments" window) on a white background, 2) all or most of the object surrounded by the image background, and 3) more of each object's area, as filled by the cv2.convexHull function, on a white background, but may include slices of image background in concave object areas. You can increase the export area around objects by increasing the "Filter kernel size" slider value. Files are written to the input image's folder and named with a timestamp and each segment's index number. The intent of exporting individual images is to aid in building custom training datasets to use in AI/machine-learning/neural-network applications.
+11.  Font size for annotated objects in the "Size-selected objects..." window can be changed with Ctrl + and Ctrl - keys. Annotation line thickness can be changed with Shift-Ctrl + and Shift-Ctrl -. Annotation color can be changed with Ctrl-Up_Arrow and Ctrl-Down_Arrow.
+12. The "Export sized objects" button will export each selected object to its own JPEG file (without annotation). Each file is proportional in size to the size of the object, or its segmented area. Pop-up options allow the export to be: 1) Just the objects' segments (as seen in the "Segmented objects" window) on a white background, 2) all or most of the object surrounded by the image background, and 3) more of each object's area, as filled by the cv2.convexHull function, on a white background; this option may include slices of image background in concave object areas. You can increase the export area around objects by increasing the "Filter kernel size" slider value. Files are written to the input image's folder and named with a timestamp and each segment's index number. The intent of exporting individual images is to aid in building custom training datasets to use in AI/machine-learning/neural-network applications.
 
 ### Known Issues:
 Waiting for user feedback.
