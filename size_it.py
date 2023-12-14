@@ -484,7 +484,7 @@ class ProcessImage(tk.Tk):
         labeled_array[labeled_array == self.cvimg['thresh']] = -1
 
         if not self.first_run:
-            _info = ('\nFound peaks from distance transform.\n'
+            _info = ('\n\nFound peaks from distance transform.\n'
                      'Running segmentation algorithm, please wait...\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
@@ -530,13 +530,6 @@ class ProcessImage(tk.Tk):
 
         Returns: None
         """
-
-        # Inform user of progress when processing large images.
-        if not self.first_run:
-            _info = 'Watershed completed. Finding contour_pointset for sizing...\n\n\n'
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
 
         # self.ws_basins is used in select_and_size() to draw enclosing circles.
         # Convert image array from int32 to uint8 data type to find contour_pointset.
@@ -611,12 +604,6 @@ class ProcessImage(tk.Tk):
             spacing=None,
             prob_tol=0.1,  # default: 1.e-3
             channel_axis=None)
-
-        if not self.first_run:
-            _info = '\nRandom walker completed. Finding contours for sizing...\n\n\n'
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
 
         # self.rw_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of segmented objects.
@@ -969,16 +956,21 @@ class ImageViewer(ProcessImage):
         else:
             self.slider_val['scale'].set(0.5)
 
+        if const.MY_OS == 'dar':
+            msg_txt = '<- Can change later with shift-control-▲ & ▼'
+        else:
+            msg_txt = '<- Can change later with Ctrl-▲ & Ctrl-▼'
+
         color_label = tk.Label(master=start_win,
                                text='Annotation font color:',
                                **const.LABEL_PARAMETERS)
         color_msg_lbl = tk.Label(master=start_win,
-                                 text='<- Can use ctrl-up & ctrl-down to change later.',
+                                 text=msg_txt,
                                  **const.LABEL_PARAMETERS)
         color_cbox = ttk.Combobox(master=start_win,
                                   values=list(const.COLORS_CV.keys()),
                                   textvariable=self.cbox_val['color'],
-                                  width=12,
+                                  width=11,
                                   height=14,
                                   **const.COMBO_PARAMETERS)
         color_cbox.current(0)  # blue
@@ -1227,21 +1219,20 @@ class ImageViewer(ProcessImage):
         Called from __init__, but label is conditionally reconfigured in
         PI.watershed_segmentation()
 
-        Returns:
-            None
+        Returns: None
         """
 
-        _info = ('When the entered pixel size is 1 and selected size standard is None,\n'
-                 'displayed sizes are pixels. Size units are mm for any pre-set size standard,\n'
-                 'and undetermined for custom standards.\n'
-                 f'(Processing time elapsed: {self.elapsed})')
+        _info = ('\nWhen the entered pixel size is 1 and selected size standard is\n'
+                 'None, the displayed sizes are pixels. Size units are mm for any\n'
+                 'pre-set size standard, but are undefined for custom standards.\n'
+                 f'(Processing time elapsed: {self.elapsed})\n')
 
         self.info_label.config(text=_info,
                                font=const.WIDGET_FONT,
                                bg=const.MASTER_BG,
                                fg='black')
-        self.info_label.grid(column=1, row=2, rowspan=4,
-                             padx=0, sticky=tk.EW)
+        self.info_label.grid(column=1, row=2, rowspan=5,
+                             padx=(0, 10), sticky=tk.E)
 
     def setup_buttons(self) -> None:
         """
@@ -1266,8 +1257,8 @@ class ImageViewer(ProcessImage):
                 txt2save=self.report_txt + _sizes,
                 caller=utils.program_name())
 
-            _info = ('\nSettings report and result image have been saved to:\n'
-                     f'{utils.valid_path_to(_folder)}')
+            _info = ('\n\nSettings report and result image have been saved to:\n'
+                     f'{utils.valid_path_to(_folder)}\n\n')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
             app.after(5555, self.show_info_messages)
@@ -1288,7 +1279,7 @@ class ImageViewer(ProcessImage):
                            'No: Export just segments, on white.\n')
 
             _num = self.select_and_export()
-            _info = (f'{_num} selected objects were individually exported to:\n'
+            _info = (f'\n{_num} selected objects were individually exported to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
             manage.info_message(widget=self.info_label,
                                 toplevel=app, infotxt=_info)
@@ -1304,7 +1295,7 @@ class ImageViewer(ProcessImage):
             self.widget_control('off')  # is turned 'on' in preprocess().
             self.preprocess()
 
-            _info = ('\nClick a "Run ..." button to update counts and\n'
+            _info = ('\n\nClick a "Run..." button to update counts and\n'
                      'sizes with default settings.\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             manage.info_message(widget=self.info_label,
@@ -1318,43 +1309,39 @@ class ImageViewer(ProcessImage):
             self.segment_algorithm = 'rw'
             self.process()
 
-        button_params = dict(
-            style='My.TButton',
-            width=0)
-
         self.button['reset'].config(
             text='Reset settings',
             command=_reset,
-            **button_params)
+            style='My.TButton')
 
         self.button['save'].config(
             text='Save settings & sized image',
             command=_save,
-            **button_params)
+            style='My.TButton')
 
         self.button['process_ws'].config(
             text='Run Watershed',
             command=_run_watershed,
-            **button_params)
+            style='My.TButton')
 
         self.button['process_rw'].config(
             text='Run Random Walker',
             command=_run_randomwalker,
-            **button_params)
+            style='My.TButton')
 
         self.button['export'].configure(
             text='Export objects',
             command=_export,
-            **button_params)
+            style='My.TButton')
 
         # Widget griding in the mainloop window.
         self.button['process_ws'].grid(column=0, row=2,
-                                  padx=10,
-                                  pady=5,
-                                  sticky=tk.W)
+                                       padx=10,
+                                       pady=(0, 2),
+                                       sticky=tk.W)
         self.button['export'].grid(column=0, row=4,
                                    padx=(10, 0),
-                                   pady=5,
+                                   pady=2,
                                    sticky=tk.W)
 
         # Need to use cross-platform relative padding.
@@ -1363,17 +1350,17 @@ class ImageViewer(ProcessImage):
         export_padx = (self.button['export'].winfo_reqwidth() + 20, 0)
 
         self.button['process_rw'].grid(column=0, row=2,
-                                    padx=process_padx,
-                                    pady=5,
-                                    sticky=tk.W)
+                                       padx=process_padx,
+                                       pady=(0, 2),
+                                       sticky=tk.W)
         self.button['save'].grid(column=0, row=3,
                                  padx=10,
                                  pady=0,
                                  sticky=tk.W)
         self.button['reset'].grid(column=0, row=4,
-                                    padx=export_padx,
-                                    pady=5,
-                                    sticky=tk.W)
+                                  padx=export_padx,
+                                  pady=2,
+                                  sticky=tk.W)
 
     def config_sliders(self) -> None:
         """
@@ -1393,21 +1380,21 @@ class ImageViewer(ProcessImage):
         def _need_to_click(event=None):
             """
             Post notice when selecting peak_local_max, because plm slider
-            values are used in watershed_segmentation(), which is called
-            only from a Button().
+            values are used in segmentation methods, which are called
+            only from button commands.
             """
 
             # Update report with current plm_* slider values; don't wait
             #  for the segmentation algorithm to run before updating.
             self.report_results()
-            if self.slider_val['plm_footprint'].get() == 1:
-                self.info_label.config(fg=const.COLORS_TK['vermilion'])
 
-                _info = ('\nClick "Run..." to update the report and the\n'
+            if self.slider_val['plm_footprint'].get() == 1:
+                _info = ('\n\nClick "Run..." to update the report and the\n'
                          '"Size-selected.." and "Segmented objects" images.\n'
                          'A peak_local_max footprint of 1 may take a while.\n')
+                self.info_label.config(fg=const.COLORS_TK['vermilion'])
             else:
-                _info = ('\nClick "Run..." to update the report and the\n'
+                _info = ('\n\nClick "Run..." to update the report and the\n'
                          '"Size-selected.." and "Segmented objects" images.\n\n')
                 self.info_label.config(fg=const.COLORS_TK['blue'])
 
@@ -1952,7 +1939,7 @@ class ImageViewer(ProcessImage):
             # Provide user with a notice that a file was created and
             #  give user time to read the message before resetting it.
             folder = str(Path(self.input_file).parent)
-            _info = (f'\nThe displayed image, "{image_name}", was saved to:\n'
+            _info = (f'\n\nThe result image, "{image_name}", was saved to:\n'
                      f'{utils.valid_path_to(folder)},\n'
                      'with a timestamp.')
             manage.info_message(widget=self.info_label,
@@ -2480,7 +2467,7 @@ class ImageViewer(ProcessImage):
         # Var first_run is reset to False in process_ws_and_sizes()
         #  during the initial run.
         if not self.first_run:
-            _info = ('\nPreprocessing completed.\n'
+            _info = ('\n\nPreprocessing completed.\n'
                      'Click "Run..." to update the report and the\n'
                      '"Size-selected.." and "Segmented objects" images.\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
@@ -2497,18 +2484,26 @@ class ImageViewer(ProcessImage):
         Returns: None
         """
 
+        _info = '\n\nSegmentation processing underway...\n\n\n'
+        self.info_label.config(fg=const.COLORS_TK['blue'])
+        manage.info_message(widget=self.info_label,
+                            toplevel=app, infotxt=_info)
+
         self.widget_control('off')
         self.time_start: float = time()
+
         if self.segment_algorithm == 'ws':
             self.watershed_segmentation(self.make_labeled_array)
             self.config_annotations()
             self.draw_ws_segments()
             self.select_and_size(contour_pointset=self.ws_basins)
+            algorithm = 'Watershed'
         else:  # is 'rw'
             self.randomwalk_segmentation(self.make_labeled_array)
             self.config_annotations()
             self.draw_rw_segments()
             self.select_and_size(contour_pointset=self.rw_contours)
+            algorithm = 'Random walker'
 
         self.report_results()
         self.widget_control('on')
@@ -2518,20 +2513,19 @@ class ImageViewer(ProcessImage):
         # self.elapsed is set at end of select_and_size().
         if self.first_run:
             self.first_run = False
-            _info = (f'Image processing time elapsed: {self.elapsed}\n'
+            _info = (f'Initial processing time elapsed: {self.elapsed}\n'
                      'Default settings were used. Settings that increase or\n'
                      'decrease number of detected objects will respectively\n'
                      'increase or decrease the processing time.\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-            app.after(ms=5555, func=self.show_info_messages)
         else:
-            _info = ('\nContours found and sizes calculated. Report updated.\n'
+            _info = (f'\n{algorithm} segments found and sizes calculated.\n'
+                     'Report updated.\n'
                      f'Processing time elapsed: {self.elapsed}\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
+
+        manage.info_message(widget=self.info_label,
+                            toplevel=app, infotxt=_info)
+        app.after(ms=5555, func=self.show_info_messages)
 
     def process_sizes(self, event=None) -> None:
         """
