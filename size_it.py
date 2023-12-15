@@ -309,7 +309,7 @@ class ProcessImage(tk.Tk):
         """
 
         filter_selected = self.cbox_val['filter'].get()
-        border_type = cv2.BORDER_ISOLATED  #cv2.BORDER_REPLICATE #cv2.BORDER_DEFAULT
+        border_type = cv2.BORDER_ISOLATED  # cv2.BORDER_REPLICATE #cv2.BORDER_DEFAULT
         noise_iter = self.slider_val['noise_iter'].get()
 
         _k = self.slider_val['filter_k'].get()
@@ -432,7 +432,6 @@ class ProcessImage(tk.Tk):
                           img_array=self.cvimg['thresh'])
         self.update_image(img_name='dist_trans',
                           img_array=np.uint8(self.cvimg['dist_trans']))
-
 
     @property
     def make_labeled_array(self) -> int:
@@ -1097,7 +1096,8 @@ class ImageViewer(ProcessImage):
             self.info_label.config(fg=const.COLORS_TK['vermilion'])
             self.info_txt.set(_info)
             app.update()
-            # Give user time to read the message before resetting it.
+
+            # Give user time to read the _info before resetting it.
             app.after(ms=5555, func=self.show_size_std_info)
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
@@ -1161,9 +1161,9 @@ class ImageViewer(ProcessImage):
             _toplevel.rowconfigure(index=0, weight=1)
             _toplevel.title(const.WIN_NAME[_name])
             _toplevel.config(bg=const.MASTER_BG,
-                            highlightthickness=5,
-                            highlightcolor=const.COLORS_TK['yellow'],
-                            highlightbackground=const.DRAG_GRAY)
+                             highlightthickness=5,
+                             highlightcolor=const.COLORS_TK['yellow'],
+                             highlightbackground=const.DRAG_GRAY)
             _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(app))
             _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
 
@@ -1705,6 +1705,7 @@ class ImageViewer(ProcessImage):
 
         colors = list(const.COLORS_CV.keys())
         num_colors = len(colors)
+
         def next_font_color() -> None:
             current_color = self.cbox_val['color'].get()
             current_index = colors.index(current_color)
@@ -2346,7 +2347,7 @@ class ImageViewer(ProcessImage):
         # Note: recall that *_val dict are inherited from ProcessImage().
         px_w, px_h = self.cvimg['gray'].shape
         alpha: float = self.slider_val['alpha'].get()
-        beta:int = self.slider_val['beta'].get()
+        beta: int = self.slider_val['beta'].get()
         noise_iter: int = self.slider_val['noise_iter'].get()
         morph_op: str = self.cbox_val['morphop'].get()
         morph_shape: str = self.cbox_val['morphshape'].get()
@@ -2363,7 +2364,7 @@ class ImageViewer(ProcessImage):
         if self.segment_algorithm == 'ws':
             connections: str = self.cbox_val['ws_connect'].get()
             algorithm = 'Watershed'
-            compact_val = '1.0'   # NOTE: update if change val in watershed method.
+            compact_val = '1.0'  # NOTE: update if change val in watershed method.
         else:  # is 'rw'
             connections: str = 'n/a'
             algorithm = 'Random Walker'
@@ -2532,7 +2533,12 @@ class ImageViewer(ProcessImage):
 
         self.info_txt.set(_info)
         app.update()
-        app.after(ms=5555, func=self.show_size_std_info)
+
+        # When user has entered a size std value, there is no need to
+        #  display the size standards instructions.
+        if (self.size_std['px_val'].get() == '1' or
+                self.cbox_val['size_std'].get == 'None'):
+            app.after(ms=4444, func=self.show_size_std_info)
 
     def process_sizes(self, event=None) -> None:
         """
@@ -2562,7 +2568,12 @@ class ImageViewer(ProcessImage):
         _info = '\n\nNew object size range selected. Report updated.\n\n\n'
         self.info_txt.set(_info)
         app.update()
-        app.after(5555, self.show_size_std_info)
+
+        # When user has entered a size std value, there is no need to
+        #  display the size standards instructions.
+        if (self.size_std['px_val'].get() == '1' or
+                self.cbox_val['size_std'].get == 'None'):
+            app.after(ms=4444, func=self.show_size_std_info)
 
         return event
 
