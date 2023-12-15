@@ -191,7 +191,6 @@ class ProcessImage(tk.Tk):
         self.sorted_size_list: list = []
         self.unit_per_px = tk.DoubleVar()
         self.num_sigfig: int = 0
-        self.info_label = tk.Label(self)
         self.time_start: float = 0
         self.elapsed: float = 0
         self.first_run: bool = True
@@ -671,7 +670,7 @@ class ImageViewer(ProcessImage):
     start_now
     setup_image_windows
     configure_main_window
-    show_info_messages
+    show_size_std_info
     setup_buttons
     config_sliders
     config_comboboxes
@@ -795,6 +794,9 @@ class ImageViewer(ProcessImage):
         #  to utils.save_settings_and_img() from the Save button.
         self.report_txt: str = ''
 
+        self.info_txt = tk.StringVar()
+        self.info_label = tk.Label(master=self, textvariable=self.info_txt)
+
         # Manage the starting windows, grab the input and run settings,
         #  then proceed with image processing and sizing.
         # This order of events allows macOS implementation to flow well.
@@ -886,10 +888,10 @@ class ImageViewer(ProcessImage):
         # Need to allow complete tk mainloop shutdown from the system's
         #   window manager 'close' icon in the start window bar.
         start_win.protocol(name='WM_DELETE_WINDOW',
-                           func=lambda: utils.quit_gui(mainloop=app))
+                           func=lambda: utils.quit_gui(mainloop=self))
 
-        start_win.bind('<Escape>', lambda _: utils.quit_gui(mainloop=app))
-        start_win.bind('<Control-q>', lambda _: utils.quit_gui(mainloop=app))
+        start_win.bind('<Escape>', lambda _: utils.quit_gui(mainloop=self))
+        start_win.bind('<Control-q>', lambda _: utils.quit_gui(mainloop=self))
         start_win.bind('<Return>', func=_call_start)
         start_win.bind('<KP_Enter>', func=_call_start)
 
@@ -921,7 +923,7 @@ class ImageViewer(ProcessImage):
         #  start window setup can proceed, now with its active title.
         start_win.title('Set start parameters')
         start_win.resizable(width=False, height=False)
-        self.update_idletasks()
+        # self.update()
 
         # Window widgets:
         # Provide a header with file path and pixel dimensions.
@@ -949,10 +951,11 @@ class ImageViewer(ProcessImage):
         else:
             self.slider_val['scale'].set(0.5)
 
+        # Unicode arrow symbols: left \u2190, up \u2101, down \u2193
         if const.MY_OS == 'dar':
-            msg_txt = '<- Can change later with shift-control-▲ & ▼'
+            msg_txt = '← Can change later with shift-control-↑ & ↓'
         else:
-            msg_txt = '<- Can change later with Ctrl-▲ & Ctrl-▼'
+            msg_txt = '← Can change later with Ctrl-↑ & Ctrl-↓'
 
         color_label = tk.Label(master=start_win,
                                text='Annotation font color:',
@@ -989,24 +992,6 @@ class ImageViewer(ProcessImage):
                                         width=0,
                                         command=_call_start)
 
-        # Window grid settings; sorted by row.
-        padding = dict(padx=5, pady=5)
-
-        file_label.grid(row=0, column=0,
-                        **padding, columnspan=2, sticky=tk.EW)
-
-        scale_label.grid(row=1, column=0, **padding, sticky=tk.E)
-        scale_slider.grid(row=1, column=1, **padding, sticky=tk.W)
-
-        color_label.grid(row=2, column=0, **padding, sticky=tk.E)
-        color_cbox.grid(row=2, column=1, **padding, sticky=tk.W)
-        color_msg_lbl.grid(row=2, column=1, **padding, sticky=tk.E)
-
-        inverse_label.grid(row=3, column=0, **padding, sticky=tk.E)
-        inverse_no.grid(row=3, column=1, **padding, sticky=tk.W)
-        inverse_yes.grid(row=3, column=1, padx=(50, 0), sticky=tk.W)
-        process_now_button.grid(row=3, column=1, **padding, sticky=tk.E)
-
         # Create menu instance and add pull-down menus.
         menubar = tk.Menu(master=start_win, )
         start_win.config(menu=menubar)
@@ -1018,7 +1003,7 @@ class ImageViewer(ProcessImage):
                          command=_call_start,
                          accelerator='Return')  # macOS doesn't recognize 'Enter'
         file.add_command(label='Quit',
-                         command=lambda: utils.quit_gui(app),
+                         command=lambda: utils.quit_gui(self),
                          # macOS doesn't recognize 'Command+Q' as an accelerator
                          #   b/c cannot override that system's native Command-Q,
                          accelerator=f'{os_accelerator}+Q')
@@ -1034,10 +1019,34 @@ class ImageViewer(ProcessImage):
         tips.add_command(label='• Use the INVERSE threshold type for dark')
         tips.add_command(label='     objects on a light background.')
         tips.add_command(label='• Enter or Return key also starts processing.')
-        tips.add_command(label='• More Tips are in the README file.')
+        tips.add_command(label="• More Tips are in the repository's README file.")
         tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.')
         help_menu.add_command(label='About',
                               command=lambda: utils.about_win(parent=start_win))
+
+        # Grid start win widgets; sorted by row.
+        padding = dict(padx=5, pady=5)
+
+        file_label.grid(row=0, column=0,
+                        **padding, columnspan=2, sticky=tk.EW)
+
+        scale_label.grid(row=1, column=0, **padding, sticky=tk.E)
+        scale_slider.grid(row=1, column=1, **padding, sticky=tk.W)
+
+        color_label.grid(row=2, column=0, **padding, sticky=tk.E)
+        color_cbox.grid(row=2, column=1, **padding, sticky=tk.W)
+
+        # Best to use cross-platform relative padding of color msg label,
+        #  which is placed to the right of the color combobox.
+        start_win.update()
+        color_padx = (color_cbox.winfo_reqwidth() + 10, 0)
+        color_msg_lbl.grid(row=2, column=1,
+                           padx=color_padx, pady=5, sticky=tk.W)
+
+        inverse_label.grid(row=3, column=0, **padding, sticky=tk.E)
+        inverse_no.grid(row=3, column=1, **padding, sticky=tk.W)
+        inverse_yes.grid(row=3, column=1, padx=(50, 0), sticky=tk.W)
+        process_now_button.grid(row=3, column=1, **padding, sticky=tk.E)
 
     def start_now(self) -> None:
         """
@@ -1053,7 +1062,7 @@ class ImageViewer(ProcessImage):
         #  simultaneously for a visually cleaner start.
         self.setup_image_windows()
         self.configure_main_window()
-        self.show_info_messages()
+        self.show_size_std_info()
         self.setup_buttons()
         self.config_sliders()
         self.config_comboboxes()
@@ -1086,10 +1095,10 @@ class ImageViewer(ProcessImage):
                      'Minimize it if it is in the way.\n'
                      'Esc or Ctrl-Q keys will Quit the program.\n\n')
             self.info_label.config(fg=const.COLORS_TK['vermilion'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
+            self.info_txt.set(_info)
+            app.update()
             # Give user time to read the message before resetting it.
-            app.after(ms=5555, func=self.show_info_messages)
+            app.after(ms=5555, func=self.show_size_std_info)
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
         # Dictionary item order determines stack order of windows.
@@ -1200,11 +1209,24 @@ class ImageViewer(ProcessImage):
                                           ipadx=4, ipady=4,
                                           sticky=tk.EW)
 
-        # Note: the settings window (mainloop, app) is deiconified in
-        #  display_windows() after all image windows so that it stacks
-        #  on top at startup.
+        self.info_label.config(font=const.WIDGET_FONT,
+                               bg=const.MASTER_BG,
+                               fg='black')
 
-    def show_info_messages(self) -> None:
+        # Note: with rowspan=5, there must be 5 return characters in
+        #  each info strings to prevent shifts of frame row spacing.
+        #  5 because that seems to be needed to cover the combined
+        #  height of the last three rows (2, 3, 4) with buttons.
+        # Sticky is 'east' to prevent horizontal shifting during
+        #  segmentation processing when all buttons in col 0 are removed.
+        self.info_label.grid(column=1, row=2, rowspan=5,
+                             padx=(0, 20), sticky=tk.E)
+
+        # Note: the settings window (mainloop, app) is deiconified in
+        #  display_windows() after all image windows so that, at startup,
+        #  it stacks on top.
+
+    def show_size_std_info(self) -> None:
         """
         Informative note at bottom of settings (mainloop) window about
         the displayed size units. The Label text is also re-configured
@@ -1220,12 +1242,9 @@ class ImageViewer(ProcessImage):
                  'pre-set size standard, but are undefined for custom standards.\n'
                  f'(Processing time elapsed: {self.elapsed})\n')
 
-        self.info_label.config(text=_info,
-                               font=const.WIDGET_FONT,
-                               bg=const.MASTER_BG,
-                               fg='black')
-        self.info_label.grid(column=1, row=2, rowspan=5,
-                             padx=(0, 10), sticky=tk.E)
+        self.info_txt.set(_info)
+        self.info_label.config(fg='black')
+        app.update()
 
     def setup_buttons(self) -> None:
         """
@@ -1252,9 +1271,9 @@ class ImageViewer(ProcessImage):
 
             _info = ('\n\nSettings report and result image have been saved to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-            app.after(5555, self.show_info_messages)
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            self.info_txt.set(_info)
+            app.update()
 
         def _export():
             self.export_segment = messagebox.askyesnocancel(
@@ -1274,9 +1293,8 @@ class ImageViewer(ProcessImage):
             _num = self.select_and_export()
             _info = (f'\n\n{_num} selected objects were individually exported to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-            app.after(6666, self.show_info_messages)
+            self.info_txt.set(_info)
+            app.update()
 
         def _reset():
             """
@@ -1288,11 +1306,10 @@ class ImageViewer(ProcessImage):
             self.widget_control('off')  # is turned 'on' in preprocess().
             self.preprocess()
 
-            _info = ('\n\nClick a "Run..." button to update counts and\n'
-                     'sizes with default settings.\n\n')
+            _info = ('\nClick a "Run..." button to update counts and\n'
+                     'sizes with default settings.\n\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
+            self.info_txt.set(_info)
 
         def _run_watershed():
             self.segment_algorithm = 'ws'
@@ -1382,17 +1399,16 @@ class ImageViewer(ProcessImage):
             self.report_results()
 
             if self.slider_val['plm_footprint'].get() == 1:
-                _info = ('\n\nClick "Run..." to update the report and the\n'
+                _info = ('\nClick "Run..." to update the report and the\n'
                          '"Size-selected.." and "Segmented objects" images.\n'
-                         'A peak_local_max footprint of 1 may take a while.\n')
+                         'A peak_local_max footprint of 1 may take a while.\n\n')
                 self.info_label.config(fg=const.COLORS_TK['vermilion'])
             else:
-                _info = ('\n\nClick "Run..." to update the report and the\n'
-                         '"Size-selected.." and "Segmented objects" images.\n\n')
+                _info = ('\nClick "Run..." to update the report and the\n'
+                         '"Size-selected.." and "Segmented objects" images.\n\n\n')
                 self.info_label.config(fg=const.COLORS_TK['blue'])
 
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
+            self.info_txt.set(_info)
 
             return event
 
@@ -1862,6 +1878,7 @@ class ImageViewer(ProcessImage):
         self.size_std['custom_lbl'].grid(column=1, row=20,
                                          padx=custom_std_padx,
                                          **east_params_relative)
+
         # Remove initially; show only when Custom size is needed.
         self.size_std['custom_lbl'].grid_remove()
 
@@ -1932,12 +1949,11 @@ class ImageViewer(ProcessImage):
             # Provide user with a notice that a file was created and
             #  give user time to read the message before resetting it.
             folder = str(Path(self.input_file).parent)
-            _info = (f'\n\nThe result image, "{image_name}", was saved to:\n'
+            _info = (f'\nThe result image, "{image_name}", was saved to:\n'
                      f'{utils.valid_path_to(folder)},\n'
-                     'with a timestamp.')
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
-            app.after(5555, self.show_info_messages)
+                     'with a timestamp.\n\n')
+            self.info_txt.set(_info)
+            app.update()
 
         # macOS right mouse button has a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
@@ -2460,12 +2476,11 @@ class ImageViewer(ProcessImage):
         # Var first_run is reset to False in process_ws_and_sizes()
         #  during the initial run.
         if not self.first_run:
-            _info = ('\n\nPreprocessing completed.\n'
+            _info = ('\nPreprocessing completed.\n'
                      'Click "Run..." to update the report and the\n'
-                     '"Size-selected.." and "Segmented objects" images.\n')
+                     '"Size-selected.." and "Segmented objects" images.\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
-            manage.info_message(widget=self.info_label,
-                                toplevel=app, infotxt=_info)
+            self.info_txt.set(_info)
 
         return event
 
@@ -2479,8 +2494,7 @@ class ImageViewer(ProcessImage):
 
         _info = '\n\nRunning segmentation algorithm...\n\n\n'
         self.info_label.config(fg=const.COLORS_TK['blue'])
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
+        self.info_txt.set(_info)
 
         self.widget_control('off')
         self.time_start: float = time()
@@ -2516,14 +2530,15 @@ class ImageViewer(ProcessImage):
                      f'Processing seconds elapsed: {self.elapsed}\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
 
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
-        app.after(ms=5555, func=self.show_info_messages)
+        self.info_txt.set(_info)
+        app.update()
+        app.after(ms=5555, func=self.show_size_std_info)
 
     def process_sizes(self, event=None) -> None:
         """
         Call only sizing and reporting methods to improve performance.
         Called from the circle_r_min and circle_r_max sliders.
+        Calls set_size_standard(), select_and_size(), report_results().
 
         Args:
             event: The implicit mouse button event.
@@ -2538,17 +2553,16 @@ class ImageViewer(ProcessImage):
         else:  # is 'rw'
             self.select_and_size(contour_pointset=self.rw_contours)
 
-        # Set "n/a" elapsed time here, to prevent the default msg in
-        #  show_info_messages() showing cumulative time since the
+        # Set "n/a" elapsed time here to prevent the default msg in
+        #  show_size_std_info() showing cumulative time since the
         #  previous process_ws_and_sizes() call.
         self.elapsed = 'n/a'
         self.report_results()
 
         _info = '\n\nNew object size range selected. Report updated.\n\n\n'
-        self.info_label.config(fg=const.COLORS_TK['blue'])
-        manage.info_message(widget=self.info_label,
-                            toplevel=app, infotxt=_info)
-        app.after(3333, self.show_info_messages)
+        self.info_txt.set(_info)
+        app.update()
+        app.after(5555, self.show_size_std_info)
 
         return event
 
@@ -2558,6 +2572,8 @@ if __name__ == "__main__":
     #  --about is used, which prints 'about' info, then exits.
     # check_platform() also enables display scaling on Windows.
     utils.check_platform()
+
+    # NOTE: Comment out these three calls when running PyInstaller.
     vcheck.minversion('3.7')
     vcheck.maxversion('3.11')
     manage.arguments()

@@ -198,22 +198,3 @@ def ttk_styles(mainloop: tk.Tk) -> None:
                    background=[('pressed', 'gray30'),
                                ('active', const.COLORS_TK['vermilion'])],
                    )
-
-
-def info_message(widget: tk.Label,
-                 toplevel: tk.Tk,
-                 infotxt: str) -> None:
-    """
-    Updates informational message in the *toplevel* *widget.
-    Args:
-        widget: The tk.Label attribute reference that will have its text
-                changed.
-        toplevel: The parent/mainloop tk.Tk window reference; e.g., app.
-        infotxt: The new text string to display in the *widget*.
-    Returns:
-         None
-    """
-    widget.grid_remove()
-    widget.config(text=infotxt)
-    widget.grid()
-    toplevel.update_idletasks()
