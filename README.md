@@ -170,7 +170,7 @@ Below, all image processing steps are displayed in five windows. Images update a
 12. The "Export sized objects" button will export each selected object to its own JPEG file (without annotation). Each file is proportional in size to the size of the object, or its segmented area. Pop-up options allow the export to be: 1) Just the objects' segments (as seen in the "Segmented objects" window) on a white background, 2) all or most of the object surrounded by the image background, and 3) more of each object's area, as filled by the cv2.convexHull function, on a white background; this option may include slices of image background in concave object areas. You can increase the export area around objects by increasing the "Filter kernel size" slider value. Files are written to the input image's folder and named with a timestamp and each segment's index number. The intent of exporting individual images is to aid in building custom training datasets to use in AI/machine-learning/neural-network applications.
 
 ### Known Issues:
-Waiting for user feedback.
+When running Random Walker segmentation, e.g., on the images/example/sample1.jpg image file, and the annotated sizing results give too-small circles in the objects (and diamond shaped segments in the "Segmented objects" window), there will be a Terminal warning, "UserWarning: "cg_mg" not available...". To remedy, from the Terminal run: `pip install pyamg` to install the PyAMG package. Although it is listed in requirements.txt, its absence is not flagged because it is not (cannot be) used as an imported module package.
 
 ### Attributions
 All image files are from the author, C.S. Echt.
