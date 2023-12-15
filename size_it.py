@@ -793,6 +793,7 @@ class ImageViewer(ProcessImage):
         #  to utils.save_settings_and_img() from the Save button.
         self.report_txt: str = ''
 
+        # Info label is gridded in configure_main_window().
         self.info_txt = tk.StringVar()
         self.info_label = tk.Label(master=self, textvariable=self.info_txt)
 
@@ -1090,15 +1091,22 @@ class ImageViewer(ProcessImage):
             Provide a notice in report (mainloop, app) window.
             Called locally from .protocol().
             """
+
+            prev_txt = self.info_txt.get()
+            prev_fg = self.info_label.cget('fg')
+
             _info = ('\nThat window cannot be closed from its window bar.\n'
                      'Minimize it if it is in the way.\n'
-                     'Esc or Ctrl-Q keys will Quit the program.\n\n')
+                     'Esc or Ctrl-Q keys will quit the program.\n\n')
             self.info_label.config(fg=const.COLORS_TK['vermilion'])
             self.info_txt.set(_info)
-            app.update()
+            self.update()
 
-            # Give user time to read the _info before resetting it.
-            app.after(ms=5555, func=self.show_size_std_info)
+            # Give user time to read the _info before resetting it to
+            #  the previous info text.
+            self.after(ms=4444)
+            self.info_label.config(fg=prev_fg)
+            self.info_txt.set(prev_txt)
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
         # Dictionary item order determines stack order of windows.
@@ -1146,7 +1154,7 @@ class ImageViewer(ProcessImage):
             #  If the icon file is not present, a Terminal msg will display from
             #  <if __name__ == "__main__"> at startup.
             icon_path = tk.PhotoImage(file=utils.valid_path_to('image/sizeit_icon_512.png'))
-            app.iconphoto(True, icon_path)
+            self.iconphoto(True, icon_path)
         except tk.TclError as _msg:
             pass
 
@@ -1214,11 +1222,11 @@ class ImageViewer(ProcessImage):
                                fg='black')
 
         # Note: with rowspan=5, there must be 5 return characters in
-        #  each info strings to prevent shifts of frame row spacing.
+        #  each info string to prevent shifts of frame row spacing.
         #  5 because that seems to be needed to cover the combined
         #  height of the last three rows (2, 3, 4) with buttons.
-        # Sticky is 'east' to prevent horizontal shifting during
-        #  segmentation processing when all buttons in col 0 are removed.
+        #  Sticky is 'east' to prevent horizontal shifting when, during
+        #  segmentation processing, all buttons in col 0 are removed.
         self.info_label.grid(column=1, row=2, rowspan=5,
                              padx=(0, 20), sticky=tk.E)
 
