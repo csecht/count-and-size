@@ -276,7 +276,7 @@ def display_report(frame: tk.Frame, report: str) -> None:
                              height=report.count('\n'),
                              relief='flat',
                              padx=8, pady=8,
-                             wrap=tk.WORD,
+                             wrap=tk.NONE,
                              )
 
     # Replace prior Text with current text;

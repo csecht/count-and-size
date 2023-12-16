@@ -1213,7 +1213,7 @@ class ImageViewer(ProcessImage):
         self.contour_report_frame.rowconfigure(index=0, weight=1)
 
         # Expect there to be 20 rows in the selectors Frame.
-        for i in range(20):
+        for i in range(21):
             self.contour_selectors_frame.rowconfigure(index=i, weight=1)
 
         # Config columns to allow only sliders to expand with window.
