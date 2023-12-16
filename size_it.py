@@ -828,7 +828,7 @@ class ImageViewer(ProcessImage):
         #  managers position windows.
         w_offset = int(self.winfo_screenwidth() * 0.55)
         self.geometry(f'+{w_offset}+0')
-        self.resizable(width=True, height=False)
+        self.wm_minsize(width=450, height=450)
 
         # Need to provide exit info msg to Terminal.
         self.protocol(name='WM_DELETE_WINDOW',
@@ -1204,6 +1204,18 @@ class ImageViewer(ProcessImage):
                                                # bg=const.COLORS_TK['sky blue'],  # for development
                                                borderwidth=5)
 
+        # Allow Frames and widgets to resize with main window.
+        #  Row 1 is the report, row2 selectors, rows 2,3,4 are for Buttons().
+        self.rowconfigure(index=0, weight=1)
+        self.rowconfigure(index=1, weight=1)
+
+        # Keep the report scrollbar active in its resized frame.
+        self.contour_report_frame.rowconfigure(index=0, weight=1)
+
+        # Expect there to be 20 rows in the selectors Frame.
+        for i in range(20):
+            self.contour_selectors_frame.rowconfigure(index=i, weight=1)
+
         # Config columns to allow only sliders to expand with window.
         self.columnconfigure(index=0, weight=1)
         self.columnconfigure(index=1, weight=2)
@@ -1255,7 +1267,7 @@ class ImageViewer(ProcessImage):
 
         self.info_txt.set(_info)
         self.info_label.config(fg='black')
-        app.update()
+        # app.update()
 
     def setup_buttons(self) -> None:
         """
@@ -1284,7 +1296,7 @@ class ImageViewer(ProcessImage):
                      f'{utils.valid_path_to(_folder)}\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
-            app.update()
+            # app.update()
 
         def _export():
             self.export_segment = messagebox.askyesnocancel(
@@ -1305,7 +1317,7 @@ class ImageViewer(ProcessImage):
             _info = (f'\n\n{_num} selected objects were individually exported to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
             self.info_txt.set(_info)
-            app.update()
+            # app.update()
 
         def _reset():
             """
@@ -1964,7 +1976,7 @@ class ImageViewer(ProcessImage):
                      f'{utils.valid_path_to(folder)},\n'
                      'with a timestamp.\n\n')
             self.info_txt.set(_info)
-            app.update()
+            # app.update()
 
         # macOS right mouse button has a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
@@ -2609,13 +2621,13 @@ class ImageViewer(ProcessImage):
 
         # Set "n/a" elapsed time here to prevent the default msg in
         #  show_size_std_info() showing cumulative time since the
-        #  previous process_ws_and_sizes() call.
+        #  previous process() call.
         self.elapsed = 'n/a'
         self.report_results()
 
         _info = '\n\nNew object size range selected. Report updated.\n\n\n'
         self.info_txt.set(_info)
-        app.update()
+        # app.update()
 
         # When user has entered a size std value, there is no need to
         #  display the size standards instructions.
