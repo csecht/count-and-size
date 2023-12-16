@@ -433,7 +433,6 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='dist_trans',
                           img_array=np.uint8(self.cvimg['dist_trans']))
 
-    @property
     def make_labeled_array(self) -> int:
         """
         Finds peak local maximum as defined in skimage.feature. The
@@ -833,10 +832,10 @@ class ImageViewer(ProcessImage):
 
         # Need to provide exit info msg to Terminal.
         self.protocol(name='WM_DELETE_WINDOW',
-                      func=lambda: utils.quit_gui(mainloop=self))
+                      func=lambda: utils.quit_gui(mainloop=app))
 
-        self.bind('<Escape>', func=lambda _: utils.quit_gui(mainloop=self))
-        self.bind('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
+        self.bind('<Escape>', func=lambda _: utils.quit_gui(mainloop=app))
+        self.bind('<Control-q>', func=lambda _: utils.quit_gui(mainloop=app))
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
     def setup_start_window(self) -> None:
@@ -891,10 +890,10 @@ class ImageViewer(ProcessImage):
         # Need to allow complete tk mainloop shutdown from the system's
         #   window manager 'close' icon in the start window bar.
         start_win.protocol(name='WM_DELETE_WINDOW',
-                           func=lambda: utils.quit_gui(mainloop=self))
+                           func=lambda: utils.quit_gui(mainloop=app))
 
-        start_win.bind('<Escape>', lambda _: utils.quit_gui(mainloop=self))
-        start_win.bind('<Control-q>', lambda _: utils.quit_gui(mainloop=self))
+        start_win.bind('<Escape>', lambda _: utils.quit_gui(mainloop=app))
+        start_win.bind('<Control-q>', lambda _: utils.quit_gui(mainloop=app))
         start_win.bind('<Return>', func=_call_start)
         start_win.bind('<KP_Enter>', func=_call_start)
 
@@ -920,7 +919,7 @@ class ImageViewer(ProcessImage):
                                               code=cv2.COLOR_RGBA2GRAY)
             self.metrics = manage.input_metrics(img=self.cvimg['input'])
         else:  # User has closed the filedialog window instead of selecting a file.
-            utils.quit_gui(mainloop=self)
+            utils.quit_gui(mainloop=app)
 
         # Once a file is selected, the file dialog is removed, and the
         #  start window setup can proceed, now with its active title.
@@ -1073,8 +1072,9 @@ class ImageViewer(ProcessImage):
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
-        # Place preprocess(), process_ws_and_sizes() and display_windows(),
-        # in this sequence, to be called last for best performance.
+
+        # Call last preprocess(), process(), config_annotations() and
+        # display_windows(), in this sequence, for best performance.
         self.preprocess()
         self.process()
         self.config_annotations()
@@ -1107,7 +1107,7 @@ class ImageViewer(ProcessImage):
 
             # Give user time to read the _info before resetting it to
             #  the previous info text.
-            self.after(ms=4444)
+            app.after(ms=4444)
             self.info_label.config(fg=prev_fg)
             self.info_txt.set(prev_txt)
 
@@ -1157,7 +1157,7 @@ class ImageViewer(ProcessImage):
             #  If the icon file is not present, a Terminal msg will display from
             #  <if __name__ == "__main__"> at startup.
             icon_path = tk.PhotoImage(file=utils.valid_path_to('image/sizeit_icon_512.png'))
-            self.iconphoto(True, icon_path)
+            app.iconphoto(True, icon_path)
         except tk.TclError as _msg:
             pass
 
@@ -1265,7 +1265,7 @@ class ImageViewer(ProcessImage):
         Returns:
             None
         """
-        manage.ttk_styles(mainloop=self)
+        manage.ttk_styles(mainloop=app)
 
         _folder = str(Path(self.input_file).parent)
 
@@ -2547,13 +2547,13 @@ class ImageViewer(ProcessImage):
         self.time_start: float = time()
 
         if self.segment_algorithm == 'ws':
-            self.watershed_segmentation(self.make_labeled_array)
+            self.watershed_segmentation(self.make_labeled_array())
             self.config_annotations()
             self.draw_ws_segments()
             self.select_and_size(contour_pointset=self.ws_basins)
             algorithm = 'Watershed'
         else:  # is 'rw'
-            self.randomwalk_segmentation(self.make_labeled_array)
+            self.randomwalk_segmentation(self.make_labeled_array())
             self.config_annotations()
             self.draw_rw_segments()
             self.select_and_size(contour_pointset=self.rw_contours)
