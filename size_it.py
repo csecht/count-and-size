@@ -664,7 +664,7 @@ class ImageViewer(ProcessImage):
     A suite of methods to display cv segments based on chosen settings
     and parameters as applied in ProcessImage().
     Methods:
-    manage_main_win
+    manage_main_window
     setup_start_window
     start_now
     setup_image_windows
@@ -674,17 +674,20 @@ class ImageViewer(ProcessImage):
     config_sliders
     config_comboboxes
     config_entries
+    widget_control
     config_annotations
     grid_widgets
     grid_img_labels
     display_windows
     set_defaults
+    validate_px_size_entry
+    validate_custom_size_entry
     set_size_standard
     select_and_size
     select_and_export
     report_results
     preprocess
-    process_ws_and_sizes
+    process
     process_sizes
     """
 
@@ -1601,8 +1604,7 @@ class ImageViewer(ProcessImage):
         in the settings (mainloop) window.
         Called from __init__.
 
-        Returns:
-            None
+        Returns: None
         """
 
         self.size_std['px_entry'].config(textvariable=self.size_std['px_val'],
@@ -2017,6 +2019,66 @@ class ImageViewer(ProcessImage):
         self.size_std['px_val'].set('1')
         self.size_std['custom_val'].set('0.0')
 
+    def validate_px_size_entry(self) -> None:
+        """
+        Check whether pixel size Entry() value is a positive integer.
+        Post a message if the entry is not valid.
+        Calls widget_control().
+        """
+
+        size_std_px: str = self.size_std['px_val'].get()
+        try:
+            int(size_std_px)
+            if int(size_std_px) <= 0:
+                raise ValueError
+        except ValueError:
+
+            # Need widget_control to prevent runaway sliders, if clicked.
+            self.widget_control('off')
+            _post = ('Enter only integers > 0 for the pixel diameter.\n'
+                     f'{size_std_px} was entered. Defaulting to 1.')
+            messagebox.showerror(title='Invalid entry',
+                                 detail=_post)
+            self.size_std['px_val'].set('1')
+            self.widget_control('on')
+
+
+    def validate_custom_size_entry(self) -> None:
+        """
+        Check whether custom size Entry() value is a real number.
+        Post a message if the entry is not valid.
+        Calls widget_control().
+        """
+        custom_size: str = self.size_std['custom_val'].get()
+        size_std_px: str = self.size_std['px_val'].get()
+
+        # Verify that entries are numbers and define self.num_sigfig.
+        #  Custom sizes can be entered as integer, float, or power operator.
+        # Number of significant figures is the lowest of that for the
+        #  standard's size value or pixel diameter.
+
+        try:
+            float(custom_size)  # will raise ValueError if not a number.
+            self.unit_per_px.set(float(custom_size) / int(size_std_px))
+            if size_std_px == '1':
+                self.num_sigfig = utils.count_sig_fig(custom_size)
+            else:
+                self.num_sigfig = min(utils.count_sig_fig(custom_size),
+                                      utils.count_sig_fig(size_std_px))
+        except ValueError:
+
+            # Need widget_control to prevent runaway sliders, if clicked.
+            self.widget_control('off')
+            messagebox.showinfo(
+                title='Custom size',
+                detail='Enter a number.\n'
+                       'Accepted types:\n'
+                       '  integer: 26, 2651, 2_651\n'
+                       '  decimal: 26.5, 0.265, .2\n'
+                       '  exponent: 2.6e10, 2.6e-2')
+            self.size_std['custom_val'].set('0.0')
+            self.widget_control('on')
+
     def set_size_standard(self) -> None:
         """
         Assign a unit conversion factor to the observed pixel diameter
@@ -2024,26 +2086,13 @@ class ImageViewer(ProcessImage):
         figure in any custom size entry.
         Called from process_ws_and_sizes(), process_sizes(), __init__.
 
-        Returns:
-            None
+        Returns: None
         """
 
+        self.validate_px_size_entry()
         size_std_px: str = self.size_std['px_val'].get()
-        custom_size: str = self.size_std['custom_val'].get()
         size_std: str = self.cbox_val['size_std'].get()
         preset_std_size: float = const.SIZE_STANDARDS[size_std]
-
-        # Need to verify that the pixel diameter entry is a number:
-        try:
-            int(size_std_px)
-            if int(size_std_px) <= 0:
-                raise ValueError
-        except ValueError:
-            _m = 'Enter only integers > 0 for the pixel diameter'
-            messagebox.showerror(title='Invalid entry',
-                                 detail=_m)
-            self.size_std['px_val'].set('1')
-            size_std_px = '1'
 
         # For clarity, need to show the custom size Entry widget only
         #  when 'Custom' is selected.
@@ -2054,24 +2103,7 @@ class ImageViewer(ProcessImage):
         if size_std == 'Custom':
             self.size_std['custom_entry'].grid()
             self.size_std['custom_lbl'].grid()
-
-            try:
-                float(custom_size)  # will raise ValueError if not a number.
-                self.unit_per_px.set(float(custom_size) / int(size_std_px))
-                if size_std_px == '1':
-                    self.num_sigfig = utils.count_sig_fig(custom_size)
-                else:
-                    self.num_sigfig = min(utils.count_sig_fig(custom_size),
-                                          utils.count_sig_fig(size_std_px))
-            except ValueError:
-                messagebox.showinfo(
-                    title='Custom size',
-                    detail='Enter a number.\n'
-                           'Accepted types:\n'
-                           '  integer: 26, 2651, 2_651\n'
-                           '  decimal: 26.5, 0.265, .2\n'
-                           '  exponent: 2.6e10, 2.6e-2')
-                self.size_std['custom_val'].set('0.0')
+            self.validate_custom_size_entry()
 
         else:  # is one of the preset size standards
             self.size_std['custom_entry'].grid_remove()
@@ -2493,6 +2525,12 @@ class ImageViewer(ProcessImage):
         Returns: None
         """
 
+        # Need to first check that entered size values are okay.
+        if not self.first_run:
+            self.validate_px_size_entry()
+            if self.cbox_val['size_std'].get() == 'Custom':
+                self.validate_custom_size_entry()
+
         _info = '\n\nRunning segmentation algorithm...\n\n\n'
         self.info_label.config(fg=const.COLORS_TK['blue'])
         self.info_txt.set(_info)
@@ -2525,20 +2563,22 @@ class ImageViewer(ProcessImage):
                      'Default settings were used. Settings that increase or\n'
                      'decrease number of detected objects will respectively\n'
                      'increase or decrease the processing time.\n')
+            self.info_txt.set(_info)
+            app.after(ms=6666, func=self.show_size_std_info)
         else:
             _info = (f'\n{algorithm} segments found and sizes calculated.\n'
-                     'Report updated.\n'
-                     f'Processing seconds elapsed: {self.elapsed}\n\n')
+                     'Report and windows for segmented and selected objects are updated.\n'
+                     f'{self.elapsed} processing seconds elapsed.\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
+            self.info_txt.set(_info)
 
-        self.info_txt.set(_info)
-        app.update()
+            # Display the size standard instructions only when no size standard
+            #   values are entered.
+            if (self.size_std['px_val'].get() == '1' or
+                    self.cbox_val['size_std'].get == 'None'):
+                app.after(ms=4444, func=self.show_size_std_info)
 
-        # When user has entered a size std value, there is no need to
-        #  display the size standards instructions.
-        if (self.size_std['px_val'].get() == '1' or
-                self.cbox_val['size_std'].get == 'None'):
-            app.after(ms=4444, func=self.show_size_std_info)
+        # app.update()
 
     def process_sizes(self, event=None) -> None:
         """
