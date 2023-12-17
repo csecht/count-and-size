@@ -2348,14 +2348,14 @@ class ImageViewer(ProcessImage):
             cv2.drawContours(image=mask,
                              contours=chosen_contours,
                              contourIdx=-1,
-                             color=255,
+                             color=(255, 255, 255),
                              thickness=cv2.FILLED)
 
             # Note: this contour step provides a cleaner border around the segment.
             cv2.drawContours(image=mask,
                              contours=chosen_contours,
                              contourIdx=-1,
-                             color=0,
+                             color=(0, 0, 0),
                              thickness=4)
 
             # Idea for extraction from: https://stackoverflow.com/questions/59432324/
