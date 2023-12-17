@@ -832,10 +832,10 @@ class ImageViewer(ProcessImage):
 
         # Need to provide exit info msg to Terminal.
         self.protocol(name='WM_DELETE_WINDOW',
-                      func=lambda: utils.quit_gui(mainloop=app))
+                      func=lambda: utils.quit_gui(mainloop=self))
 
-        self.bind('<Escape>', func=lambda _: utils.quit_gui(mainloop=app))
-        self.bind('<Control-q>', func=lambda _: utils.quit_gui(mainloop=app))
+        self.bind('<Escape>', func=lambda _: utils.quit_gui(mainloop=self))
+        self.bind('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
     def setup_start_window(self) -> None:
@@ -890,10 +890,10 @@ class ImageViewer(ProcessImage):
         # Need to allow complete tk mainloop shutdown from the system's
         #   window manager 'close' icon in the start window bar.
         start_win.protocol(name='WM_DELETE_WINDOW',
-                           func=lambda: utils.quit_gui(mainloop=app))
+                           func=lambda: utils.quit_gui(mainloop=self))
 
-        start_win.bind('<Escape>', lambda _: utils.quit_gui(mainloop=app))
-        start_win.bind('<Control-q>', lambda _: utils.quit_gui(mainloop=app))
+        start_win.bind('<Escape>', lambda _: utils.quit_gui(mainloop=self))
+        start_win.bind('<Control-q>', lambda _: utils.quit_gui(mainloop=self))
         start_win.bind('<Return>', func=_call_start)
         start_win.bind('<KP_Enter>', func=_call_start)
 
@@ -919,7 +919,7 @@ class ImageViewer(ProcessImage):
                                               code=cv2.COLOR_RGBA2GRAY)
             self.metrics = manage.input_metrics(img=self.cvimg['input'])
         else:  # User has closed the filedialog window instead of selecting a file.
-            utils.quit_gui(mainloop=app)
+            utils.quit_gui(mainloop=self)
 
         # Once a file is selected, the file dialog is removed, and the
         #  start window setup can proceed, now with its active title.
@@ -1091,7 +1091,8 @@ class ImageViewer(ProcessImage):
 
         def _window_info():
             """
-            Provide a notice in report (mainloop, app) window.
+            Provide a notice in report and settings (mainloop, self)
+            window.
             Called locally from .protocol().
             """
 
@@ -1107,7 +1108,7 @@ class ImageViewer(ProcessImage):
 
             # Give user time to read the _info before resetting it to
             #  the previous info text.
-            app.after(ms=4444)
+            self.after(ms=4444)
             self.info_label.config(fg=prev_fg)
             self.info_txt.set(prev_txt)
 
@@ -1154,10 +1155,10 @@ class ImageViewer(ProcessImage):
         #  border when it has focus and light grey when being dragged.
         icon_path = None
         try:
-            #  If the icon file is not present, a Terminal msg will display from
-            #  <if __name__ == "__main__"> at startup.
+            #  If the icon file is not present, a Terminal msg will be
+            #   called from <if __name__ == "__main__"> at startup.
             icon_path = tk.PhotoImage(file=utils.valid_path_to('image/sizeit_icon_512.png'))
-            app.iconphoto(True, icon_path)
+            self.iconphoto(True, icon_path)
         except tk.TclError as _msg:
             pass
 
@@ -1175,21 +1176,21 @@ class ImageViewer(ProcessImage):
                              highlightthickness=5,
                              highlightcolor=const.COLORS_TK['yellow'],
                              highlightbackground=const.DRAG_GRAY)
-            _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(app))
-            _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(app))
+            _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(self))
+            _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
 
     def configure_main_window(self) -> None:
         """
-        Settings and report window (mainloop, "app") keybindings,
+        Settings and report window (mainloop, self) keybindings,
         configurations, and grids for contour settings and reporting frames.
 
         Returns:
             None
         """
 
-        # Color in the main (app) window and give it a yellow border;
+        # Color in the main (self) window and give it a yellow border;
         #   border highlightcolor changes to grey with loss of focus.
-        app.config(
+        self.config(
             bg=const.MASTER_BG,
             # bg=const.COLORS_TK['sky blue'],  # for development
             highlightthickness=5,
@@ -1209,18 +1210,19 @@ class ImageViewer(ProcessImage):
         self.rowconfigure(index=0, weight=1)
         self.rowconfigure(index=1, weight=1)
 
-        # Keep the report scrollbar active in its resized frame.
+        # Keep the report scrollbar active in the resized frame.
         self.contour_report_frame.rowconfigure(index=0, weight=1)
 
         # Expect there to be 20 rows in the selectors Frame.
         for i in range(21):
             self.contour_selectors_frame.rowconfigure(index=i, weight=1)
 
-        # Config columns to allow only sliders to expand with window.
         self.columnconfigure(index=0, weight=1)
-        self.columnconfigure(index=1, weight=2)
+        self.columnconfigure(index=1, weight=1)
         self.contour_report_frame.columnconfigure(index=0, weight=1)
-        self.contour_selectors_frame.columnconfigure(index=1, weight=2)
+
+        # Allow only sliders, not labels, to expand with window.
+        self.contour_selectors_frame.columnconfigure(index=1, weight=1)
 
         self.contour_report_frame.grid(column=0, row=0,
                                        columnspan=2,
@@ -1245,7 +1247,7 @@ class ImageViewer(ProcessImage):
         self.info_label.grid(column=1, row=2, rowspan=5,
                              padx=(0, 20), sticky=tk.E)
 
-        # Note: the settings window (mainloop, app) is deiconified in
+        # Note: the main window (mainloop, self) is deiconified in
         #  display_windows() after all image windows so that, at startup,
         #  it stacks on top.
 
@@ -1267,7 +1269,6 @@ class ImageViewer(ProcessImage):
 
         self.info_txt.set(_info)
         self.info_label.config(fg='black')
-        # app.update()
 
     def setup_buttons(self) -> None:
         """
@@ -1277,7 +1278,7 @@ class ImageViewer(ProcessImage):
         Returns:
             None
         """
-        manage.ttk_styles(mainloop=app)
+        manage.ttk_styles(mainloop=self)
 
         _folder = str(Path(self.input_file).parent)
 
@@ -1296,7 +1297,6 @@ class ImageViewer(ProcessImage):
                      f'{utils.valid_path_to(_folder)}\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
-            # app.update()
 
         def _export():
             self.export_segment = messagebox.askyesnocancel(
@@ -1317,7 +1317,6 @@ class ImageViewer(ProcessImage):
             _info = (f'\n\n{_num} selected objects were individually exported to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
             self.info_txt.set(_info)
-            # app.update()
 
         def _reset():
             """
@@ -1378,7 +1377,7 @@ class ImageViewer(ProcessImage):
                                    sticky=tk.W)
 
         # Need to use cross-platform relative padding.
-        app.update()
+        self.update()
         process_padx = (self.button['process_ws'].winfo_reqwidth() + 20, 0)
         export_padx = (self.button['export'].winfo_reqwidth() + 20, 0)
 
@@ -1666,8 +1665,8 @@ class ImageViewer(ProcessImage):
             for _, _w in self.size_std.items():
                 if not isinstance(_w, tk.StringVar):
                     _w.configure(state=tk.DISABLED)
-            app.config(cursor='watch')
-            app.update()
+            self.config(cursor='watch')
+            self.update()
         else:  # is 'on'
             idx = 0
             for _name, _w in self.slider.items():
@@ -1686,8 +1685,8 @@ class ImageViewer(ProcessImage):
                 if not isinstance(_w, tk.StringVar):
                     _w.configure(state=tk.NORMAL)
 
-            app.config(cursor='')
-            app.update()
+            self.config(cursor='')
+            self.update()
             self.slider_values.clear()
 
     def config_annotations(self) -> None:
@@ -1976,7 +1975,6 @@ class ImageViewer(ProcessImage):
                      f'{utils.valid_path_to(folder)},\n'
                      'with a timestamp.\n\n')
             self.info_txt.set(_info)
-            # app.update()
 
         # macOS right mouse button has a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
@@ -1985,11 +1983,11 @@ class ImageViewer(ProcessImage):
         #  specify in _on_click_save_img() function so that the current image
         #  is saved. Use update() to ensure that the label image is current.
         for img_name, label in self.img_label.items():
-            app.update()
+            self.update()
             label.bind(rt_click,
                        lambda _, n=img_name: _on_click_save_img(image_name=n))
 
-        # Now is time to show the mainloop (app) settings window that was
+        # Now is time to show the mainloop (self) settings window that was
         #   hidden in manage_main_window().
         #   Deiconifying here stacks it on top of all windows at startup.
         self.wm_deiconify()
@@ -2061,7 +2059,6 @@ class ImageViewer(ProcessImage):
                                  detail=_post)
             self.size_std['px_val'].set('1')
             self.widget_control('on')
-
 
     def validate_custom_size_entry(self) -> None:
         """
@@ -2584,7 +2581,7 @@ class ImageViewer(ProcessImage):
                      'decrease number of detected objects will respectively\n'
                      'increase or decrease the processing time.\n')
             self.info_txt.set(_info)
-            app.after(ms=6666, func=self.show_size_std_info)
+            self.after(ms=6666, func=self.show_size_std_info)
         else:
             _info = (f'\n{algorithm} segments found and sizes calculated.\n'
                      'Report and windows for segmented and selected objects are updated.\n'
@@ -2595,10 +2592,8 @@ class ImageViewer(ProcessImage):
             # Display the size standard instructions only when no size standard
             #   values are entered.
             if (self.size_std['px_val'].get() == '1' or
-                    self.cbox_val['size_std'].get == 'None'):
-                app.after(ms=4444, func=self.show_size_std_info)
-
-        # app.update()
+                    self.cbox_val['size_std'].get() == 'None'):
+                self.after(ms=4444, func=self.show_size_std_info)
 
     def process_sizes(self, event=None) -> None:
         """
@@ -2627,13 +2622,12 @@ class ImageViewer(ProcessImage):
 
         _info = '\n\nNew object size range selected. Report updated.\n\n\n'
         self.info_txt.set(_info)
-        # app.update()
 
         # When user has entered a size std value, there is no need to
         #  display the size standards instructions.
         if (self.size_std['px_val'].get() == '1' or
-                self.cbox_val['size_std'].get == 'None'):
-            app.after(ms=4444, func=self.show_size_std_info)
+                self.cbox_val['size_std'].get() == 'None'):
+            self.after(ms=4444, func=self.show_size_std_info)
 
         return event
 
