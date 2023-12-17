@@ -637,9 +637,9 @@ class ProcessImage(tk.Tk):
         # Need to prevent white or black contours because they
         #  won't show on the white background with black segments.
         if self.cbox_val['color'].get() in 'white, black':
-            line_color = const.COLORS_CV['blue']
+            line_color: tuple = const.COLORS_CV['blue']
         else:
-            line_color = const.COLORS_CV[self.cbox_val['color'].get()]
+            line_color: tuple = const.COLORS_CV[self.cbox_val['color'].get()]
 
         # Note: this does not update until process_rw_and_sizes() is called.
         #  It shares a window with the distance transform image, which
@@ -865,19 +865,20 @@ class ImageViewer(ProcessImage):
             Returns:
                  *event* as a formality; is functionally None.
             """
-            # Provide some info to user for why the start screen appears
+            # Provide some info to user why the start screen may appear
             #  frozen when processing larger images.
             process_btn_txt.set('Processing started, wait...')
             start_win.config(cursor='watch')
-            self.start_now()
             start_win.destroy()
+            self.start_now()
+
             return event
 
         # Window basics:
         # Open with a temporary, instructional title.
         start_win = tk.Toplevel()
-        start_win.title('First, select an image file')
-        start_win.minsize(width=500, height=165)
+        start_win.title('First, select an input image file')
+        start_win.wm_resizable(width=False, height=False)
         start_win.config(relief='raised',
                          bg=const.DARK_BG,
                          # bg=const.COLORS_TK['sky blue'],  # for development
@@ -897,42 +898,11 @@ class ImageViewer(ProcessImage):
         start_win.bind('<Return>', func=_call_start)
         start_win.bind('<KP_Enter>', func=_call_start)
 
-        # Take a break in configuring the window to grab the input.
-        # For macOS: Need to have the filedialog be a child of
-        #   start_win and need update() here.
-        self.update()
-        self.input_file = filedialog.askopenfilename(
-            parent=start_win,
-            title='Select input image',
-            filetypes=[('JPG', '*.jpg'),
-                       ('JPG', '*.jpeg'),
-                       ('JPG', '*.JPG'),  # used for iPhone images
-                       ('PNG', '*.png'),
-                       ('TIFF', '*.tiff'),
-                       ('TIFF', '*.tif'),
-                       ('All', '*.*')],
-        )
-
-        if self.input_file:
-            self.cvimg['input'] = cv2.imread(self.input_file)
-            self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
-                                              code=cv2.COLOR_RGBA2GRAY)
-            self.metrics = manage.input_metrics(img=self.cvimg['input'])
-        else:  # User has closed the filedialog window instead of selecting a file.
-            utils.quit_gui(mainloop=self)
-
-        # Once a file is selected, the file dialog is removed, and the
-        #  start window setup can proceed, now with its active title.
-        start_win.title('Set start parameters')
-        start_win.resizable(width=False, height=False)
-        # self.update()
-
         # Window widgets:
-        # Provide a header with file path and pixel dimensions.
+        # Provide a placeholder window header for input file info.
         file_label = tk.Label(
             master=start_win,
-            text=f'Image: {self.input_file}\n'
-                 f'size:{self.cvimg["gray"].shape[0]}x{self.cvimg["gray"].shape[1]}',
+            text='Image: waiting to be selected...\nSize: TBD',
             **const.LABEL_PARAMETERS)
 
         scale_label = tk.Label(master=start_win,
@@ -945,13 +915,6 @@ class ImageViewer(ProcessImage):
                                 variable=self.slider_val['scale'],
                                 length=int(self.winfo_screenwidth() * 0.2),
                                 **const.SCALE_PARAMETERS)
-
-        # As a convenience for user, estimate default scale factor based
-        #   on image size.
-        if self.metrics['img_area'] > 6 * 10e5:
-            self.slider_val['scale'].set(0.25)
-        else:
-            self.slider_val['scale'].set(0.5)
 
         # Unicode arrow symbols: left \u2190, up \u2101, down \u2193
         if const.MY_OS == 'dar':
@@ -1049,6 +1012,61 @@ class ImageViewer(ProcessImage):
         inverse_no.grid(row=3, column=1, **padding, sticky=tk.W)
         inverse_yes.grid(row=3, column=1, padx=(50, 0), sticky=tk.W)
         process_now_button.grid(row=3, column=1, **padding, sticky=tk.E)
+
+        # Gray-out widget labels until an input file is selected.
+        # The settings widgets themselves will be inactive while the
+        #  filedialog window is open.
+        scale_label.config(state=tk.DISABLED)
+        color_label.config(state=tk.DISABLED)
+        color_msg_lbl.config(state=tk.DISABLED)
+        inverse_label.config(state=tk.DISABLED)
+
+        # Take a break in configuring the window to grab the input.
+        # For macOS: Need to have the filedialog be a child of
+        #   start_win and need update() here.
+        self.update()
+        self.input_file = filedialog.askopenfilename(
+            parent=start_win,
+            title='Select input image',
+            filetypes=[('JPG', '*.jpg'),
+                       ('JPG', '*.jpeg'),
+                       ('JPG', '*.JPG'),  # used for iPhone images
+                       ('PNG', '*.png'),
+                       ('TIFF', '*.tiff'),
+                       ('TIFF', '*.tif'),
+                       ('All', '*.*')],
+        )
+
+        if self.input_file:
+            self.cvimg['input'] = cv2.imread(self.input_file)
+            self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
+                                              code=cv2.COLOR_RGBA2GRAY)
+            self.metrics = manage.input_metrics(img=self.cvimg['input'])
+        else:  # User has closed the filedialog window instead of selecting a file.
+            utils.quit_gui(mainloop=self)
+
+        # Once a file is selected, the file dialog is removed, and
+        #  start window setup can proceed.
+
+        # As a convenience for user, estimate default scale factor based
+        #  on image size and set that slider accordingly.
+        if self.metrics['img_area'] > 6 * 10e5:
+            self.slider_val['scale'].set(0.25)
+        else:
+            self.slider_val['scale'].set(0.5)
+
+        # Finally, give start window its active title,...
+        start_win.title('Set start parameters')
+
+        # ...fill in header with input path and pixel dimensions,...
+        file_label.config(text=f'Image: {self.input_file}\n'
+                               f'size:{self.cvimg["gray"].shape[0]}x{self.cvimg["gray"].shape[1]}')
+
+        # ...and now all widgets are active.
+        scale_label.config(state=tk.NORMAL)
+        color_label.config(state=tk.NORMAL)
+        color_msg_lbl.config(state=tk.NORMAL)
+        inverse_label.config(state=tk.NORMAL)
 
     def start_now(self) -> None:
         """
