@@ -321,7 +321,7 @@ class ProcessImage(tk.Tk):
                               img_array=self.cvimg['contrast'])
             return
 
-        # If filter kernel slider is set to 0, then proceed without,
+        # If filter kernel slider is set to 0, then proceed without
         # filtering and use the reduced noise image.
         if _k == 0:
             self.update_image(img_name='filter',
@@ -869,8 +869,8 @@ class ImageViewer(ProcessImage):
             #  frozen when processing larger images.
             process_btn_txt.set('Processing started, wait...')
             start_win.config(cursor='watch')
-            start_win.destroy()
             self.start_now()
+            start_win.destroy()
 
             return event
 
