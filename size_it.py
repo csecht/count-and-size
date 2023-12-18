@@ -1674,6 +1674,8 @@ class ImageViewer(ProcessImage):
         if action == 'off':
             for _name, _w in self.slider.items():
                 _w.configure(state=tk.DISABLED)
+
+                # Grab the current slider values, in case user tries to change.
                 if isinstance(_w, tk.Scale):
                     self.slider_values.append(self.slider_val[_name].get())
             for _, _w in self.cbox.items():
@@ -1689,6 +1691,8 @@ class ImageViewer(ProcessImage):
             idx = 0
             for _name, _w in self.slider.items():
                 _w.configure(state=tk.NORMAL)
+
+                # Restore the slider values to overwrite any changes.
                 if self.slider_values and isinstance(_w, tk.Scale):
                     self.slider_val[_name].set(self.slider_values[idx])
                     idx += 1
@@ -2265,11 +2269,6 @@ class ImageViewer(ProcessImage):
         self.update_image(img_name='sized',
                           img_array=self.cvimg['sized'])
 
-        # Record total time to process for user's info message. Start
-        #  time is set in process_ws_and_sizes(). Preprocessing time is
-        #  negligible, so it is ignored.
-        self.elapsed = round(time() - self.time_start, 3)
-
     def select_and_export(self) -> int:
         """
         Takes a list of contour segments, selects, masks and extracts
@@ -2586,12 +2585,13 @@ class ImageViewer(ProcessImage):
             self.select_and_size(contour_pointset=self.rw_contours)
             algorithm = 'Random walker'
 
+        # Record processing time: preprocessing time is negligible.
+        self.elapsed = round(time() - self.time_start, 3)
         self.report_results()
         self.widget_control('on')
 
         # Here, at the end of the processing pipeline, is where the
         #  first_run flag is set to False.
-        # self.elapsed is set at end of select_and_size().
         if self.first_run:
             self.first_run = False
             _info = (f'\nInitial processing time elapsed: {self.elapsed}\n'
@@ -2632,10 +2632,6 @@ class ImageViewer(ProcessImage):
         else:  # is 'rw'
             self.select_and_size(contour_pointset=self.rw_contours)
 
-        # Set "n/a" elapsed time here to prevent the default msg in
-        #  show_size_std_info() showing cumulative time since the
-        #  previous process() call.
-        self.elapsed = 'n/a'
         self.report_results()
 
         _info = '\n\nNew object size range selected. Report updated.\n\n\n'
