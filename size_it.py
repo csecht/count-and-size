@@ -102,7 +102,7 @@ from utility_modules import (vcheck,
 
 class ProcessImage(tk.Tk):
     """
-    A suite of OpenCV methods for applying various image processing
+    A suite of OpenCV methods to apply various image processing
     functions involved in segmenting objects from an image file.
 
     Class methods:
@@ -201,7 +201,8 @@ class ProcessImage(tk.Tk):
         """
         Process a cv2 image array to use as a tk PhotoImage and update
         (configure) its window label for immediate display.
-        Calls module manage.tk_image().
+        Calls module manage.tk_image(). Called from all methods that
+        display an image.
 
         Args:
             img_name: The key name used in the tkimg and img_label
@@ -490,7 +491,8 @@ class ProcessImage(tk.Tk):
         Called from process().
 
         Args:
-            array: A skimage.features.peak_local_max array.
+            array: A skimage.features.peak_local_max array,
+                    e.g., from make_labeled_array().
 
         Returns: None
         """
@@ -538,7 +540,7 @@ class ProcessImage(tk.Tk):
         #  of image size so that it looks good in scaled display. Because the
         #  watershed_img has a black background, the contour lines are
         #  easier to see and look better if they are thinner than in the
-        #  annotated 'sized' image were metrics['line_thickness'] is used.
+        #  annotated 'sized' image where metrics['line_thickness'] is used.
         #  When user changes line thickness with + & - keys, only the 'sized'
         #  image updates; the watershed image displays the original thickness.
         if self.metrics['line_thickness'] == 1:
@@ -574,7 +576,8 @@ class ProcessImage(tk.Tk):
         Called from process().
 
         Args:
-            array: A skimage.features.peak_local_max array.
+            array: A skimage.features.peak_local_max array,
+                    e.g., from make_labeled_array().
 
         Returns: None
         """
@@ -660,8 +663,8 @@ class ProcessImage(tk.Tk):
 
 class ImageViewer(ProcessImage):
     """
-    A suite of methods to display cv segments based on chosen settings
-    and parameters as applied in ProcessImage().
+    A suite of methods to display cv segments based on selected settings
+    and parameters that are in ProcessImage() methods.
     Methods:
     manage_main_window
     setup_start_window
@@ -2553,8 +2556,8 @@ class ImageViewer(ProcessImage):
 
     def process(self) -> None:
         """
-        Runs all image processing methods from ProcessImage(), plus
-        annotation style, sizing, and reporting methods.
+        Runs image segmentation processing methods from ProcessImage(),
+        plus methods for annotation style, sizing, and reporting.
 
         Returns: None
         """
@@ -2585,7 +2588,7 @@ class ImageViewer(ProcessImage):
             self.select_and_size(contour_pointset=self.rw_contours)
             algorithm = 'Random walker'
 
-        # Record processing time: preprocessing time is negligible.
+        # Record processing time; preprocessing time is negligible.
         self.elapsed = round(time() - self.time_start, 3)
         self.report_results()
         self.widget_control('on')
