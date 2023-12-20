@@ -1,6 +1,6 @@
 # Project: count-and-size
-![oysters_25pct.jpg](images%2Foysters_25pct.jpg)
-![oysters_sized_25pct.jpg](images%2Foysters_sized_25pct.jpg)
+![oysters.jpg](images/oysters.jpg)
+![oysters with size annotation.jpg](images/oysters_sized.jpg)
 <sub>Farmed oyster population sample (top); the analyzed back lit image, with annotations (bottom), using a U.S. quarter dollar for the size standard. Sample mean was 93.1 mm, n=27.</sub>
 
 The interactive Python program, `size_it.py`, is a tkinter GUI for OpenCV processing of an image to obtain sizes, means,
@@ -14,7 +14,7 @@ A report is provided of parameter settings, object count, individual
 object sizes, and sample size mean and range, along with an annotated
 image file of labeled objects.
 
-While random walker may provide better object segmentation than watershet for some images, it can increase processing times up to 8-fold; large images with many objects may take several minutes to process. With either segmentation algorithm, interactive processing of counts and sizes is triggered from a Button command instead of the action of individual sliders and pull-downs, as with the preprocessing steps. This approach can save time when you already have some idea about the combination of parameter settings needed.
+While random walker may provide better object segmentation than watershed for some images, it can increase processing times up to 8-fold; large images with many objects may take several minutes to process. With either segmentation algorithm, interactive processing of counts and sizes is triggered from a Button command instead of the action of individual sliders and pull-downs, as with the preprocessing steps. This approach can save time when you already have some idea about the combination of parameter settings needed.
 
 This Project was developed to sample oyster populations at various stages of aquaculture production, but can be used to measure any sample population of round or oblong objects photographed on a contrasting background. Objects need not all be completely isolated, as touching and slightly overlapping objects can be successfully segmented. When segmentation of objects in large or poorly contrasted overlapping clusters is no possible, such clusters can be screened out by limiting the size range to provide fairly accurate metrics for the remaining well-segmented objects.
 
@@ -56,6 +56,8 @@ Image file examples provided in the `images/examples` folder of this distributio
 * sample1.jpg (baby oysters on black burlap, 1200x1199 902 kB),
 * sample2.jpg (baby oysters on white, Sacagawea coin edited to black, 2627x2629, 1050 kB),
 * sample3.jpg (sample2 cropped, with some oysters out of frame, 540x967, 268 kB)
+* sample4.jpg (mature oysters on white, top-lit, used in README figure, 984x705, 363 kB)
+* sample5.jpg (sample4 oysters, backlit, 898x630, 77 kB)
 
 ### Requirements:
 Python 3.7 or later, plus the packages OpenCV-Python, NumPy, scikit-image, SciPy, and tkinter (Tk/Tcl).
@@ -156,7 +158,7 @@ Below, all image processing steps are displayed in five windows. Images update a
 ![all image windows](images/all_image_windows.png)
 
 ### Tips:
-1. For best results, use a well-contrasted objects that are not in large overlapping clusters. Best results are obtained using a lightbox with minimal top lighting to photograph objects.
+1. For best results, use a well-contrasted objects that are not in large overlapping clusters. Using a lightbox to photograph objects with a backlight can provide enhanced contrast. Examples of this can be seen in the comparison of `sample4.jpg` (oysters top-lit) and `sample5.jpg` (same oysters, backlit). Users can explore the time and effort needed to adjust settings with each image to obtain segmentation and sizing for the 27 mature oysters.
 2. Use a flat black or flat white object as a size standard.
 3. Before setting the size standard, adjust parameters to achieve the best separation and counts, then enter the resulting pixel diameter for your selected size standard to convert pixels to units measure. This will provide the most accurate size metrics. Units are millimeters for the pre-set standards, and whatever you want for custom standards.
 4. Once you select "Custom" for a size standard, an entry field pops up to fill in the known size.
@@ -170,7 +172,7 @@ Below, all image processing steps are displayed in five windows. Images update a
 12. The "Export sized objects" button will export each selected object to its own JPEG file (without annotation). Each file is proportional in size to the size of the object, or its segmented area. Pop-up options allow the export to be: 1) Just the objects' segments (as seen in the "Segmented objects" window) on a white background, 2) all or most of the object surrounded by the image background, and 3) more of each object's area, as filled by the cv2.convexHull function, on a white background; this option may include slices of image background in concave object areas. You can increase the export area around objects by increasing the "Filter kernel size" slider value. Files are written to the input image's folder and named with a timestamp and each segment's index number. The intent of exporting individual images is to aid in building custom training datasets to use in AI/machine-learning/neural-network applications.
 
 ### Known Issues:
-When running Random Walker segmentation, e.g., on the images/example/sample1.jpg image file, and the annotated sizing results give too-small circles in the objects (and diamond shaped segments in the "Segmented objects" window), there will be a Terminal warning, "UserWarning: "cg_mg" not available...". To remedy, from the Terminal run: `pip install pyamg` to install the PyAMG package. Although it is listed in requirements.txt, its absence is not flagged because it is not (cannot be) used as an imported module package.
+When running Random Walker segmentation, e.g., on the images/example/sample1.jpg image file, and the annotated sizing results give too-small circles in the objects (and diamond shaped segments in the "Segmented objects" window), there will be a Terminal warning, "UserWarning: "cg_mg" not available...". To remedy, run this command from the Terminal: `pip install pyamg` to install the PyAMG package. Although `pyamg` is listed in requirements.txt, its absence is not flagged because it is not (and cannot be) used as an imported module package.
 
 ### Attributions
 All image files are from the author, C.S. Echt.
