@@ -271,7 +271,6 @@ class ProcessImage(tk.Tk):
         # Need integers for the cv function parameters.
         morph_shape = const.CV_MORPH_SHAPE[self.cbox_val['morphshape'].get()]
         morph_op = const.CV_MORPHOP[self.cbox_val['morphop'].get()]
-        border_type = cv2.BORDER_DEFAULT  # const.CV_BORDER[self.cbox_val['border'].get()]
 
         # See: https://docs.opencv2.org/3.0-beta/modules/imgproc/doc/filtering.html
         #  on page, see: cv2.getStructuringElement(shape, ksize[, anchor])
@@ -281,17 +280,18 @@ class ProcessImage(tk.Tk):
             ksize=(noise_k, noise_k))
 
         # Use morphologyEx as a shortcut for erosion followed by dilation.
-        #   MORPH_OPEN is useful to remove noise and small features.
-        #   MORPH_HITMISS helps to separate close objects by shrinking them.
         # Read https://docs.opencv2.org/3.4/db/df6/tutorial_erosion_dilatation.html
         # https://theailearner.com/tag/cv-morphologyex/
-        # Note that the self attribution here is to prevent garbage collection.
+        # The op argument from const.CV_MORPH_OP options:
+        #   MORPH_OPEN is useful to remove noise and small features.
+        #   MORPH_CLOSE is better for certain images, but generally is worse.
+        #   MORPH_HITMISS helps to separate close objects by shrinking them.
         self.cvimg['redux'] = cv2.morphologyEx(
             src=self.cvimg['contrast'],
             op=morph_op,
             kernel=element,
             iterations=iteration,
-            borderType=border_type,
+            borderType=cv2.BORDER_DEFAULT,
         )
 
         self.update_image(img_name='redux',
@@ -355,9 +355,12 @@ class ProcessImage(tk.Tk):
         #  NOTE: The larger the sigma the greater the effect of kernel size d.
         #  NOTE: d=-1 or 0, is very CPU intensive.
         # Gaussian parameters:
-        #  see: https://theailearner.com/tag/cv-gaussianblur/
-        #  see: https://dsp.stackexchange.com/questions/32273/
-        #  how-to-get-rid-of-ripples-from-a-gradient-image-of-a-smoothed-image
+        #  see: https://theailearner.com/2019/05/06/gaussian-blurring/
+        #  see: https://docs.opencv.org/4.x/d4/d13/tutorial_py_filtering.html
+        #  If only sigmaX is specified, sigmaY is taken as the same as sigmaX.
+        #    If both are given as zeros, they are calculated from the kernel size.
+        #    Gaussian blurring is highly effective in removing Gaussian noise
+        #    from an image.
         if filter_selected == 'cv2.blur':
             self.cvimg['filter'] = cv2.blur(
                 src=image2filter,
@@ -601,7 +604,8 @@ class ProcessImage(tk.Tk):
         # self.rw_contours is used in select_and_size() to draw
         #   enclosing circles and calculate sizes of segmented objects.
         # Note: This for loop is much more stable, and in most cases faster,
-        #  than using parallelization methods.
+        #  than using parallelization modules (parallel.py and pool-worker.py
+        #  in utility_modules).
         self.rw_contours.clear()
         for label in np.unique(ar=self.cvimg['segments']):
 
@@ -620,7 +624,7 @@ class ProcessImage(tk.Tk):
                                            mode=cv2.RETR_EXTERNAL,
                                            method=cv2.CHAIN_APPROX_SIMPLE)
 
-            # Add to the list used to draw circles around contours ROI.
+            # Add to the list used to draw, size, export, etc. the RW ROIs.
             self.rw_contours.append(max(contours, key=cv2.contourArea))
 
     def draw_rw_segments(self) -> None:
@@ -1051,21 +1055,26 @@ class ImageViewer(ProcessImage):
         # Once a file is selected, the file dialog is removed, and
         #  start window setup can proceed.
 
-        # As a convenience for user, estimate default scale factor based
-        #  on image size and set that slider accordingly.
-        if self.metrics['img_area'] > 6 * 10e5:
-            self.slider_val['scale'].set(0.25)
+        # As a convenience for user, set a default scale factor to that
+        #  needed for images to fit easily on the screen, either 1/3
+        #  screen px width or 2/3 screen px height, depending
+        #  on input image orientation.
+        _y, _x = self.metrics['gray_img'].shape
+        if _x >= _y:
+            default_scale = round((self.winfo_screenwidth() * 0.33) / _x, 2)
         else:
-            self.slider_val['scale'].set(0.5)
+            default_scale = round((self.winfo_screenheight() * 0.66) / _y, 2)
+
+        self.slider_val['scale'].set(default_scale)
 
         # Finally, give start window its active title,...
         start_win.title('Set start parameters')
 
-        # ...fill in header with input path and pixel dimensions,...
+        # ...fill in window header with input path and pixel dimensions,...
         file_label.config(text=f'Image: {self.input_file}\n'
                                f'size:{self.cvimg["gray"].shape[0]}x{self.cvimg["gray"].shape[1]}')
 
-        # ...and now all widgets are active.
+        # ...and make all widgets active.
         scale_label.config(state=tk.NORMAL)
         color_label.config(state=tk.NORMAL)
         color_msg_lbl.config(state=tk.NORMAL)
@@ -2459,7 +2468,7 @@ class ImageViewer(ProcessImage):
         else:
             size_std_size: str = const.SIZE_STANDARDS[size_std]
 
-        # Size units are mm for the preset size standards.
+        # Size units are millimeters for the preset size standards.
         unit = 'unknown unit' if size_std in 'None, Custom' else 'mm'
 
         # Work up some summary metrics with correct number of sig. fig.
@@ -2548,7 +2557,7 @@ class ImageViewer(ProcessImage):
         if not self.first_run:
             _info = ('\nPreprocessing completed.\n'
                      'Click "Run..." to update the report and the\n'
-                     '"Size-selected.." and "Segmented objects" images.\n\n')
+                     '"Size-selected.." and "Segmented objects" windows.\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
 
