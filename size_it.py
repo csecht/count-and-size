@@ -520,7 +520,7 @@ class ProcessImage(tk.Tk):
     def draw_ws_segments(self) -> None:
         """
         Find and draw contours for watershed basin segments.
-        Called from process_all() with a watershed_segmentation() arg.
+        Called from process() with a watershed_segmentation() arg.
         Calls update_image().
 
         Returns: None
@@ -783,14 +783,15 @@ class ImageViewer(ProcessImage):
             'export': ttk.Button(),
         }
 
-        self.screen_width = self.winfo_screenwidth()
+        # Screen pixel width is defined in manage_main_window()
+        self.screen_width: int = 0
 
-        # The watershed algorithm, 'ws' is used as startup default.
-        self.segment_algorithm = 'ws'
+        # The watershed algorithm, 'ws', is defined for a default in start_now().
+        self.segment_algorithm: str = ''
 
         # Flag for user's choice of segment export type.
         self.export_segment: bool = True
-        self.export_hull = False
+        self.export_hull: bool = False
 
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
@@ -831,6 +832,8 @@ class ImageViewer(ProcessImage):
 
         # Deiconify in display_windows(), but hide for now.
         self.wm_withdraw()
+
+        self.screen_width = self.winfo_screenwidth()
 
         # Make geometry offset a function of the screen width.
         #  This is needed b/c of the way different platforms' window
@@ -953,7 +956,7 @@ class ImageViewer(ProcessImage):
                                      value=True,
                                      variable=self.do_inverse_th,
                                      **const.RADIO_PARAMETERS)
-        inverse_no = tk.Radiobutton(start_win,
+        inverse_no = tk.Radiobutton(master=start_win,
                                     text='No',
                                     value=False,
                                     variable=self.do_inverse_th,
@@ -971,7 +974,7 @@ class ImageViewer(ProcessImage):
         start_win.config(menu=menubar)
 
         os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
-        file = tk.Menu(self.master, tearoff=0)
+        file = tk.Menu(master=self.master, tearoff=0)
         menubar.add_cascade(label=utils.program_name(), menu=file)
         file.add_command(label='Process now',
                          command=_call_start,
@@ -1104,6 +1107,9 @@ class ImageViewer(ProcessImage):
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
+
+        # The watershed algorithm, 'ws', is used as the startup default.
+        self.segment_algorithm = 'ws'
 
         # Call last preprocess(), process(), config_annotations() and
         # display_windows(), in this sequence, for best performance.
@@ -1408,7 +1414,7 @@ class ImageViewer(ProcessImage):
                                    pady=2,
                                    sticky=tk.W)
 
-        # Need to use cross-platform relative padding.
+        # Need to use cross-platform relative padding for widgets in same rows.
         self.update()
         processws_padx = (self.button['process_ws'].winfo_reqwidth() + 20, 0)
         export_padx = (self.button['export'].winfo_reqwidth() + 20, 0)
@@ -1534,8 +1540,8 @@ class ImageViewer(ProcessImage):
                                                        'maximum pixels:',
                                                   **const.LABEL_PARAMETERS)
 
-        # Note: may need to adjust c_lim scaling with image size b/c
-        #   large contours cannot be selected if max limit is too small.
+        # Note: may need to adjust circle_r_min scaling with image size b/c
+        #   large contours cannot be selected if circle_r_max is too small.
         circle_r_min = self.metrics['max_circle_r'] // 8
         circle_r_max = self.metrics['max_circle_r']
         self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
@@ -1550,7 +1556,7 @@ class ImageViewer(ProcessImage):
         # To avoid processing all the intermediate values between normal
         #  slider movements, bind sliders to call functions only on
         #  left button release.
-        # Most are bound to preprocess(); process_all() is initiated
+        # Most are bound to preprocess(); process() is initiated
         #  only with a Button(). To speed program responsiveness when
         #  changing the size range, only the sizing and reporting methods
         #  are called on mouse button release.
@@ -1639,8 +1645,8 @@ class ImageViewer(ProcessImage):
                                      **const.COMBO_PARAMETERS)
 
         # Now bind functions to all Comboboxes.
-        # Note that the isinstance() condition isn't needed for
-        # performance; it just clarifies the bind intention.
+        # Note that the isinstance() Label condition isn't needed for
+        # performance, it just clarifies the bind intention.
         for _name, _w in self.cbox.items():
             if isinstance(_w, tk.Label):
                 continue
@@ -2419,12 +2425,12 @@ class ImageViewer(ProcessImage):
         Write the current settings and cv metrics in a Text widget of
         the report_frame. Same text is printed in Terminal from "Save"
         button.
-        Called from process_all(), process_sizes(), __init__.
+        Called from process(), process_sizes(), __init__.
         Returns:
             None
         """
 
-        # Note: recall that *_val dict are inherited from ProcessImage().
+        # Note: recall that *_val dictionaries are inherited from ProcessImage().
         px_w, px_h = self.cvimg['gray'].shape
         alpha: float = self.slider_val['alpha'].get()
         beta: int = self.slider_val['beta'].get()
