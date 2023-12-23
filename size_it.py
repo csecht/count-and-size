@@ -783,6 +783,8 @@ class ImageViewer(ProcessImage):
             'export': ttk.Button(),
         }
 
+        self.screen_width = self.winfo_screenwidth()
+
         # The watershed algorithm, 'ws' is used as startup default.
         self.segment_algorithm = 'ws'
 
@@ -833,7 +835,7 @@ class ImageViewer(ProcessImage):
         # Make geometry offset a function of the screen width.
         #  This is needed b/c of the way different platforms' window
         #  managers position windows.
-        w_offset = int(self.winfo_screenwidth() * 0.55)
+        w_offset = int(self.screen_width * 0.55)
         self.geometry(f'+{w_offset}+0')
         self.wm_minsize(width=450, height=450)
 
@@ -920,7 +922,7 @@ class ImageViewer(ProcessImage):
                                 resolution=0.05,
                                 tickinterval=0.2,
                                 variable=self.slider_val['scale'],
-                                length=int(self.winfo_screenwidth() * 0.2),
+                                length=int(self.screen_width * 0.2),
                                 **const.SCALE_PARAMETERS)
 
         # Unicode arrow symbols: left \u2190, up \u2101, down \u2193
@@ -1061,7 +1063,7 @@ class ImageViewer(ProcessImage):
         #  on input image orientation.
         _y, _x = self.metrics['gray_img'].shape
         if _x >= _y:
-            default_scale = round((self.winfo_screenwidth() * 0.33) / _x, 2)
+            default_scale = round((self.screen_width * 0.33) / _x, 2)
         else:
             default_scale = round((self.winfo_screenheight() * 0.66) / _y, 2)
 
@@ -1408,11 +1410,11 @@ class ImageViewer(ProcessImage):
 
         # Need to use cross-platform relative padding.
         self.update()
-        process_padx = (self.button['process_ws'].winfo_reqwidth() + 20, 0)
+        processws_padx = (self.button['process_ws'].winfo_reqwidth() + 20, 0)
         export_padx = (self.button['export'].winfo_reqwidth() + 20, 0)
 
         self.button['process_rw'].grid(column=0, row=2,
-                                       padx=process_padx,
+                                       padx=processws_padx,
                                        pady=(0, 2),
                                        sticky=tk.W)
         self.button['save'].grid(column=0, row=3,
@@ -1437,7 +1439,7 @@ class ImageViewer(ProcessImage):
         #  for a single Scale widget that is sufficient to fit everything
         #  in the Frame given current padding parameters. Need to use only
         #  for one Scale() in each Toplevel().
-        scale_len = int(self.winfo_screenwidth() * 0.25)
+        scale_len = int(self.screen_width * 0.25)
 
         def _need_to_click(event=None):
             """
