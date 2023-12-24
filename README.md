@@ -60,7 +60,7 @@ Image file examples provided in the `images/examples` folder of this distributio
 * sample5.jpg (sample4 oysters, backlit, 898x630, 77 kB)
 
 ### Requirements:
-Python 3.7 or later, plus the packages OpenCV-Python, NumPy, scikit-image, SciPy, and tkinter (Tk/Tcl).
+Python 3.7 or later, plus the packages OpenCV-Python, NumPy, scikit-image, SciPy, pyAMG, and tkinter (Tk/Tcl). See Known Issues, below regarding pyAMG.
 
 For quick installation of the required Python PIP packages:
 from the downloaded GitHub repository folder, run this command
