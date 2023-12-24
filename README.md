@@ -83,7 +83,7 @@ Currently supported image file types are JPG, PNG, and TIFF.
 
 ![opening_screenshot.png](images/opening_screenshot.png)
 
-Once a file is selected, basic run parameters are set in a new pop-up window. The scale slider determines the screen size of the processed image windows. Available annotation colors are: blue, orange, sky blue, blueish green, vermilion, reddish purple, yellow, black, white, red, and green. All but red and green should be suitable for users with deuteranopia. The inverse selections are for the kind of object vs. background contrast the image has: "No" for light are dark, "Yes" for dark on light. This determines the initial cv2.threshold type, but can be changed later, if needed, in the main settings.
+Once a file is selected, basic run parameters are set in a new pop-up window. The scale slider determines the displayed size of the processed image windows. A scale value is automatically determined based on the size of your selected file, but you can change it as desired. Available annotation colors are: blue, orange, sky blue, blueish green, vermilion, reddish purple, yellow, black, white, red, and green. All but red and green should be suitable for users with deuteranopia. The "INVERSE" selections are for the kind of object vs. background contrast the image has: "No" for light-on-dark, "Yes" for dark-on-light. This determines the initial cv2.threshold type, but can be changed later, if needed, in the main settings.
 
 ![initial settings screenshot](images/initial_settings_screenshot.png)
 
