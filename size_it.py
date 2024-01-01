@@ -397,6 +397,7 @@ class ProcessImage(tk.Tk):
         Returns:
             None
         """
+
         th_type: int = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
         filter_k = self.slider_val['filter_k'].get()
         noise_iter = self.slider_val['noise_iter'].get()
@@ -406,9 +407,10 @@ class ProcessImage(tk.Tk):
         # Note from doc: Currently, the Otsu's and Triangle methods
         #   are implemented only for 8-bit single-channel images.
         #   For other cv2.THRESH_*, thresh needs to be manually provided.
-        # Convert values above thresh to a maxval of 255, white.
         # The thresh parameter is determined automatically (0 is placeholder).
-        # Need to use type *_INVERSE for black on white images.
+        # Convert values above thresh to a maxval of 255, white.
+        # Need to use type *_INVERSE for black-on-white images.
+
         if filter_k == 0 and noise_iter == 0:
             image2threshold = self.cvimg['contrast']
         elif filter_k == 0:
@@ -421,10 +423,10 @@ class ProcessImage(tk.Tk):
                                                 maxval=255,
                                                 type=th_type)
 
-        # Calculate the distance transform of the input, by replacing each
-        #   foreground (non-zero) element, with its shortest distance to
-        #   the background (any zero-valued element).
-        #   Returns a float64 ndarray.
+        # Calculate the distance transform of the objects' thresholds,
+        #  by replacing each foreground (non-zero) element, with its
+        #  shortest distance to the background (any zero-valued element).
+        #  Returns a float64 ndarray.
         # Note that maskSize=0 calculates the precise mask size only for
         #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
         self.cvimg['dist_trans']: np.ndarray = cv2.distanceTransform(
@@ -471,7 +473,7 @@ class ProcessImage(tk.Tk):
         # Set background to True (not zero: True or 1)
         mask[tuple(local_max.T)] = True
 
-        # Note that markers are single px, colored in grayscale by their label index?
+        # Note that markers are single px, colored in grayscale by their label index.
         labeled_array, self.num_dt_segments = ndimage.label(input=mask)
 
         # Source: http://scipy-lectures.org/packages/scikit-image/index.html
@@ -488,9 +490,9 @@ class ProcessImage(tk.Tk):
 
     def watershed_segmentation(self, array: int) -> None:
         """
-        Segment objects with skimage.feature.peak_local_max() and
-        skimage.segmentation.random_walker().
-        Argument *array* calls the make_labeled_array() method.
+        Segment objects with skimage.segmentation.watershed().
+        Argument *array* calls the make_labeled_array() method that
+        returns a labeled array.
         Called from process().
 
         Args:
@@ -573,9 +575,9 @@ class ProcessImage(tk.Tk):
 
     def randomwalk_segmentation(self, array: int) -> None:
         """
-        Segment objects with skimage.feature.peak_local_max() and
-        skimage.segmentation.random_walker().
-        Argument *array* calls the make_labeled_array() method.
+        Segment objects with skimage.segmentation.random_walker().
+        Argument *array* calls the make_labeled_array() method that
+        returns a labeled array.
         Called from process().
 
         Args:
