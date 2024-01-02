@@ -1707,6 +1707,7 @@ class ImageViewer(ProcessImage):
             for _, _w in self.size_std.items():
                 if not isinstance(_w, tk.StringVar):
                     _w.configure(state=tk.DISABLED)
+
             self.config(cursor='watch')
             self.update()
         else:  # is 'on'
@@ -2240,7 +2241,8 @@ class ImageViewer(ProcessImage):
                 continue
 
             # Draw a circle enclosing the contour, measure its diameter,
-            #  and save each object_size measurement to a list for reporting.
+            #  and save each object_size measurement to the selected_sizes
+            #  list for reporting.
             ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
 
             # Note: sizes are full-length floats.
@@ -2252,8 +2254,8 @@ class ImageViewer(ProcessImage):
                                                   precision=self.num_sigfig)
 
             # Convert size strings to float, assuming that individual
-            #  sizes listed in the report will be used in a spreadsheet
-            #  or other statistical analysis.
+            #  sizes listed in the report may be used in a spreadsheet
+            #  or for other statistical analysis.
             selected_sizes.append(float(size2display))
 
             # Need to properly center text in the circled object.
@@ -2562,8 +2564,7 @@ class ImageViewer(ProcessImage):
         self.set_size_standard()
         self.report_results()
 
-        # Var first_run is reset to False in process_ws_and_sizes()
-        #  during the initial run.
+        # Var first_run is reset to False in process() at startup.
         if not self.first_run:
             _info = ('\nPreprocessing completed.\n'
                      'Click "Run..." to update the report and the\n'
