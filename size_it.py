@@ -99,6 +99,8 @@ from utility_modules import (vcheck,
                              constants as const,
                              to_precision as to_p)
 
+PROGRAM_NAME = utils.program_name()
+
 
 class ProcessImage(tk.Tk):
     """
@@ -2669,27 +2671,41 @@ class ImageViewer(ProcessImage):
         return event
 
 
-if __name__ == "__main__":
-    # Program exits if any module check fails or if the argument
-    #  --about is used, which prints 'about' info, then exits.
-    # check_platform() also enables display scaling on Windows.
+def run_checks() -> None:
+    """
+    Check system, versions, and command line arguments.
+    Program exits if any critical check fails or if the argument
+    --about is used, which prints 'about' info, then exits.
+    Module check_platform() also enables display scaling on Windows.
+
+    Returns:
+            None
+    """
     utils.check_platform()
 
-    # NOTE: Comment out these three calls when running PyInstaller.
     vcheck.minversion('3.7')
     vcheck.maxversion('3.11')
     manage.arguments()
 
+
+if __name__ == "__main__":
+
+    # NOTE: Comment out this call when running PyInstaller.
+    run_checks()
+
     try:
-        print(f'{utils.program_name()} has launched...')
+        print(f'{PROGRAM_NAME} has launched...')
         app = ImageViewer()
-        app.title(f'{utils.program_name()} Report & Settings')
+        app.title(f'{PROGRAM_NAME} Report & Settings')
+
+        # The custom app icon is expected to be in the repository images folder.
         try:
             icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
             app.wm_iconphoto(True, icon)
         except tk.TclError as err:
             print('Cannot display program icon, so it will be blank or the tk default.')
             print(f'tk error message: {err}')
+
         app.mainloop()
     except KeyboardInterrupt:
         print('*** User quit the program from Terminal command line. ***\n')
