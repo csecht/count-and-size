@@ -2028,11 +2028,13 @@ class ImageViewer(ProcessImage):
 
         # Do not specify the image array in this binding, but instead
         #  specify in _on_click_save_img() function so that the current image
-        #  is saved. Use update() to ensure that the label image is current.
+        #  is saved.
         for img_name, label in self.img_label.items():
-            self.update()
             label.bind(rt_click,
                        lambda _, n=img_name: _on_click_save_img(image_name=n))
+
+        # Update to ensure that the label images are current.
+        self.update()
 
         # Now is time to show the mainloop (self) settings window that was
         #   hidden in manage_main_window().
