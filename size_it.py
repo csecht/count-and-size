@@ -1385,6 +1385,8 @@ class ImageViewer(ProcessImage):
         def _new_input():
             """Parameter self ('app'), the mainloop Toplevel."""
             self.open_input(toplevel=self)
+            self.update_image(img_name='input',
+                              img_array=self.cvimg['input'])
             self.preprocess()
             self.report_results()
             _info = ('\nA new input file has been preprocessed.\n'
