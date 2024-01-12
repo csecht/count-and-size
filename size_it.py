@@ -2118,7 +2118,7 @@ class ImageViewer(ProcessImage):
         # Set/Reset Combobox widgets.
         self.cbox['morphop'].current(0)  # 'cv2.MORPH_OPEN' == 2
         self.cbox['morphshape'].current(2)  # 'cv2.MORPH_ELLIPSE' == 2
-        self.cbox['filter'].current(0)  # 'cv2.blur' == 0, cv2 default
+        self.cbox['filter'].current(1)  # 'cv2.bilateralFilter'
         self.cbox['dt_type'].current(1)  # 'cv2.DIST_L2' == 2
         self.cbox['dt_mask_size'].current(1)  # '3' == cv2.DIST_MASK_3
         self.cbox['ws_connect'].current(1)  # '4'
