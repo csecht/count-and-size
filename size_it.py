@@ -676,10 +676,11 @@ class ImageViewer(ProcessImage):
     Methods:
     manage_main_window
     setup_start_window
+    open_input
     start_now
     setup_image_windows
     configure_main_window
-    show_size_std_info
+    show_info_msg
     setup_buttons
     config_sliders
     config_comboboxes
@@ -780,11 +781,12 @@ class ImageViewer(ProcessImage):
         }
 
         self.button = {
-            'reset': ttk.Button(),
-            'save': ttk.Button(),
             'process_ws': ttk.Button(),
             'process_rw': ttk.Button(),
+            'save': ttk.Button(),
+            'open': ttk.Button(),
             'export': ttk.Button(),
+            'reset': ttk.Button(),
         }
 
         # Screen pixel width is defined in manage_main_window()
@@ -916,7 +918,7 @@ class ImageViewer(ProcessImage):
 
         # Window widgets:
         # Provide a placeholder window header for input file info.
-        file_label = tk.Label(
+        window_header = tk.Label(
             master=start_win,
             text='Image: waiting to be selected...\nSize: TBD',
             **const.LABEL_PARAMETERS)
@@ -1008,8 +1010,7 @@ class ImageViewer(ProcessImage):
         # Grid start win widgets; sorted by row.
         padding = dict(padx=5, pady=5)
 
-        file_label.grid(row=0, column=0,
-                        **padding, columnspan=2, sticky=tk.EW)
+        window_header.grid(row=0, column=0, **padding, columnspan=2, sticky=tk.EW)
 
         scale_label.grid(row=1, column=0, **padding, sticky=tk.E)
         scale_slider.grid(row=1, column=1, **padding, sticky=tk.W)
@@ -1041,8 +1042,34 @@ class ImageViewer(ProcessImage):
         # For macOS: Need to have the filedialog be a child of
         #   start_win and need update() here.
         self.update()
+        self.open_input(toplevel=start_win)
+
+        # Finally, give start window its active title,...
+        start_win.title('Set start parameters')
+
+        # ...fill in window header with input path and pixel dimensions,...
+        window_header.config(text=f'Image: {self.input_file}\n'
+                             f'size:{self.cvimg["gray"].shape[0]}x{self.cvimg["gray"].shape[1]}')
+
+        # ...and make all widgets active.
+        scale_label.config(state=tk.NORMAL)
+        color_label.config(state=tk.NORMAL)
+        color_msg_lbl.config(state=tk.NORMAL)
+        inverse_label.config(state=tk.NORMAL)
+
+    def open_input(self, toplevel) -> None:
+        """
+        Provides an open file dialog to select an initial or new input
+        image file. Also sets a scale slider value for the displayed img.
+        Called from setup_start_window() or "Open" button in main (app, self).
+        Args:
+            toplevel: The Toplevel window over which to place the dialog.
+
+        Returns: None
+
+        """
         self.input_file = filedialog.askopenfilename(
-            parent=start_win,
+            parent=toplevel,
             title='Select input image',
             filetypes=[('JPG', '*.jpg'),
                        ('JPG', '*.jpeg'),
@@ -1053,16 +1080,17 @@ class ImageViewer(ProcessImage):
                        ('All', '*.*')],
         )
 
+        # When user selects an input, open it, and proceed, but if
+        #  user selects "Cancel", then quit if in start window, otherwise
+        #  simply close the filedialog (default action) because it was
+        #  called from the "Open" button in the mainloop window (app, self).
         if self.input_file:
             self.cvimg['input'] = cv2.imread(self.input_file)
             self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
                                               code=cv2.COLOR_RGBA2GRAY)
             self.metrics = manage.input_metrics(img=self.cvimg['input'])
-        else:  # User has closed the filedialog window instead of selecting a file.
+        elif toplevel != self:
             utils.quit_gui(mainloop=self)
-
-        # Once a file is selected, the file dialog is removed, and
-        #  start window setup can proceed.
 
         # As a convenience for user, set a default scale factor to that
         #  needed for images to fit easily on the screen, either 1/3
@@ -1070,24 +1098,11 @@ class ImageViewer(ProcessImage):
         #  on input image orientation.
         _y, _x = self.metrics['gray_img'].shape
         if _x >= _y:
-            default_scale = round((self.screen_width * 0.33) / _x, 2)
+            estimated_scale = round((self.screen_width * 0.33) / _x, 2)
         else:
-            default_scale = round((self.winfo_screenheight() * 0.66) / _y, 2)
+            estimated_scale = round((self.winfo_screenheight() * 0.66) / _y, 2)
 
-        self.slider_val['scale'].set(default_scale)
-
-        # Finally, give start window its active title,...
-        start_win.title('Set start parameters')
-
-        # ...fill in window header with input path and pixel dimensions,...
-        file_label.config(text=f'Image: {self.input_file}\n'
-                               f'size:{self.cvimg["gray"].shape[0]}x{self.cvimg["gray"].shape[1]}')
-
-        # ...and make all widgets active.
-        scale_label.config(state=tk.NORMAL)
-        color_label.config(state=tk.NORMAL)
-        color_msg_lbl.config(state=tk.NORMAL)
-        inverse_label.config(state=tk.NORMAL)
+        self.slider_val['scale'].set(estimated_scale)
 
     def start_now(self) -> None:
         """
@@ -1103,7 +1118,7 @@ class ImageViewer(ProcessImage):
         #  simultaneously for a visually cleaner start.
         self.setup_image_windows()
         self.configure_main_window()
-        self.show_size_std_info()
+        self.show_info_msg()
         self.setup_buttons()
         self.config_sliders()
         self.config_comboboxes()
@@ -1293,13 +1308,12 @@ class ImageViewer(ProcessImage):
         #  display_windows() after all image windows so that, at startup,
         #  it stacks on top.
 
-    def show_size_std_info(self) -> None:
+    def show_info_msg(self) -> None:
         """
         Informative note at bottom of settings (mainloop) window about
-        the displayed size units. The Label text is also re-configured
-        to display other informational messages.
-        Called from __init__, but label is conditionally reconfigured in
-        PI.watershed_segmentation()
+        the displayed size units and other information for user actions.
+        Called from __init__, but info_label is configured in numerous
+        methods.
 
         Returns: None
         """
@@ -1323,6 +1337,14 @@ class ImageViewer(ProcessImage):
         manage.ttk_styles(mainloop=self)
 
         _folder = str(Path(self.input_file).parent)
+
+        def _run_watershed():
+            self.segment_algorithm = 'ws'
+            self.process()
+
+        def _run_randomwalker():
+            self.segment_algorithm = 'rw'
+            self.process()
 
         def _save():
             """
@@ -1360,6 +1382,16 @@ class ImageViewer(ProcessImage):
                      f'{utils.valid_path_to(_folder)}\n\n')
             self.info_txt.set(_info)
 
+        def _new_input():
+            """Parameter self ('app'), the mainloop Toplevel."""
+            self.open_input(toplevel=self)
+            self.preprocess()
+            self.report_results()
+            _info = ('\nA new input file has been preprocessed.\n'
+                     'Click a "Run..." button to update counts and sizes.\n\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            self.info_txt.set(_info)
+
         def _reset():
             """
             Separates setting default values from lengthy process calls,
@@ -1375,24 +1407,6 @@ class ImageViewer(ProcessImage):
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
 
-        def _run_watershed():
-            self.segment_algorithm = 'ws'
-            self.process()
-
-        def _run_randomwalker():
-            self.segment_algorithm = 'rw'
-            self.process()
-
-        self.button['reset'].config(
-            text='Reset settings',
-            command=_reset,
-            style='My.TButton')
-
-        self.button['save'].config(
-            text='Save settings & sized image',
-            command=_save,
-            style='My.TButton')
-
         self.button['process_ws'].config(
             text='Run Watershed',
             command=_run_watershed,
@@ -1403,9 +1417,25 @@ class ImageViewer(ProcessImage):
             command=_run_randomwalker,
             style='My.TButton')
 
-        self.button['export'].configure(
+        self.button['save'].config(
+            text='Save settings & sized image',
+            command=_save,
+            style='My.TButton')
+
+        self.button['open'].config(
+            text='Open',
+            width=0,
+            command=_new_input,
+            style='My.TButton')
+
+        self.button['export'].config(
             text='Export objects',
             command=_export,
+            style='My.TButton')
+
+        self.button['reset'].config(
+            text='Reset settings',
+            command=_reset,
             style='My.TButton')
 
         # Widget griding in the mainloop window.
@@ -1413,6 +1443,10 @@ class ImageViewer(ProcessImage):
                                        padx=10,
                                        pady=(0, 2),
                                        sticky=tk.W)
+        self.button['save'].grid(column=0, row=3,
+                                 padx=10,
+                                 pady=0,
+                                 sticky=tk.W)
         self.button['export'].grid(column=0, row=4,
                                    padx=(10, 0),
                                    pady=2,
@@ -1421,16 +1455,19 @@ class ImageViewer(ProcessImage):
         # Need to use cross-platform relative padding for widgets in same rows.
         self.update()
         processws_padx = (self.button['process_ws'].winfo_reqwidth() + 20, 0)
+        save_padx = (self.button['save'].winfo_reqwidth() + 20, 0)
         export_padx = (self.button['export'].winfo_reqwidth() + 20, 0)
 
         self.button['process_rw'].grid(column=0, row=2,
                                        padx=processws_padx,
                                        pady=(0, 2),
                                        sticky=tk.W)
-        self.button['save'].grid(column=0, row=3,
-                                 padx=10,
-                                 pady=0,
+
+        self.button['open'].grid(column=0, row=3,
+                                 padx=save_padx,
+                                 pady=2,
                                  sticky=tk.W)
+
         self.button['reset'].grid(column=0, row=4,
                                   padx=export_padx,
                                   pady=2,
@@ -2626,7 +2663,7 @@ class ImageViewer(ProcessImage):
                      'decrease number of detected objects will respectively\n'
                      'increase or decrease the processing time.\n')
             self.info_txt.set(_info)
-            self.after(ms=6666, func=self.show_size_std_info)
+            self.after(ms=6666, func=self.show_info_msg)
         else:
             _info = (f'\n{algorithm} segments found and sizes calculated.\n'
                      'Report and windows for segmented and selected objects are updated.\n'
@@ -2638,7 +2675,7 @@ class ImageViewer(ProcessImage):
             #   values are entered.
             if (self.size_std['px_val'].get() == '1' or
                     self.cbox_val['size_std'].get() == 'None'):
-                self.after(ms=4444, func=self.show_size_std_info)
+                self.after(ms=4444, func=self.show_info_msg)
 
     def process_sizes(self, event=None) -> None:
         """
@@ -2668,7 +2705,7 @@ class ImageViewer(ProcessImage):
         #  display the size standards instructions.
         if (self.size_std['px_val'].get() == '1' or
                 self.cbox_val['size_std'].get() == 'None'):
-            self.after(ms=4444, func=self.show_size_std_info)
+            self.after(ms=4444, func=self.show_info_msg)
 
         return event
 
