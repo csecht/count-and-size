@@ -1338,6 +1338,7 @@ class ImageViewer(ProcessImage):
 
         _folder = str(Path(self.input_file).parent)
 
+        # These inner functions are used for Button commands.
         def _run_watershed():
             self.segment_algorithm = 'ws'
             self.process()
@@ -1347,9 +1348,6 @@ class ImageViewer(ProcessImage):
             self.process()
 
         def _save():
-            """
-            A Button kw "command" caller to avoid messy lambda statements.
-            """
             _sizes = ', '.join(str(i) for i in self.sorted_size_list)
             utils.save_settings_and_img(
                 input_path=self.input_file,
@@ -1383,7 +1381,6 @@ class ImageViewer(ProcessImage):
             self.info_txt.set(_info)
 
         def _new_input():
-            """Parameter self ('app'), the mainloop Toplevel."""
             self.open_input(toplevel=self)
             self.update_image(img_name='input',
                               img_array=self.cvimg['input'])
@@ -1395,16 +1392,12 @@ class ImageViewer(ProcessImage):
                          '"Size-selected.." and "Segmented objects" windows.\n\n')
                 self.info_label.config(fg=const.COLORS_TK['blue'])
                 self.info_txt.set(_info)
-            else:
+            else:  # user clicked "Cancel" in file dialog.
                 _info = '\n\nNo new input file was selected.\n\n\n'
                 self.info_label.config(fg=const.COLORS_TK['blue'])
                 self.info_txt.set(_info)
 
-        def _reset():
-            """
-            Separates setting default values from lengthy process calls,
-            thus shortening response time.
-            """
+        def _reset_to_default_settings():
             self.slider_values.clear()
             self.set_defaults()
             self.widget_control('off')  # is turned 'on' in preprocess().
@@ -1415,40 +1408,43 @@ class ImageViewer(ProcessImage):
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
 
+        # Configure all items in the dictionary of ttk buttons.
+        button_params = dict(
+            width=0,
+            style='My.TButton',
+        )
+
         self.button['process_ws'].config(
             text='Run Watershed',
             command=_run_watershed,
-            style='My.TButton')
+            **button_params)
 
         self.button['process_rw'].config(
             text='Run Random Walker',
             command=_run_randomwalker,
-            style='My.TButton')
+            **button_params)
 
         self.button['save'].config(
             text='Save settings & sized image',
             command=_save,
-            style='My.TButton')
+            **button_params)
 
         self.button['open'].config(
             text='Open...',
-            width=0,
             command=_new_input,
-            style='My.TButton')
+            **button_params)
 
         self.button['export'].config(
             text='Export...',
-            width=0,
             command=_export,
-            style='My.TButton')
+            **button_params)
 
         self.button['reset'].config(
             text='Reset',
-            width=0,
-            command=_reset,
-            style='My.TButton')
+            command=_reset_to_default_settings,
+            **button_params)
 
-        # Widget griding in the mainloop window.
+        # Grid buttons in the mainloop (settings) window.
         self.button['process_ws'].grid(column=0, row=2,
                                        padx=10,
                                        pady=(0, 2),
@@ -1462,13 +1458,13 @@ class ImageViewer(ProcessImage):
                                    pady=2,
                                    sticky=tk.W)
 
-        # Need to use cross-platform relative padding for widgets in same rows.
+        # Need to use cross-platform relative padding for buttons in same rows.
         self.update()
-        export_w = self.button['export'].winfo_reqwidth()
-        process_ws_padx = (self.button['process_ws'].winfo_reqwidth() + 20, 0)
+        export_w: int = self.button['export'].winfo_reqwidth()
+        process_rw_padx = (self.button['process_ws'].winfo_reqwidth() + 20, 0)
 
         self.button['process_rw'].grid(column=0, row=2,
-                                       padx=process_ws_padx,
+                                       padx=process_rw_padx,
                                        pady=(0, 2),
                                        sticky=tk.W)
 
