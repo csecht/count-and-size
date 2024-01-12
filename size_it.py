@@ -1389,10 +1389,16 @@ class ImageViewer(ProcessImage):
                               img_array=self.cvimg['input'])
             self.preprocess()
             self.report_results()
-            _info = ('\nA new input file has been preprocessed.\n'
-                     'Click a "Run..." button to update counts and sizes.\n\n\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            self.info_txt.set(_info)
+            if self.input_file:
+                _info = ('\nA new input file has been preprocessed.\n'
+                         'Click "Run..." to update the report and the\n'
+                         '"Size-selected.." and "Segmented objects" windows.\n\n')
+                self.info_label.config(fg=const.COLORS_TK['blue'])
+                self.info_txt.set(_info)
+            else:
+                _info = '\n\nNo new input file was selected.\n\n\n'
+                self.info_label.config(fg=const.COLORS_TK['blue'])
+                self.info_txt.set(_info)
 
         def _reset():
             """
@@ -1425,18 +1431,20 @@ class ImageViewer(ProcessImage):
             style='My.TButton')
 
         self.button['open'].config(
-            text='Open',
+            text='Open...',
             width=0,
             command=_new_input,
             style='My.TButton')
 
         self.button['export'].config(
-            text='Export objects',
+            text='Export...',
+            width=0,
             command=_export,
             style='My.TButton')
 
         self.button['reset'].config(
-            text='Reset settings',
+            text='Reset',
+            width=0,
             command=_reset,
             style='My.TButton')
 
@@ -1456,22 +1464,21 @@ class ImageViewer(ProcessImage):
 
         # Need to use cross-platform relative padding for widgets in same rows.
         self.update()
-        processws_padx = (self.button['process_ws'].winfo_reqwidth() + 20, 0)
-        save_padx = (self.button['save'].winfo_reqwidth() + 20, 0)
-        export_padx = (self.button['export'].winfo_reqwidth() + 20, 0)
+        export_w = self.button['export'].winfo_reqwidth()
+        process_ws_padx = (self.button['process_ws'].winfo_reqwidth() + 20, 0)
 
         self.button['process_rw'].grid(column=0, row=2,
-                                       padx=processws_padx,
+                                       padx=process_ws_padx,
                                        pady=(0, 2),
                                        sticky=tk.W)
 
-        self.button['open'].grid(column=0, row=3,
-                                 padx=save_padx,
+        self.button['open'].grid(column=0, row=4,
+                                 padx=(export_w + 30, 0),
                                  pady=2,
                                  sticky=tk.W)
 
         self.button['reset'].grid(column=0, row=4,
-                                  padx=export_padx,
+                                  padx=(export_w * 3, 0),
                                   pady=2,
                                   sticky=tk.W)
 
