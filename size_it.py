@@ -1588,7 +1588,7 @@ class ImageViewer(ProcessImage):
 
         # Note: may need to adjust circle_r_min scaling with image size b/c
         #   large contours cannot be selected if circle_r_max is too small.
-        circle_r_min = self.metrics['max_circle_r'] // 8
+        circle_r_min = self.metrics['max_circle_r'] // 6
         circle_r_max = self.metrics['max_circle_r']
         self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
                                               tickinterval=circle_r_min / 10,
