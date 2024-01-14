@@ -1104,6 +1104,21 @@ class ImageViewer(ProcessImage):
 
         self.slider_val['scale'].set(estimated_scale)
 
+        if not self.first_run:
+            # Note: these following configurations are copied from config_sliders()
+            #  and are needed here to re-set the slider ranges for a new image.
+            #  BE SURE that the denominator for circle_r_min matches here and there.
+            circle_r_min = self.metrics['max_circle_r'] // 6
+            circle_r_max = self.metrics['max_circle_r']
+            self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
+                                                  tickinterval=circle_r_min / 10,
+                                                  variable=self.slider_val['circle_r_min'],
+                                                  **const.SCALE_PARAMETERS)
+            self.slider['circle_r_max'].configure(from_=1, to=circle_r_max,
+                                                  tickinterval=circle_r_max / 10,
+                                                  variable=self.slider_val['circle_r_max'],
+                                                  **const.SCALE_PARAMETERS)
+
     def start_now(self) -> None:
         """
         Initiate the processing pipeline by setting up and configuring
@@ -1587,7 +1602,9 @@ class ImageViewer(ProcessImage):
                                                   **const.LABEL_PARAMETERS)
 
         # Note: may need to adjust circle_r_min scaling with image size b/c
-        #   large contours cannot be selected if circle_r_max is too small.
+        #  large contours cannot be selected if circle_r_max is too small.
+        #  Note: This is re-run in open_input() to adjust ranges for new input.
+        #  If change the circle_r_min denominator here, also change it there.
         circle_r_min = self.metrics['max_circle_r'] // 6
         circle_r_max = self.metrics['max_circle_r']
         self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
