@@ -689,6 +689,7 @@ class ImageViewer(ProcessImage):
     config_annotations
     grid_widgets
     grid_img_labels
+    _on_click_save_img
     display_windows
     set_defaults
     validate_px_size_entry
@@ -2035,6 +2036,29 @@ class ImageViewer(ProcessImage):
 
         self.img_label['sized'].grid(**const.PANEL_LEFT)
 
+    def _on_click_save_img(self, image_name):
+        """
+        Save a window image (Label) that was rt-clicked.
+        Called only from display_windows() for a keybinding.
+        """
+        tkimg = self.tkimg[image_name]
+
+        click_info = (f'The displayed {image_name} image was saved at'
+                      f' {self.slider_val["scale"].get()} scale.')
+
+        utils.save_settings_and_img(input_path=self.input_file,
+                                    img2save=tkimg,
+                                    txt2save=click_info,
+                                    caller=image_name)
+
+        # Provide user with a notice that a file was created and
+        #  give user time to read the message before resetting it.
+        folder = str(Path(self.input_file).parent)
+        _info = (f'\nThe result image, "{image_name}", was saved to:\n'
+                 f'{utils.valid_path_to(folder)},\n'
+                 'with a timestamp.\n\n')
+        self.info_txt.set(_info)
+
     def display_windows(self) -> None:
         """
         Ready all image window for display. Show the input image in its window.
@@ -2062,35 +2086,15 @@ class ImageViewer(ProcessImage):
         self.update_image(img_name='input',
                           img_array=self.cvimg['input'])
 
-        def _on_click_save_img(image_name):
-            """Save the current window image (Label) that was rt-clicked."""
-            tkimg = self.tkimg[image_name]
-
-            click_info = (f'The displayed {image_name} image was saved at'
-                          f' {self.slider_val["scale"].get()} scale.')
-
-            utils.save_settings_and_img(input_path=self.input_file,
-                                        img2save=tkimg,
-                                        txt2save=click_info,
-                                        caller=image_name)
-
-            # Provide user with a notice that a file was created and
-            #  give user time to read the message before resetting it.
-            folder = str(Path(self.input_file).parent)
-            _info = (f'\nThe result image, "{image_name}", was saved to:\n'
-                     f'{utils.valid_path_to(folder)},\n'
-                     'with a timestamp.\n\n')
-            self.info_txt.set(_info)
-
         # macOS right mouse button has a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
 
         # Do not specify the image array in this binding, but instead
-        #  specify in _on_click_save_img() function so that the current image
-        #  is saved.
+        #  specify in _on_click_save_img() method so that the current image
+        #  is saved. Bind with to a lambda function, not a direct call to method.
         for img_name, label in self.img_label.items():
             label.bind(rt_click,
-                       lambda _, n=img_name: _on_click_save_img(image_name=n))
+                       lambda _, n=img_name: self._on_click_save_img(image_name=n))
 
         # Update to ensure that the label images are current.
         self.update()
