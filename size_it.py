@@ -2584,7 +2584,7 @@ class ImageViewer(ProcessImage):
         divider = "═" * 20  # divider's unicode_escape: u'\u2550\'
 
         self.report_txt = (
-            f'Image: {self.input_file}\n'
+            f'\nImage: {self.input_file}\n'
             f'Image size: {px_w}x{px_h}\n'
             f'Segmentation algorithm: {algorithm}\n'
             f'{divider}\n'
