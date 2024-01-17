@@ -175,16 +175,9 @@ COLORS_TK = {
     'green':'green1',
 }
 
-# Need tk to match system's default white shade.
-if MY_OS == 'dar':  # macOS
-    COLORS_TK['tk_white'] = 'white'
-elif MY_OS == 'lin':  # Linux (Ubuntu)
-    COLORS_TK['tk_white'] = 'grey85'
-else:  # platform is 'win' Windows (10)
-    COLORS_TK['tk_white'] = 'grey95'
-
 STD_CONTOUR_COLOR = {'green': (0, 255, 0)}
 
+# https://vovkos.github.io/doxyrest-showcase/opencv/sphinx_rtd_theme/enum_cv_HersheyFonts.html
 # 	cv::HersheyFonts {
 #   cv::FONT_HERSHEY_SIMPLEX = 0, # cv2 default
 #   cv::FONT_HERSHEY_PLAIN = 1,
@@ -196,24 +189,29 @@ STD_CONTOUR_COLOR = {'green': (0, 255, 0)}
 #   cv::FONT_HERSHEY_SCRIPT_COMPLEX = 7,
 #   cv::FONT_ITALIC = 16
 # }
-
-# Need to adjust text length across platform's for the cv2.getTextSize()
-# function used in utils.text_array() module.
-# https://vovkos.github.io/doxyrest-showcase/opencv/sphinx_rtd_theme/enum_cv_HersheyFonts.html
 FONT_TYPE = cv2.FONT_HERSHEY_SIMPLEX
 
+# Need platform-specific WIDGET_FONT size for best fit and look.
+# Use platform's default mono font for REPORT_FONT.
+# Need tk to match system's default white shade for COLOR_TK.
 if MY_OS == 'lin':
     WIDGET_FONT = 'TkTooltipFont', 8
+    REPORT_FONT = 'DejaVu Sans Mono', 9
+    COLORS_TK['tk_white'] = 'grey85'
     radio_params = dict(
         fg=COLORS_TK['yellow'],
         activebackground='gray50',  # Default is 'white'.
         activeforeground=COLORS_TK['sky blue'],  # Default is 'black'.
         selectcolor=COLORS_TK['dark blue'])
 elif MY_OS == 'win':
-    WIDGET_FONT = 'TkTooltipFont', 8
+    WIDGET_FONT = 'TkTooltipFont', 7
+    REPORT_FONT = 'Consolas', 9
+    COLORS_TK['tk_white'] = 'grey95'
     radio_params = dict(fg='black')
 else:  # is macOS
     WIDGET_FONT = 'TkTooltipFont', 9
+    REPORT_FONT = 'Andale Mono', 10
+    COLORS_TK['tk_white'] = 'white'
     radio_params = dict(fg='black')
 
 MASTER_BG = 'gray80'

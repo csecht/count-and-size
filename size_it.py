@@ -706,8 +706,8 @@ class ImageViewer(ProcessImage):
     def __init__(self):
         super().__init__()
 
-        self.contour_report_frame = tk.Frame()
-        self.contour_selectors_frame = tk.Frame()
+        self.report_frame = tk.Frame()
+        self.selectors_frame = tk.Frame()
         # self.configure(bg='green')  # for development.
 
         self.do_inverse_th = tk.BooleanVar()
@@ -715,70 +715,70 @@ class ImageViewer(ProcessImage):
         # Note: The matching control variable attributes for the
         #   following selector widgets are in ProcessImage __init__.
         self.slider = {
-            'alpha': tk.Scale(master=self.contour_selectors_frame),
-            'alpha_lbl': tk.Label(master=self.contour_selectors_frame),
+            'alpha': tk.Scale(master=self.selectors_frame),
+            'alpha_lbl': tk.Label(master=self.selectors_frame),
 
-            'beta': tk.Scale(master=self.contour_selectors_frame),
-            'beta_lbl': tk.Label(master=self.contour_selectors_frame),
+            'beta': tk.Scale(master=self.selectors_frame),
+            'beta_lbl': tk.Label(master=self.selectors_frame),
 
-            'noise_k': tk.Scale(master=self.contour_selectors_frame),
-            'noise_k_lbl': tk.Label(master=self.contour_selectors_frame),
+            'noise_k': tk.Scale(master=self.selectors_frame),
+            'noise_k_lbl': tk.Label(master=self.selectors_frame),
 
-            'noise_iter': tk.Scale(master=self.contour_selectors_frame),
-            'noise_iter_lbl': tk.Label(master=self.contour_selectors_frame),
+            'noise_iter': tk.Scale(master=self.selectors_frame),
+            'noise_iter_lbl': tk.Label(master=self.selectors_frame),
 
-            'filter_k': tk.Scale(master=self.contour_selectors_frame),
-            'filter_k_lbl': tk.Label(master=self.contour_selectors_frame),
+            'filter_k': tk.Scale(master=self.selectors_frame),
+            'filter_k_lbl': tk.Label(master=self.selectors_frame),
 
-            'plm_mindist': tk.Scale(master=self.contour_selectors_frame),
-            'plm_mindist_lbl': tk.Label(master=self.contour_selectors_frame),
+            'plm_mindist': tk.Scale(master=self.selectors_frame),
+            'plm_mindist_lbl': tk.Label(master=self.selectors_frame),
 
-            'plm_footprint': tk.Scale(master=self.contour_selectors_frame),
-            'plm_footprint_lbl': tk.Label(master=self.contour_selectors_frame),
+            'plm_footprint': tk.Scale(master=self.selectors_frame),
+            'plm_footprint_lbl': tk.Label(master=self.selectors_frame),
 
-            'circle_r_min': tk.Scale(master=self.contour_selectors_frame),
-            'circle_r_min_lbl': tk.Label(master=self.contour_selectors_frame),
+            'circle_r_min': tk.Scale(master=self.selectors_frame),
+            'circle_r_min_lbl': tk.Label(master=self.selectors_frame),
 
-            'circle_r_max': tk.Scale(master=self.contour_selectors_frame),
-            'circle_r_max_lbl': tk.Label(master=self.contour_selectors_frame),
+            'circle_r_max': tk.Scale(master=self.selectors_frame),
+            'circle_r_max_lbl': tk.Label(master=self.selectors_frame),
         }
 
         self.cbox = {
-            'morphop': ttk.Combobox(master=self.contour_selectors_frame),
-            'morphop_lbl': tk.Label(master=self.contour_selectors_frame),
+            'morphop': ttk.Combobox(master=self.selectors_frame),
+            'morphop_lbl': tk.Label(master=self.selectors_frame),
 
-            'morphshape': ttk.Combobox(master=self.contour_selectors_frame),
-            'morphshape_lbl': tk.Label(master=self.contour_selectors_frame),
+            'morphshape': ttk.Combobox(master=self.selectors_frame),
+            'morphshape_lbl': tk.Label(master=self.selectors_frame),
 
-            'filter': ttk.Combobox(master=self.contour_selectors_frame),
-            'filter_lbl': tk.Label(master=self.contour_selectors_frame),
+            'filter': ttk.Combobox(master=self.selectors_frame),
+            'filter_lbl': tk.Label(master=self.selectors_frame),
 
-            'th_type': ttk.Combobox(master=self.contour_selectors_frame),
-            'th_type_lbl': tk.Label(master=self.contour_selectors_frame),
+            'th_type': ttk.Combobox(master=self.selectors_frame),
+            'th_type_lbl': tk.Label(master=self.selectors_frame),
 
-            'dt_type': ttk.Combobox(master=self.contour_selectors_frame),
-            'dt_type_lbl': tk.Label(master=self.contour_selectors_frame),
+            'dt_type': ttk.Combobox(master=self.selectors_frame),
+            'dt_type_lbl': tk.Label(master=self.selectors_frame),
 
-            'dt_mask_size': ttk.Combobox(master=self.contour_selectors_frame),
-            'dt_mask_size_lbl': tk.Label(master=self.contour_selectors_frame),
+            'dt_mask_size': ttk.Combobox(master=self.selectors_frame),
+            'dt_mask_size_lbl': tk.Label(master=self.selectors_frame),
 
-            'ws_connect': ttk.Combobox(master=self.contour_selectors_frame),
-            'ws_connect_lbl': tk.Label(master=self.contour_selectors_frame),
+            'ws_connect': ttk.Combobox(master=self.selectors_frame),
+            'ws_connect_lbl': tk.Label(master=self.selectors_frame),
 
             # for size standards
-            'size_std_lbl': tk.Label(master=self.contour_selectors_frame),
-            'size_std': ttk.Combobox(master=self.contour_selectors_frame),
+            'size_std_lbl': tk.Label(master=self.selectors_frame),
+            'size_std': ttk.Combobox(master=self.selectors_frame),
         }
 
         # User-entered pixel diameters of selected size standards.
         self.size_std = {
-            'px_entry': tk.Entry(self.contour_selectors_frame),
+            'px_entry': tk.Entry(self.selectors_frame),
             'px_val': tk.StringVar(),
-            'px_lbl': tk.Label(self.contour_selectors_frame),
+            'px_lbl': tk.Label(self.selectors_frame),
 
-            'custom_entry': tk.Entry(self.contour_selectors_frame),
+            'custom_entry': tk.Entry(self.selectors_frame),
             'custom_val': tk.StringVar(),
-            'custom_lbl': tk.Label(self.contour_selectors_frame),
+            'custom_lbl': tk.Label(self.selectors_frame),
         }
 
         self.button = {
@@ -1239,7 +1239,7 @@ class ImageViewer(ProcessImage):
             _toplevel.wm_withdraw()
             if icon_path:
                 _toplevel.iconphoto(True, icon_path)
-            _toplevel.minsize(width=200, height=100)
+            _toplevel.wm_minsize(width=200, height=100)
             _toplevel.protocol(name='WM_DELETE_WINDOW', func=_window_info)
             _toplevel.columnconfigure(index=0, weight=1)
             _toplevel.columnconfigure(index=1, weight=1)
@@ -1273,10 +1273,10 @@ class ImageViewer(ProcessImage):
 
         # Default Frame() arguments work fine to display report text.
         # bg won't show when grid sticky EW for tk.Text; see utils.display_report().
-        self.contour_selectors_frame.configure(relief='raised',
-                                               bg=const.DARK_BG,
-                                               # bg=const.COLORS_TK['sky blue'],  # for development
-                                               borderwidth=5)
+        self.selectors_frame.configure(relief='raised',
+                                       bg=const.DARK_BG,
+                                       # bg=const.COLORS_TK['sky blue'],  # for development
+                                       borderwidth=5)
 
         # Allow Frames and widgets to resize with main window.
         #  Row 1 is the report, row2 selectors, rows 2,3,4 are for Buttons().
@@ -1284,28 +1284,28 @@ class ImageViewer(ProcessImage):
         self.rowconfigure(index=1, weight=1)
 
         # Keep the report scrollbar active in the resized frame.
-        self.contour_report_frame.rowconfigure(index=0, weight=1)
+        self.report_frame.rowconfigure(index=0, weight=1)
 
         # Expect there to be 20 rows in the selectors Frame.
         for i in range(21):
-            self.contour_selectors_frame.rowconfigure(index=i, weight=1)
+            self.selectors_frame.rowconfigure(index=i, weight=1)
 
         self.columnconfigure(index=0, weight=1)
         self.columnconfigure(index=1, weight=1)
-        self.contour_report_frame.columnconfigure(index=0, weight=1)
+        self.report_frame.columnconfigure(index=0, weight=1)
 
         # Allow only sliders, not labels, to expand with window.
-        self.contour_selectors_frame.columnconfigure(index=1, weight=1)
+        self.selectors_frame.columnconfigure(index=1, weight=1)
 
-        self.contour_report_frame.grid(column=0, row=0,
-                                       columnspan=2,
-                                       padx=(5, 5), pady=(5, 5),
-                                       sticky=tk.EW)
-        self.contour_selectors_frame.grid(column=0, row=1,
-                                          columnspan=2,
-                                          padx=5, pady=(0, 5),
-                                          ipadx=4, ipady=4,
-                                          sticky=tk.EW)
+        self.report_frame.grid(column=0, row=0,
+                               columnspan=2,
+                               padx=(5, 5), pady=(5, 5),
+                               sticky=tk.EW)
+        self.selectors_frame.grid(column=0, row=1,
+                                  columnspan=2,
+                                  padx=5, pady=(0, 5),
+                                  ipadx=4, ipady=4,
+                                  sticky=tk.EW)
 
         self.info_label.config(font=const.WIDGET_FONT,
                                bg=const.MASTER_BG,
@@ -1907,7 +1907,7 @@ class ImageViewer(ProcessImage):
             pady=(4, 0),
             sticky=tk.W)
 
-        # Widgets gridded in the self.contour_selectors_frame Frame.
+        # Widgets gridded in the self.selectors_frame Frame.
         # Sorted by row number:
         self.slider['alpha_lbl'].grid(column=0, row=0, **east_grid_params)
         self.slider['alpha'].grid(column=1, row=0, **slider_grid_params)
@@ -2036,10 +2036,16 @@ class ImageViewer(ProcessImage):
 
         self.img_label['sized'].grid(**const.PANEL_LEFT)
 
-    def _on_click_save_img(self, image_name):
+    def _on_click_save_img(self, image_name: str) -> None:
         """
         Save a window image (Label) that was rt-clicked.
-        Called only from display_windows() for a keybinding.
+        Called only from display_windows() for keybindings.
+
+        Args:
+            image_name: The key name (string) used in the img_label
+                        dictionary.
+        Returns:
+            None
         """
         tkimg = self.tkimg[image_name]
 
@@ -2092,9 +2098,9 @@ class ImageViewer(ProcessImage):
         # Do not specify the image array in this binding, but instead
         #  specify in _on_click_save_img() method so that the current image
         #  is saved. Bind with to a lambda function, not a direct call to method.
-        for img_name, label in self.img_label.items():
+        for name, label in self.img_label.items():
             label.bind(rt_click,
-                       lambda _, n=img_name: self._on_click_save_img(image_name=n))
+                       lambda _, n=name: self._on_click_save_img(image_name=n))
 
         # Update to ensure that the label images are current.
         self.update()
@@ -2605,10 +2611,10 @@ class ImageViewer(ProcessImage):
             f'{tab}Pixel diameter entered: {self.size_std["px_val"].get()},'
             f' unit/px factor: {unit_per_px}\n'
             f'{"Object size metrics,".ljust(space)}mean: {mean_unit_dia}, median:'
-            f' {median_unit_dia}, range: {size_range}\n'
+            f' {median_unit_dia}, range: {size_range}'
         )
 
-        utils.display_report(frame=self.contour_report_frame,
+        utils.display_report(frame=self.report_frame,
                              report=self.report_txt)
 
     def preprocess(self, event=None) -> None:

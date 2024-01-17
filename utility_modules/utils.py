@@ -256,20 +256,13 @@ def display_report(frame: tk.Frame, report: str) -> None:
 
     max_line = len(max(report.splitlines(), key=len))
 
-    if const.MY_OS == 'lin':
-        txt_font = ('Courier', 10)
-    elif const.MY_OS == 'win':
-        txt_font = ('Courier', 8)
-    else:  # is macOS
-        txt_font = ('Courier', 10)
-
     # Note: 'TkFixedFont' only works when not in a tuple, so no font size.
     #  The goal is to get a suitable platform-independent mono font.
     #  font=('Courier', 10) should also work, if need to set font size.
     #  Smaller fonts are needed to shorten the window as lines & rows are added.
     #  With smaller font, need better fg font contrast, e.g. yellow, not MASTER_BG.
     reporttxt = ScrolledText(master=frame,
-                             font=txt_font,
+                             font=const.REPORT_FONT,
                              bg=const.DARK_BG,
                              fg=const.COLORS_TK['yellow'],  # Matches slider labels.
                              width=max_line,
@@ -280,13 +273,14 @@ def display_report(frame: tk.Frame, report: str) -> None:
                              )
 
     # Replace prior Text with current text;
-    #   hide cursor in Text; (re-)grid in-place.
+    #   hide cursor in Text; always show last line; (re-)grid in-place.
     reporttxt.delete(index1='1.0', index2=tk.END)
     reporttxt.insert(tk.INSERT, report)
     # Indent helps center text in the Frame.
     reporttxt.tag_configure(tagName='leftmargin', lmargin1=20)
     reporttxt.tag_add('leftmargin', '1.0', tk.END)
     reporttxt.configure(state=tk.DISABLED)
+    reporttxt.see(index=tk.END)
 
     reporttxt.grid(column=0, row=0,
                    columnspan=2,
