@@ -275,7 +275,7 @@ def display_report(frame: tk.Frame, report: str) -> None:
     # Replace prior Text with current text;
     #   hide cursor in Text; always show last line; (re-)grid in-place.
     reporttxt.delete(index1='1.0', index2=tk.END)
-    reporttxt.insert(tk.INSERT, report)
+    reporttxt.insert(index=tk.INSERT, chars=report)
     # Indent helps center text in the Frame.
     reporttxt.tag_configure(tagName='leftmargin', lmargin1=20)
     reporttxt.tag_add('leftmargin', '1.0', tk.END)

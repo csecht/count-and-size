@@ -682,6 +682,7 @@ class ImageViewer(ProcessImage):
     configure_main_window
     show_info_msg
     setup_buttons
+    _need_to_click
     config_sliders
     config_comboboxes
     config_entries
@@ -884,8 +885,8 @@ class ImageViewer(ProcessImage):
             Returns:
                  *event* as a formality; is functionally None.
             """
-            # Provide some info to user why the start screen may appear
-            #  frozen when processing larger images.
+            # Use a spinning cursor to indicate that something is happening
+            #  because larger images may take a while to process and show.
             process_btn_txt.set('Processing started, wait...')
             start_win.config(cursor='watch')
             self.start_now()
@@ -1228,8 +1229,8 @@ class ImageViewer(ProcessImage):
         #  border when it has focus and light grey when being dragged.
         icon_path = None
         try:
-            #  If the icon file is not present, a Terminal msg will be
-            #   called from <if __name__ == "__main__"> at startup.
+            #  If the icon file is not present, a Terminal notice will be
+            #   printed from <if __name__ == "__main__"> at startup.
             icon_path = tk.PhotoImage(file=utils.valid_path_to('image/sizeit_icon_512.png'))
             self.iconphoto(True, icon_path)
         except tk.TclError as _msg:
@@ -1494,6 +1495,32 @@ class ImageViewer(ProcessImage):
                                   pady=2,
                                   sticky=tk.W)
 
+    def _need_to_click(self, event=None):
+        """
+        Post notice when selecting peak_local_max, because plm slider
+        values are used in segmentation methods, which are called
+        only from button commands.
+        Called only from mouse click binding in config_sliders().
+        """
+
+        # Update report with current plm_* slider values; don't wait
+        #  for the segmentation algorithm to run before updating.
+        self.report_results()
+
+        if self.slider_val['plm_footprint'].get() == 1:
+            _info = ('\nClick "Run..." to update the report and the\n'
+                     '"Size-selected.." and "Segmented objects" images.\n'
+                     'A peak_local_max footprint of 1 may take a while.\n\n')
+            self.info_label.config(fg=const.COLORS_TK['vermilion'])
+        else:
+            _info = ('\nClick "Run..." to update the report and the\n'
+                     '"Size-selected.." and "Segmented objects" images.\n\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+
+        self.info_txt.set(_info)
+
+        return event
+
     def config_sliders(self) -> None:
         """
         Configure arguments and mouse button bindings for all Scale
@@ -1508,31 +1535,6 @@ class ImageViewer(ProcessImage):
         #  in the Frame given current padding parameters. Need to use only
         #  for one Scale() in each Toplevel().
         scale_len = int(self.screen_width * 0.25)
-
-        def _need_to_click(event=None):
-            """
-            Post notice when selecting peak_local_max, because plm slider
-            values are used in segmentation methods, which are called
-            only from button commands.
-            """
-
-            # Update report with current plm_* slider values; don't wait
-            #  for the segmentation algorithm to run before updating.
-            self.report_results()
-
-            if self.slider_val['plm_footprint'].get() == 1:
-                _info = ('\nClick "Run..." to update the report and the\n'
-                         '"Size-selected.." and "Segmented objects" images.\n'
-                         'A peak_local_max footprint of 1 may take a while.\n\n')
-                self.info_label.config(fg=const.COLORS_TK['vermilion'])
-            else:
-                _info = ('\nClick "Run..." to update the report and the\n'
-                         '"Size-selected.." and "Segmented objects" images.\n\n\n')
-                self.info_label.config(fg=const.COLORS_TK['blue'])
-
-            self.info_txt.set(_info)
-
-            return event
 
         # Scale widgets that are pre-random_walker (contrast, noise,
         # filter and threshold) and size max/min are called with mouse
@@ -1632,7 +1634,7 @@ class ImageViewer(ProcessImage):
             if 'circle_r' in _name:
                 _w.bind('<ButtonRelease-1>', self.process_sizes)
             elif 'plm_' in _name:
-                _w.bind('<ButtonRelease-1>', _need_to_click)
+                _w.bind('<ButtonRelease-1>', self._need_to_click)
             else:  # is alpha, beta, noise_k, noise_iter, filter_k.
                 _w.bind('<ButtonRelease-1>', self.preprocess)
 
@@ -1811,42 +1813,41 @@ class ImageViewer(ProcessImage):
         else:  # is 'rw'
             contours = self.rw_contours
 
-        def increase_font_size() -> None:
+        def _increase_font_size() -> None:
             self.metrics['font_scale'] *= 1.1
             self.select_and_size(contour_pointset=contours)
 
-        def decrease_font_size() -> None:
+        def _decrease_font_size() -> None:
             self.metrics['font_scale'] *= 0.9
             if self.metrics['font_scale'] < 0.25:
                 self.metrics['font_scale'] = 0.25
             self.select_and_size(contour_pointset=contours)
 
-        def increase_line_thickness() -> None:
+        def _increase_line_thickness() -> None:
             self.metrics['line_thickness'] += 1
             self.select_and_size(contour_pointset=contours)
 
-        def decrease_line_thickness() -> None:
+        def _decrease_line_thickness() -> None:
             self.metrics['line_thickness'] -= 1
             if self.metrics['line_thickness'] == 0:
                 self.metrics['line_thickness'] = 1
             self.select_and_size(contour_pointset=contours)
 
         colors = list(const.COLORS_CV.keys())
-        num_colors = len(colors)
 
-        def next_font_color() -> None:
+        def _next_font_color() -> None:
             current_color = self.cbox_val['color'].get()
             current_index = colors.index(current_color)
             # Need to stop increasing idx at the end of colors list.
-            if current_index == num_colors - 1:
-                next_color = colors[num_colors - 1]
+            if current_index == len(colors) - 1:
+                next_color = colors[len(colors) - 1]
             else:
                 next_color = colors[current_index + 1]
             self.cbox_val['color'].set(next_color)
             print('Annotation font is now:', next_color)
             self.select_and_size(contour_pointset=contours)
 
-        def preceding_font_color() -> None:
+        def _preceding_font_color() -> None:
             current_color = self.cbox_val['color'].get()
             current_index = colors.index(current_color)
             # Need to stop decreasing idx at the beginning of colors list.
@@ -1861,24 +1862,24 @@ class ImageViewer(ProcessImage):
         #  but is simpler to use bind_all() which does not depend on widget focus.
         # NOTE: On Windows, KP_* is not a recognized keysym string; works on Linux.
         #  Windows keysyms 'plus' & 'minus' are for both keyboard and keypad.
-        self.bind_all('<Control-equal>', lambda _: increase_font_size())
-        self.bind_all('<Control-minus>', lambda _: decrease_font_size())
-        self.bind_all('<Control-KP_Subtract>', lambda _: decrease_font_size())
+        self.bind_all('<Control-equal>', lambda _: _increase_font_size())
+        self.bind_all('<Control-minus>', lambda _: _decrease_font_size())
+        self.bind_all('<Control-KP_Subtract>', lambda _: _decrease_font_size())
 
-        self.bind_all('<Shift-Control-plus>', lambda _: increase_line_thickness())
-        self.bind_all('<Shift-Control-KP_Add>', lambda _: increase_line_thickness())
-        self.bind_all('<Shift-Control-underscore>', lambda _: decrease_line_thickness())
+        self.bind_all('<Shift-Control-plus>', lambda _: _increase_line_thickness())
+        self.bind_all('<Shift-Control-KP_Add>', lambda _: _increase_line_thickness())
+        self.bind_all('<Shift-Control-underscore>', lambda _: _decrease_line_thickness())
 
-        self.bind_all('<Control-Up>', lambda _: next_font_color())
-        self.bind_all('<Control-Down>', lambda _: preceding_font_color())
+        self.bind_all('<Control-Up>', lambda _: _next_font_color())
+        self.bind_all('<Control-Down>', lambda _: _preceding_font_color())
 
         # Need platform-specific keypad keysym.
         if const.MY_OS == 'win':
-            self.bind_all('<Control-plus>', lambda _: increase_font_size())
-            self.bind_all('<Shift-Control-minus>', lambda _: decrease_line_thickness())
+            self.bind_all('<Control-plus>', lambda _: _increase_font_size())
+            self.bind_all('<Shift-Control-minus>', lambda _: _decrease_line_thickness())
         else:
-            self.bind_all('<Control-KP_Add>', lambda _: increase_font_size())
-            self.bind_all('<Shift-Control-KP_Subtract>', lambda _: decrease_line_thickness())
+            self.bind_all('<Control-KP_Add>', lambda _: _increase_font_size())
+            self.bind_all('<Shift-Control-KP_Subtract>', lambda _: _decrease_line_thickness())
 
     def grid_widgets(self) -> None:
         """
@@ -2097,7 +2098,7 @@ class ImageViewer(ProcessImage):
 
         # Do not specify the image array in this binding, but instead
         #  specify in _on_click_save_img() method so that the current image
-        #  is saved. Bind with to a lambda function, not a direct call to method.
+        #  is saved. Bind to a lambda function, not to a direct call.
         for name, label in self.img_label.items():
             label.bind(rt_click,
                        lambda _, n=name: self._on_click_save_img(image_name=n))
