@@ -1365,11 +1365,15 @@ class ImageViewer(ProcessImage):
             self.process()
 
         def _save():
+            """
+            Save annotated sized image and its Report text with
+            individual object sizes appended.
+            """
             _sizes = ', '.join(str(i) for i in self.sorted_size_list)
             utils.save_settings_and_img(
                 input_path=self.input_file,
                 img2save=self.cvimg['sized'],
-                txt2save=self.report_txt + _sizes,
+                txt2save=self.report_txt + f'\n{_sizes}',
                 caller=utils.program_name())
 
             _info = ('\n\nSettings report and result image have been saved to:\n'
