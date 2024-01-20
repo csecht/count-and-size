@@ -3,6 +3,19 @@
 ![oysters with size annotation.jpg](images/oysters_sized.jpg)
 <sub>Farmed oyster population sample (top); the analyzed back lit image, with annotations (bottom), using a U.S. quarter dollar for the size standard. Sample mean was 93.1 mm, n=27.</sub>
 
+## Table of Contents
+* [Overview](#Overview)
+* [Usage examples](#Usage-examples)
+* [Requirements](#Requirements)
+* [Screenshots](#Screenshots)
+* [Sizing with lens distortion](#Sizing-with-lens-distortion)
+* [Tips](#Tips)
+* [Known Issues](#Known-Issues)
+* [Attributions](#Attributions)
+* [Table of size standards](#Pre-set-size-standards-and-diameters)
+
+### Overview:
+
 The interactive Python program, `size_it.py`, is a tkinter GUI for OpenCV processing of an image to obtain sizes, means,
 and ranges of objects in a sample population. Distance transform and either
 watershed or random walker algorithms are used interactively by setting their parameter
@@ -157,10 +170,23 @@ Object size metrics,   mean: 12.3, median: 12.2, range: 6.74--18.1
 Below, all image processing steps are displayed in five windows. Images update as settings are changed.
 ![all image windows](images/all_image_windows.png)
 
+### Sizing with lens distortion:
+There are three ways to deal with lens distortion to obtain the best size estimates. For example, an iPhone 11 using the wide-angle (normal) lens at a zoom of 1x, with the sample stage at a 20-inch distance and the size standard placed at the center, there is ~2% increase in the population mean size because objects farther from the center cover slightly more pixel area than their actual size. With the ultra-wide lens (e.g. zoom of 0.7x), the sizing error is about 3% to 4%.
+
+The simplest approach is if your camera has a built-it lens correction option. iPhones 12 and later have a camera Setting for Lens Correction, as does the Samsung Galaxy S series. These built-in options may only work with the ultra-wide angle lens, however.
+
+For other correction methods, you will need to first calibrate the distortion across your image field by analysing a number of identical size standards arrayed over the field, with one placed at the center.
+
+The most accurate approach is to pre-process your input image to correct for your specific camera lens. A photo editing program can be used to adjust the input image before analyzing it with `size_it`.  For example, with the iPhone 11 images mentioned above, and using the Linux program GIMP, there is a function under Filter > Distort > Lens distortion. A setting for 'main' of 10 and 'zoom' of -4, then exporting as a jpeg file, does an adequate job of providing the expected mean size while limiting size errors among individual objects. You will just need to play around with different apps and correction settings that work best for your needs.
+
+The other approach is a bit of a hack that does not require image pre-correction. For your calibration array input image, enter the pixel size of the center standard and type (pre-set or custom) to find the standards' mean size. Then find the position(s) of those arrayed standard(s) on the stage that matches the calculated mean. For all subsequent analyses, you simply can place your standard(s) at that proxy position(s) and analyze sizes as usual; its pixel diameter will be representative of the average distortion correction needed across the field of view. This is adequate when all you need to correct for is the sample mean and median; there will still be a greater range of size errors among individual objects than when using the pre-correction approach described above.
+
+It is also possible to include an option in `size_it` to apply OpenCV's camera calibration functions, so perhaps some day that will be added. In the meanwhile, you can learn more about lens distortion here: https://learnopencv.com/understanding-lens-distortion/.
+
 ### Tips:
-1. For best results, use a well-contrasted objects that are not in large overlapping clusters. Using a lightbox to photograph objects with a backlight can provide enhanced contrast. Examples of this can be seen in the comparison of `sample4.jpg` (oysters top-lit) and `sample5.jpg` (same oysters, backlit). Users can explore the time and effort needed to adjust settings with each image to obtain segmentation and sizing for the 27 mature oysters.
-2. Use a flat black or flat white object as a size standard.
-3. Before setting the size standard, adjust parameters to achieve the best separation and counts, then enter the resulting pixel diameter for your selected size standard to convert pixels to units measure. This will provide the most accurate size metrics. Units are millimeters for the pre-set standards, and whatever you want for custom standards.
+1. For best results, photograph well-contrasted objects that are not in large overlapping clusters. Using a lightbox to photograph objects with a backlight can provide enhanced contrast. Examples of this can be seen in the comparison of `sample4.jpg` (oysters top-lit) and `sample5.jpg` (same oysters, backlit). Users can explore the time and effort needed to adjust settings with each image to obtain segmentation and sizing for the 27 mature oysters.
+2. Use a flat black or flat white object as a size standard when using top-lighting to avoid sparkles and glare that can interfere with object segmentation.
+3. Before setting the size standard, adjust parameters to achieve the best separation and counts, then enter the resulting pixel diameter for your selected size standard to convert pixels to units measure. This may provide the most accurate size metrics. Units are millimeters for the pre-set standards, and whatever you want for custom standards.
 4. Once you select "Custom" for a size standard, an entry field pops up to fill in the known size.
 5. Size metrics are most accurate when the standard's size is excluded from analysis. The easiest way to do that is to use a standard that is the largest or smallest object in the sample, then adjust the "Circled radius size" sliders until the standard's diameter is excluded.
 6. The number of significant figures reported are determined by standard's unit size or its pixel diameter, whichever has fewer sig. fig. This limit also holds when a custom size standard is used. See: https://en.wikipedia.org/wiki/Significant_figures#Significant_figures_rules_explained. Depending on the magnitude of the entered custom size, displayed size values may be in power notation. Saved individual size lists, however, are converted to decimal numbers.
