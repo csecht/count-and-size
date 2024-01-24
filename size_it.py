@@ -683,6 +683,7 @@ class ImageViewer(ProcessImage):
     set_manual_scale_factor
     configure_circle_r_sliders
     start_now
+    _delete_window_message
     setup_image_windows
     configure_main_window
     show_info_msg
@@ -1250,6 +1251,31 @@ class ImageViewer(ProcessImage):
         self.process()
         self.display_windows()
 
+    def _delete_window_message(self) -> None:
+        """
+        Provide a notice in report and settings (mainloop, self)
+        window.
+        Called only as a .protocol() func in setup_image_windows().
+
+        Returns: None
+        """
+
+        prev_txt = self.info_txt.get()
+        prev_fg = self.info_label.cget('fg')
+
+        _info = ('\nThat window cannot be closed from its window bar.\n'
+                 'Minimize it if it is in the way.\n'
+                 'Esc or Ctrl-Q keys will quit the program.\n\n')
+        self.info_label.config(fg=const.COLORS_TK['vermilion'])
+        self.info_txt.set(_info)
+        self.update()
+
+        # Give user time to read the _info before resetting it to
+        #  the previous info text.
+        self.after(ms=4444)
+        self.info_label.config(fg=prev_fg)
+        self.info_txt.set(prev_txt)
+
     def setup_image_windows(self) -> None:
         """
         Create and configure all Toplevel windows and their Labels that
@@ -1258,29 +1284,6 @@ class ImageViewer(ProcessImage):
         Returns:
             None
         """
-
-        def _window_info():
-            """
-            Provide a notice in report and settings (mainloop, self)
-            window.
-            Called locally from .protocol().
-            """
-
-            prev_txt = self.info_txt.get()
-            prev_fg = self.info_label.cget('fg')
-
-            _info = ('\nThat window cannot be closed from its window bar.\n'
-                     'Minimize it if it is in the way.\n'
-                     'Esc or Ctrl-Q keys will quit the program.\n\n')
-            self.info_label.config(fg=const.COLORS_TK['vermilion'])
-            self.info_txt.set(_info)
-            self.update()
-
-            # Give user time to read the _info before resetting it to
-            #  the previous info text.
-            self.after(ms=4444)
-            self.info_label.config(fg=prev_fg)
-            self.info_txt.set(prev_txt)
 
         # NOTE: keys here must match corresponding keys in const.WIN_NAME.
         # Dictionary item order determines stack order of windows.
@@ -1337,7 +1340,7 @@ class ImageViewer(ProcessImage):
             if icon_path:
                 _toplevel.iconphoto(True, icon_path)
             _toplevel.wm_minsize(width=200, height=100)
-            _toplevel.protocol(name='WM_DELETE_WINDOW', func=_window_info)
+            _toplevel.protocol(name='WM_DELETE_WINDOW', func=self._delete_window_message)
             _toplevel.columnconfigure(index=0, weight=1)
             _toplevel.columnconfigure(index=1, weight=1)
             _toplevel.rowconfigure(index=0, weight=1)
