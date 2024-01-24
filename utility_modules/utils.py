@@ -18,6 +18,7 @@ import platform
 import sys
 import tkinter as tk
 from datetime import datetime
+from json import dumps
 from math import floor, log10
 from pathlib import Path
 from tkinter import messagebox
@@ -129,7 +130,9 @@ def valid_path_to(input_path: str) -> Path:
 def save_settings_and_img(input_path: str,
                           img2save: Union[np.ndarray, ImageTk.PhotoImage],
                           txt2save: str,
-                          caller: str) -> None:
+                          caller: str,
+                          settings2save=None,
+                          ) -> None:
     """
     Write to file the current report of calculated image processing
     values. Save current result image or selected displayed image.
@@ -140,10 +143,23 @@ def save_settings_and_img(input_path: str,
             from cv2 or an ImageTk.PhotoImage from tkinter/PIL
         txt2save: The current image processing report.
         caller: Descriptive name of the calling script, function or
-         widget to insert in the file name, e.g. 'report', 'contrast', etc.
-
+                widget to insert in the file name, e.g. 'report',
+                'contrast', etc.
+        settings2save: a dictionary of settings values; optional call by
+                    the 'Export settings' Button() cmd.
     Returns: None
     """
+
+    # Only the 'Export settings' button cmd uses the settings2save parameter,
+    #  which is given the value of self.settings_dict in report_results().
+    #  So only save that json file, nothing else.
+    #  Note that the json.dumps() function formats single quotes to double.
+    settings_file_path = valid_path_to(const.SAVED_SETTINGS)
+    if settings2save:
+        with settings_file_path.open('w', encoding='utf-8') as _fp:
+            _fp.write(dumps(settings2save))
+        return
+
     curr_time = datetime.now().strftime('%Y%m%d%I%M%S')
     time2print = datetime.now().strftime('%Y/%m/%d %I:%M:%S%p')
 
@@ -159,15 +175,15 @@ def save_settings_and_img(input_path: str,
     img_ext = Path(input_path).suffix
     img_stem = Path(input_path).stem
     img_folder = Path(input_path).parent
-    saved_settings_name = f'{img_stem}_{caller}_Report.txt'
+    saved_report_name = f'{img_stem}_{caller}_Report.txt'
+    report_file_path = Path(f'{img_folder}/{saved_report_name}')
     saved_img_name = f'{img_stem}_{caller}_{curr_time}{img_ext}'
-    settings_file_path = Path(f'{img_folder}/{saved_settings_name}')
     image_file_path = f'{img_folder}/{saved_img_name}'
 
     if manage.arguments()['terminal']:
         data2save = (f'\n\nTime saved: {time2print}\n'
                      f'Saved image file: {saved_img_name}\n'
-                     f'Saved report file: {saved_settings_name}\n'
+                     f'Saved report file: {saved_report_name}\n'
                      f'{txt2save}')
     else:
         data2save = (f'\n\nTime saved: {time2print}\n'
@@ -177,7 +193,7 @@ def save_settings_and_img(input_path: str,
     # Use this Path function for saving individual report files:
     # Path(f'{img_stem}_{caller}_settings{curr_time}.txt').write_text(data2save)
     # Use this for appending multiple reports to single file:
-    with settings_file_path.open('a', encoding='utf-8') as _fp:
+    with report_file_path.open('a', encoding='utf-8') as _fp:
         _fp.write(data2save)
 
     # Contour images are np.ndarray direct from cv2 functions, while

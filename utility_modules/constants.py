@@ -45,6 +45,8 @@ MY_OS: str = sys.platform[:3]
 
 STUB_ARRAY: np.ndarray = np.ones(shape=(5, 5), dtype='uint8')
 
+SAVED_SETTINGS = 'saved_settings.json'
+
 WIN_NAME = {
     'input': 'Input image',
     'contrast': 'Adjusted contrast <- | -> Reduced noise',
@@ -273,7 +275,7 @@ PANEL_RIGHT = dict(
             padx=5, pady=5,
             sticky='nsew')
 
-# Values are in mm.
+# Values are in mm units.
 # Value of 0.999 for 'None' is a hack to force 3 sig.fig as the default.
 #   This allows the most accurate display of pixel widths at startup.
 SIZE_STANDARDS = {
@@ -289,12 +291,8 @@ SIZE_STANDARDS = {
     'Eisenhower $': 38.1
 }
 
-# The image dimension limit to issue a warning that processing may take
-#   a while to complete.
-SIZE_TO_WAIT = 2000
-
 # Count only physical CPU cores (exclude hyperthreads) for best performance
 #   of parallel.MultiProc().
-NCPU = cpu_count(logical=False)
+# NCPU = cpu_count(logical=False)
 # The multiprocess cpu_count() will count hyperthreads as CPUs.
 # NCPU = mp.cpu_count()

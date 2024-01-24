@@ -44,6 +44,7 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 # Standard library imports.
 import sys
 from datetime import datetime
+from json import loads
 from pathlib import Path
 from statistics import mean, median
 from typing import List
@@ -132,9 +133,9 @@ class ProcessImage(tk.Tk):
             'plm_footprint': tk.IntVar(),
             'circle_r_min': tk.IntVar(),
             'circle_r_max': tk.IntVar(),
-            # For scale_slider variable in setup_start_window()...
-            'scale': tk.DoubleVar(),
         }
+
+        self.scale_factor = tk.DoubleVar()
 
         self.cbox_val = {
             # For textvariables in config_comboboxes()...
@@ -144,7 +145,7 @@ class ProcessImage(tk.Tk):
             'th_type': tk.StringVar(),
             'dt_type': tk.StringVar(),
             'dt_mask_size': tk.StringVar(),
-            'ws_connect': tk.StringVar(),
+            'ws_connectivity': tk.StringVar(),
             'size_std': tk.StringVar(),
             # For color_cbox textvariable in setup_start_window()...
             'color': tk.StringVar(),
@@ -184,7 +185,7 @@ class ProcessImage(tk.Tk):
         #  but is used in all Class methods here.
         self.img_label: dict = {}
 
-        # metrics dict is populated in ImageViewer.setup_start_window()
+        # metrics dict is populated in ImageViewer.open_input().
         self.metrics: dict = {}
 
         self.num_dt_segments: int = 0
@@ -218,7 +219,7 @@ class ProcessImage(tk.Tk):
         # Use .configure to update images.
         self.tkimg[img_name] = manage.tk_image(
             image=img_array,
-            scale_coef=self.slider_val['scale'].get()
+            scale_coef=self.scale_factor.get()
         )
         self.img_label[img_name].configure(image=self.tkimg[img_name])
 
@@ -504,7 +505,7 @@ class ProcessImage(tk.Tk):
         Returns: None
         """
 
-        connections = int(self.cbox_val['ws_connect'].get())  # 1, 4 or 8.
+        ws_connectivity = int(self.cbox_val['ws_connectivity'].get())  # 1, 4 or 8.
 
         # Note that the minus symbol with distances_img converts distance
         #  transform into a threshold. Watershed can work without the
@@ -516,7 +517,7 @@ class ProcessImage(tk.Tk):
         self.cvimg['segments']: np.ndarray = watershed(
             image=-self.cvimg['dist_trans'],
             markers=array,
-            connectivity=connections,
+            connectivity=ws_connectivity,
             mask=self.cvimg['thresh'],
             compactness=1.0,
             watershed_line=True)
@@ -677,6 +678,10 @@ class ImageViewer(ProcessImage):
     manage_main_window
     setup_start_window
     open_input
+    import_settings
+    set_auto_scale_factor
+    set_manual_scale_factor
+    configure_circle_r_sliders
     start_now
     setup_image_windows
     configure_main_window
@@ -687,6 +692,7 @@ class ImageViewer(ProcessImage):
     config_comboboxes
     config_entries
     widget_control
+    _get_contours
     config_annotations
     grid_widgets
     grid_img_labels
@@ -763,8 +769,8 @@ class ImageViewer(ProcessImage):
             'dt_mask_size': ttk.Combobox(master=self.selectors_frame),
             'dt_mask_size_lbl': tk.Label(master=self.selectors_frame),
 
-            'ws_connect': ttk.Combobox(master=self.selectors_frame),
-            'ws_connect_lbl': tk.Label(master=self.selectors_frame),
+            'ws_connectivity': ttk.Combobox(master=self.selectors_frame),
+            'ws_connectivity_lbl': tk.Label(master=self.selectors_frame),
 
             # for size standards
             'size_std_lbl': tk.Label(master=self.selectors_frame),
@@ -785,9 +791,10 @@ class ImageViewer(ProcessImage):
         self.button = {
             'process_ws': ttk.Button(),
             'process_rw': ttk.Button(),
-            'save': ttk.Button(),
-            'open': ttk.Button(),
-            'export': ttk.Button(),
+            'save_results': ttk.Button(),
+            'new_input': ttk.Button(),
+            'export_objects': ttk.Button(),
+            'export_settings': ttk.Button(),
             'reset': ttk.Button(),
         }
 
@@ -812,6 +819,9 @@ class ImageViewer(ProcessImage):
         # Is an instance attribute here only because it is used in call
         #  to utils.save_settings_and_img() from the Save button.
         self.report_txt: str = ''
+        self.settings_dict: dict = {}
+        self.imported_settings: dict = {}
+        self.use_saved_settings = False
 
         # Info label is gridded in configure_main_window().
         self.info_txt = tk.StringVar()
@@ -925,22 +935,11 @@ class ImageViewer(ProcessImage):
             text='Image: waiting to be selected...\nSize: TBD',
             **const.LABEL_PARAMETERS)
 
-        scale_label = tk.Label(master=start_win,
-                               text='Scale image display to:',
-                               **const.LABEL_PARAMETERS)
-        scale_slider = tk.Scale(master=start_win,
-                                from_=0.05, to=2,
-                                resolution=0.05,
-                                tickinterval=0.2,
-                                variable=self.slider_val['scale'],
-                                length=int(self.screen_width * 0.2),
-                                **const.SCALE_PARAMETERS)
-
-        # Unicode arrow symbols: left \u2190, up \u2101, down \u2193
+        # Unicode arrow symbols: up \u2101, down \u2193
         if const.MY_OS == 'dar':
-            msg_txt = '← Can change later with shift-control-↑ & ↓'
+            msg_txt = '← Can change later with shift-control-↑ & ↓  '
         else:
-            msg_txt = '← Can change later with Ctrl-↑ & Ctrl-↓'
+            msg_txt = '← Can change later with Ctrl-↑ & Ctrl-↓  '
 
         color_label = tk.Label(master=start_win,
                                text='Annotation font color:',
@@ -997,9 +996,17 @@ class ImageViewer(ProcessImage):
         tips = tk.Menu(master=start_win, tearoff=0)
         menubar.add_cascade(label='Help', menu=help_menu)
         help_menu.add_cascade(label='Tips...', menu=tips)
+
         # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
-        tips.add_command(label='• Larger image files need a smaller scale factor')
-        tips.add_command(label='     to fit image windows on the screen.')
+        # Unicode arrow symbols: left \u2190, right \u2192
+        if const.MY_OS == 'dar':
+            tip_scaling_text = '     with shift-control-← & shift-control-→.'
+        else:
+            tip_scaling_text = '     with Ctrl-← & Ctrl-→.'
+
+        tips.add_command(label='• Images are automatically scaled to fit on')
+        tips.add_command(label='     the screen. Scaling can be changed later')
+        tips.add_command(label=tip_scaling_text)
         tips.add_command(label='• Use a lighter font color with darker objects.')
         tips.add_command(label='• Use the INVERSE threshold type for dark')
         tips.add_command(label='     objects on a light background.')
@@ -1013,9 +1020,6 @@ class ImageViewer(ProcessImage):
         padding = dict(padx=5, pady=5)
 
         window_header.grid(row=0, column=0, **padding, columnspan=2, sticky=tk.EW)
-
-        scale_label.grid(row=1, column=0, **padding, sticky=tk.E)
-        scale_slider.grid(row=1, column=1, **padding, sticky=tk.W)
 
         color_label.grid(row=2, column=0, **padding, sticky=tk.E)
         color_cbox.grid(row=2, column=1, **padding, sticky=tk.W)
@@ -1035,7 +1039,6 @@ class ImageViewer(ProcessImage):
         # Gray-out widget labels until an input file is selected.
         # The settings widgets themselves will be inactive while the
         #  filedialog window is open.
-        scale_label.config(state=tk.DISABLED)
         color_label.config(state=tk.DISABLED)
         color_msg_lbl.config(state=tk.DISABLED)
         inverse_label.config(state=tk.DISABLED)
@@ -1051,10 +1054,9 @@ class ImageViewer(ProcessImage):
 
         # ...fill in window header with input path and pixel dimensions,...
         window_header.config(text=f'Image: {self.input_file}\n'
-                             f'size:{self.cvimg["gray"].shape[0]}x{self.cvimg["gray"].shape[1]}')
+                                  f'size:{self.cvimg["gray"].shape[0]}x{self.cvimg["gray"].shape[1]}')
 
         # ...and make all widgets active.
-        scale_label.config(state=tk.NORMAL)
         color_label.config(state=tk.NORMAL)
         color_msg_lbl.config(state=tk.NORMAL)
         inverse_label.config(state=tk.NORMAL)
@@ -1094,32 +1096,130 @@ class ImageViewer(ProcessImage):
         elif toplevel != self:
             utils.quit_gui(mainloop=self)
 
-        # As a convenience for user, set a default scale factor to that
-        #  needed for images to fit easily on the screen, either 1/3
-        #  screen px width or 2/3 screen px height, depending
-        #  on input image orientation.
+        # Auto-set images' scale factor based on input image size.
+        #  Can be later reset with keybindings in set_manual_scale_factor().
+        self.set_auto_scale_factor()
+
+        if utils.valid_path_to(const.SAVED_SETTINGS).exists():
+            if self.first_run:
+                msg = ('Yes: use saved settings.\n'
+                       'No: use startup defaults.')
+            else:
+                msg = ('Yes: use saved settings.\n'
+                       'No: use current settings.')
+
+            self.use_saved_settings = messagebox.askyesno(
+                title="Use saved settings?",
+                detail=msg)
+
+            if self.use_saved_settings:
+                self.import_settings()
+            else:
+                self.set_auto_scale_factor()
+                self.configure_circle_r_sliders()
+
+    def import_settings(self) -> None:
+        """
+        The dictionary of saved settings, imported via json.loads(),
+        that are to be applied to a new image.
+        """
+
+        with open(const.SAVED_SETTINGS, encoding='utf-8') as _f:
+            settings_json = _f.read()
+            self.imported_settings: dict = loads(settings_json)
+
+        # Set/Reset Scale widgets. Do not include the 'scale' value b/c
+        #  it is set fresh for each image input.
+        for _k in self.slider_val:
+            if _k != 'scale':
+                self.slider_val[_k].set(self.imported_settings[_k])
+
+        # Set/Reset Combobox widgets.
+        for _k in self.cbox_val:
+            self.cbox_val[_k].set(self.imported_settings[_k])
+
+        self.metrics['font_scale'] = self.imported_settings['font_scale']
+        self.metrics['line_thickness'] = self.imported_settings['line_thickness']
+
+        self.size_std['px_val'].set(self.imported_settings['px_val'])
+        self.size_std['custom_val'].set(self.imported_settings['custom_val'])
+
+        self.segment_algorithm = self.imported_settings['segment_algorithm']
+
+    def set_auto_scale_factor(self) -> None:
+        """
+        As a convenience for user, set a default scale factor to that
+        needed for images to fit easily on the screen, either 1/3
+        screen px width or 2/3 screen px height, depending
+        on input image orientation.
+
+        Returns: None
+        """
+
+        # Note that the scale factor is not included in saved_settings.json.
         _y, _x = self.metrics['gray_img'].shape
         if _x >= _y:
             estimated_scale = round((self.screen_width * 0.33) / _x, 2)
         else:
             estimated_scale = round((self.winfo_screenheight() * 0.66) / _y, 2)
 
-        self.slider_val['scale'].set(estimated_scale)
+        self.scale_factor.set(estimated_scale)
 
-        if not self.first_run:
-            # Note: these following configurations are copied from config_sliders()
-            #  and are needed here to re-set the slider ranges for a new image.
-            #  BE SURE that the denominator for circle_r_min matches here and there.
-            circle_r_min = self.metrics['max_circle_r'] // 6
-            circle_r_max = self.metrics['max_circle_r']
-            self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
-                                                  tickinterval=circle_r_min / 10,
-                                                  variable=self.slider_val['circle_r_min'],
-                                                  **const.SCALE_PARAMETERS)
-            self.slider['circle_r_max'].configure(from_=1, to=circle_r_max,
-                                                  tickinterval=circle_r_max / 10,
-                                                  variable=self.slider_val['circle_r_max'],
-                                                  **const.SCALE_PARAMETERS)
+    def set_manual_scale_factor(self) -> None:
+        """
+        The displayed image scale is set when an image is imported, but
+        can be adjusted with these keybindings. Changes in displayed image
+        scale take effect when ProcessImage.update_image() is called via
+        calls to preprocess() or process().
+
+        Returns: None
+        """
+
+        _info = ('The new image scale will be applied with\n'
+                 'the next processing action.\n'
+                 'Rescaling "Size-selected.." and "Segmented objects"\n'
+                 'images requires clicking a "Run" button or changing\n'
+                 'the annotation color.')
+
+        def _increase_scale_factor() -> None:
+            scale_val = self.scale_factor.get()
+            scale_val *= 1.1
+            self.scale_factor.set(scale_val)
+            self.info_txt.set(_info)
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+
+        def _decrease_scale_factor() -> None:
+            scale_val = self.scale_factor.get()
+            scale_val *= 0.9
+            if scale_val < 0.1:
+                scale_val = 0.1
+            self.scale_factor.set(scale_val)
+            self.info_txt.set(_info)
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+
+        self.bind_all('<Control-Right>', lambda _: _increase_scale_factor())
+        self.bind_all('<Control-Left>', lambda _: _decrease_scale_factor())
+
+    def configure_circle_r_sliders(self) -> None:
+        """
+        Called from config_sliders() and open_input().
+        Returns:
+
+        """
+        # Note: may need to adjust circle_r_min scaling with image size b/c
+        #  large contours cannot be selected if circle_r_max is too small.
+        circle_r_min = self.metrics['max_circle_r'] // 6
+        circle_r_max = self.metrics['max_circle_r']
+        self.slider['circle_r_min'].configure(
+            from_=1, to=circle_r_min,
+            tickinterval=circle_r_min / 10,
+            variable=self.slider_val['circle_r_min'],
+            **const.SCALE_PARAMETERS)
+        self.slider['circle_r_max'].configure(
+            from_=1, to=circle_r_max,
+            tickinterval=circle_r_max / 10,
+            variable=self.slider_val['circle_r_max'],
+            **const.SCALE_PARAMETERS)
 
     def start_now(self) -> None:
         """
@@ -1132,7 +1232,8 @@ class ImageViewer(ProcessImage):
 
         # This calling sequence produces a slight delay (longer for larger files)
         #  before anything is displayed, but assures that everything displays
-        #  simultaneously for a visually cleaner start.
+        #  nearly simultaneously for a visually cleaner start.
+        self.set_manual_scale_factor()
         self.setup_image_windows()
         self.configure_main_window()
         self.show_info_msg()
@@ -1143,15 +1244,12 @@ class ImageViewer(ProcessImage):
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
+        self.config_annotations()
 
-        # The watershed algorithm, 'ws', is used as the startup default.
-        self.segment_algorithm = 'ws'
-
-        # Call last preprocess(), process(), config_annotations() and
-        # display_windows(), in this sequence, for best performance.
+        # Call last preprocess(), process(), and display_windows(),
+        #   in this sequence, for best performance.
         self.preprocess()
         self.process()
-        self.config_annotations()
         self.display_windows()
 
     def setup_image_windows(self) -> None:
@@ -1364,7 +1462,7 @@ class ImageViewer(ProcessImage):
             self.segment_algorithm = 'rw'
             self.process()
 
-        def _save():
+        def _save_results():
             """
             Save annotated sized image and its Report text with
             individual object sizes appended.
@@ -1374,14 +1472,36 @@ class ImageViewer(ProcessImage):
                 input_path=self.input_file,
                 img2save=self.cvimg['sized'],
                 txt2save=self.report_txt + f'\n{_sizes}',
-                caller=utils.program_name())
+                caller=utils.program_name(),
+            )
 
             _info = ('\n\nSettings report and result image have been saved to:\n'
                      f'{utils.valid_path_to(_folder)}\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
 
-        def _export():
+        def _export_settings():
+            """
+            Save only the settings dictionary, as a json file. It is
+            handled as a special case in utils.save_settings_and_img().
+            """
+            _sizes = ', '.join(str(i) for i in self.sorted_size_list)
+            utils.save_settings_and_img(
+                input_path='',
+                img2save=const.STUB_ARRAY,
+                txt2save='',
+                caller='',
+                settings2save=self.settings_dict,
+            )
+
+            _info = ("\nSettings values have been exported to:\n"
+                     f"{utils.valid_path_to(const.SAVED_SETTINGS)}\n"
+                     'and are available to use with "New input" or\n'
+                     'at startup. Previous settings file is overwritten.\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            self.info_txt.set(_info)
+
+        def _export_objects():
             self.export_segment = messagebox.askyesnocancel(
                 title="Export only objects' segmented areas?",
                 detail='Yes: ...with a white background.\n'
@@ -1402,21 +1522,36 @@ class ImageViewer(ProcessImage):
             self.info_txt.set(_info)
 
         def _new_input():
+            """
+            Reads a new image file and applies current settings for
+            preprocessing.
+            Returns: None
+            """
             self.open_input(toplevel=self)
             self.update_image(img_name='input',
                               img_array=self.cvimg['input'])
-            self.preprocess()
-            self.report_results()
+
+            if self.use_saved_settings:
+                self.import_settings()
+                self.use_saved_settings = False
+
             if self.input_file:
-                _info = ('\nA new input file has been preprocessed.\n'
-                         'Click "Run..." to update the report and the\n'
-                         '"Size-selected.." and "Segmented objects" windows.\n\n')
+                _info = '\n\nA new input image has been loaded. Processing...\n\n\n'
                 self.info_label.config(fg=const.COLORS_TK['blue'])
                 self.info_txt.set(_info)
             else:  # user clicked "Cancel" in file dialog.
                 _info = '\n\nNo new input file was selected.\n\n\n'
                 self.info_label.config(fg=const.COLORS_TK['blue'])
                 self.info_txt.set(_info)
+
+            self.preprocess()
+            self.process()
+            self.report_results()
+
+            _info = ('\n\nProcessing completed for the new input image.\n'
+                     f'{self.elapsed} processing seconds elapsed.\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+            self.info_txt.set(_info)
 
         def _reset_to_default_settings():
             self.slider_values.clear()
@@ -1445,19 +1580,24 @@ class ImageViewer(ProcessImage):
             command=_run_randomwalker,
             **button_params)
 
-        self.button['save'].config(
-            text='Save settings & sized image',
-            command=_save,
+        self.button['save_results'].config(
+            text='Save results',
+            command=_save_results,
             **button_params)
 
-        self.button['open'].config(
-            text='Open...',
+        self.button['export_settings'].config(
+            text='Export settings',
+            command=_export_settings,
+            **button_params)
+
+        self.button['new_input'].config(
+            text='New input',
             command=_new_input,
             **button_params)
 
-        self.button['export'].config(
-            text='Export...',
-            command=_export,
+        self.button['export_objects'].config(
+            text='Export objects',
+            command=_export_objects,
             **button_params)
 
         self.button['reset'].config(
@@ -1466,38 +1606,51 @@ class ImageViewer(ProcessImage):
             **button_params)
 
         # Grid buttons in the mainloop (settings) window.
-        self.button['process_ws'].grid(column=0, row=2,
-                                       padx=10,
-                                       pady=(0, 2),
-                                       sticky=tk.W)
-        self.button['save'].grid(column=0, row=3,
-                                 padx=10,
-                                 pady=0,
-                                 sticky=tk.W)
-        self.button['export'].grid(column=0, row=4,
-                                   padx=(10, 0),
-                                   pady=2,
-                                   sticky=tk.W)
+        self.button['process_ws'].grid(
+            column=0, row=2,
+            padx=10,
+            pady=(0, 2),
+            sticky=tk.W)
+        self.button['save_results'].grid(
+            column=0, row=3,
+            padx=10,
+            pady=0,
+            sticky=tk.W)
+        self.button['export_objects'].grid(
+            column=0, row=4,
+            padx=(10, 0),
+            pady=2,
+            sticky=tk.W)
 
         # Need to use cross-platform relative padding for buttons in same rows.
         self.update()
-        export_w: int = self.button['export'].winfo_reqwidth()
-        process_rw_padx = (self.button['process_ws'].winfo_reqwidth() + 20, 0)
+        export_obj_w: int = self.button['export_objects'].winfo_reqwidth()
+        save_results_w: int = self.button['save_results'].winfo_reqwidth()
+        process_rw_padx = (self.button['process_ws'].winfo_reqwidth() + 15, 0)
 
-        self.button['process_rw'].grid(column=0, row=2,
-                                       padx=process_rw_padx,
-                                       pady=(0, 2),
-                                       sticky=tk.W)
+        self.button['process_rw'].grid(
+            column=0, row=2,
+            padx=process_rw_padx,
+            pady=(0, 2),
+            sticky=tk.W)
 
-        self.button['open'].grid(column=0, row=4,
-                                 padx=(export_w + 30, 0),
-                                 pady=2,
-                                 sticky=tk.W)
+        self.button['export_settings'].grid(
+            column=0, row=3,
+            padx=(save_results_w + 15, 0),
+            pady=2,
+            sticky=tk.W)
 
-        self.button['reset'].grid(column=0, row=4,
-                                  padx=(export_w * 3, 0),
-                                  pady=2,
-                                  sticky=tk.W)
+        self.button['new_input'].grid(
+            column=0, row=4,
+            padx=(export_obj_w + 15, 0),
+            pady=2,
+            sticky=tk.W)
+
+        self.button['reset'].grid(
+            column=0, row=4,
+            padx=(export_obj_w * 2, 0),
+            pady=2,
+            sticky=tk.W)
 
     def _need_to_click(self, event=None):
         """
@@ -1512,7 +1665,7 @@ class ImageViewer(ProcessImage):
         self.report_results()
 
         if self.slider_val['plm_footprint'].get() == 1:
-            _info = ('\nClick "Run..." to update the report and the\n'
+            _info = ('\nClick a "Run" button to update the report and\n'
                      '"Size-selected.." and "Segmented objects" images.\n'
                      'A peak_local_max footprint of 1 may take a while.\n\n')
             self.info_label.config(fg=const.COLORS_TK['vermilion'])
@@ -1608,20 +1761,7 @@ class ImageViewer(ProcessImage):
                                                        'maximum pixels:',
                                                   **const.LABEL_PARAMETERS)
 
-        # Note: may need to adjust circle_r_min scaling with image size b/c
-        #  large contours cannot be selected if circle_r_max is too small.
-        #  Note: This is re-run in open_input() to adjust ranges for new input.
-        #  If change the circle_r_min denominator here, also change it there.
-        circle_r_min = self.metrics['max_circle_r'] // 6
-        circle_r_max = self.metrics['max_circle_r']
-        self.slider['circle_r_min'].configure(from_=1, to=circle_r_min,
-                                              tickinterval=circle_r_min / 10,
-                                              variable=self.slider_val['circle_r_min'],
-                                              **const.SCALE_PARAMETERS)
-        self.slider['circle_r_max'].configure(from_=1, to=circle_r_max,
-                                              tickinterval=circle_r_max / 10,
-                                              variable=self.slider_val['circle_r_max'],
-                                              **const.SCALE_PARAMETERS)
+        self.configure_circle_r_sliders()
 
         # To avoid processing all the intermediate values between normal
         #  slider movements, bind sliders to call functions only on
@@ -1700,12 +1840,12 @@ class ImageViewer(ProcessImage):
                                             **const.COMBO_PARAMETERS)
         # mask size constants are: cv2.DIST MASK PRECISE, cv2.DIST MASK 3, cv2.DIST MASK 5.
 
-        self.cbox['ws_connect_lbl'].config(text='Watershed connectivity:',
-                                           **const.LABEL_PARAMETERS)
-        self.cbox['ws_connect'].config(textvariable=self.cbox_val['ws_connect'],
-                                       width=2,
-                                       values=('1', '4', '8'),
-                                       **const.COMBO_PARAMETERS)
+        self.cbox['ws_connectivity_lbl'].config(text='Watershed connectivity:',
+                                                **const.LABEL_PARAMETERS)
+        self.cbox['ws_connectivity'].config(textvariable=self.cbox_val['ws_connectivity'],
+                                            width=2,
+                                            values=('1', '4', '8'),
+                                            **const.COMBO_PARAMETERS)
 
         self.cbox['size_std_lbl'].config(text='Select the standard used in image:',
                                          **const.LABEL_PARAMETERS)
@@ -1802,6 +1942,20 @@ class ImageViewer(ProcessImage):
             self.update()
             self.slider_values.clear()
 
+    def _get_contours(self) -> list:
+        """
+        Determines current segment algorithm is use.
+        Called only from internal functions in config_annotations().
+        Returns:
+            Current algorithm's contour pointset, as a list.
+
+        """
+        if self.segment_algorithm == 'ws':
+            contours: list = self.ws_basins
+        else:  # is 'rw'
+            contours: list = self.rw_contours
+        return contours
+
     def config_annotations(self) -> None:
         """
         Set key bindings to change font size, color, and line thickness
@@ -1812,30 +1966,25 @@ class ImageViewer(ProcessImage):
         Returns: None
         """
 
-        if self.segment_algorithm == 'ws':
-            contours = self.ws_basins
-        else:  # is 'rw'
-            contours = self.rw_contours
-
         def _increase_font_size() -> None:
             self.metrics['font_scale'] *= 1.1
-            self.select_and_size(contour_pointset=contours)
+            self.select_and_size(contour_pointset=self._get_contours())
 
         def _decrease_font_size() -> None:
             self.metrics['font_scale'] *= 0.9
             if self.metrics['font_scale'] < 0.25:
                 self.metrics['font_scale'] = 0.25
-            self.select_and_size(contour_pointset=contours)
+            self.select_and_size(contour_pointset=self._get_contours())
 
         def _increase_line_thickness() -> None:
             self.metrics['line_thickness'] += 1
-            self.select_and_size(contour_pointset=contours)
+            self.select_and_size(contour_pointset=self._get_contours())
 
         def _decrease_line_thickness() -> None:
             self.metrics['line_thickness'] -= 1
             if self.metrics['line_thickness'] == 0:
                 self.metrics['line_thickness'] = 1
-            self.select_and_size(contour_pointset=contours)
+            self.select_and_size(contour_pointset=self._get_contours())
 
         colors = list(const.COLORS_CV.keys())
 
@@ -1849,7 +1998,7 @@ class ImageViewer(ProcessImage):
                 next_color = colors[current_index + 1]
             self.cbox_val['color'].set(next_color)
             print('Annotation font is now:', next_color)
-            self.select_and_size(contour_pointset=contours)
+            self.select_and_size(contour_pointset=self._get_contours())
 
         def _preceding_font_color() -> None:
             current_color = self.cbox_val['color'].get()
@@ -1860,7 +2009,7 @@ class ImageViewer(ProcessImage):
             preceding_color = colors[current_index - 1]
             self.cbox_val['color'].set(preceding_color)
             print('Annotation font is now :', preceding_color)
-            self.select_and_size(contour_pointset=contours)
+            self.select_and_size(contour_pointset=self._get_contours())
 
         # Bindings are needed only for the settings and sized img windows,
         #  but is simpler to use bind_all() which does not depend on widget focus.
@@ -1953,8 +2102,7 @@ class ImageViewer(ProcessImage):
                                            sticky=tk.W)
 
         # The label widget is gridded to the left, based on this widget's width.
-        # self.cbox['ws_connect'].grid(column=1, row=10, **east_grid_params)
-        self.cbox['ws_connect'].grid(column=1, row=10, **east_grid_params)
+        self.cbox['ws_connectivity'].grid(column=1, row=10, **east_grid_params)
 
         self.slider['plm_mindist_lbl'].grid(column=0, row=12, **east_grid_params)
         self.slider['plm_mindist'].grid(column=1, row=12, **slider_grid_params)
@@ -1998,10 +2146,10 @@ class ImageViewer(ProcessImage):
                                        pady=(4, 0),
                                        sticky=tk.W)
 
-        ws_connect_padx = (0, self.cbox['ws_connect'].winfo_reqwidth() + 10)
-        self.cbox['ws_connect_lbl'].grid(column=1, row=10,
-                                         padx=ws_connect_padx,
-                                         **east_params_relative)
+        ws_connectivity_padx = (0, self.cbox['ws_connectivity'].winfo_reqwidth() + 10)
+        self.cbox['ws_connectivity_lbl'].grid(column=1, row=10,
+                                              padx=ws_connectivity_padx,
+                                              **east_params_relative)
 
         size_std_padx = (0, self.cbox['size_std'].winfo_reqwidth() + 10)
         self.cbox['size_std_lbl'].grid(column=1, row=19,
@@ -2122,6 +2270,13 @@ class ImageViewer(ProcessImage):
         Returns:
             None
         """
+
+        # This condition is needed to evaluate user's choice at startup.
+        if self.use_saved_settings:
+            self.import_settings()
+            self.use_saved_settings = False
+            return
+
         # Default settings are optimized for sample1.jpg input.
 
         # Set/Reset Scale widgets.
@@ -2153,12 +2308,14 @@ class ImageViewer(ProcessImage):
         self.cbox['filter'].current(1)  # 'cv2.bilateralFilter'
         self.cbox['dt_type'].current(1)  # 'cv2.DIST_L2' == 2
         self.cbox['dt_mask_size'].current(1)  # '3' == cv2.DIST_MASK_3
-        self.cbox['ws_connect'].current(1)  # '4'
+        self.cbox['ws_connectivity'].current(1)  # '4'
         self.cbox['size_std'].current(0)  # 'None'
 
         # Set to 1 to avoid division by 0.
         self.size_std['px_val'].set('1')
         self.size_std['custom_val'].set('0.0')
+
+        self.segment_algorithm = 'ws'
 
     def validate_px_size_entry(self) -> None:
         """
@@ -2526,15 +2683,15 @@ class ImageViewer(ProcessImage):
         min_dist: int = self.slider_val['plm_mindist'].get()
         dt_type: str = self.cbox_val['dt_type'].get()
         mask_size: int = int(self.cbox_val['dt_mask_size'].get())
-        p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
-                           self.slider_val['plm_footprint'].get())
+        plm_footprint: int = self.slider_val['plm_footprint'].get()
+        p_kernel: tuple = (plm_footprint, plm_footprint)
 
         if self.segment_algorithm == 'ws':
-            connections: str = self.cbox_val['ws_connect'].get()
+            ws_connectivity: str = self.cbox_val['ws_connectivity'].get()
             algorithm = 'Watershed'
             compact_val = '1.0'  # NOTE: update if change val in watershed method.
         else:  # is 'rw'
-            connections: str = 'n/a'
+            ws_connectivity: str = 'n/a'
             algorithm = 'Random Walker'
             compact_val = 'n/a'
 
@@ -2588,6 +2745,38 @@ class ImageViewer(ProcessImage):
         tab = " " * space
         divider = "═" * 20  # divider's unicode_escape: u'\u2550\'
 
+        # This dictionary is used with the 'Export settings' button cmd
+        #  to save all current settings to a json file.
+        #  These dict keys need to match those in slider_val, cbox,
+        #  cbox_val, and size_std dictionaries.
+        self.settings_dict = {
+            'alpha': alpha,
+            'beta': beta,
+            'noise_iter': noise_iter,
+            'morphop': morph_op,
+            'morphshape': morph_shape,
+            'filter': filter_selected,
+            'th_type': th_type,
+            'circle_r_min': circle_r_min,
+            'circle_r_max': circle_r_max,
+            'plm_mindist': min_dist,
+            'plm_footprint': plm_footprint,
+            'dt_type': dt_type,
+            'dt_mask_size': mask_size,
+            'ws_connectivity': ws_connectivity,
+            'algorithm': algorithm,
+            'noise_k': noise_k,
+            'filter_k': _fk,
+            'size_std': size_std,
+            # 'scale': self.scale_factor.get(),
+            'px_val': self.size_std['px_val'].get(),
+            'custom_val': self.size_std['custom_val'].get(),
+            'color': self.cbox_val['color'].get(),
+            'font_scale': self.metrics['font_scale'],
+            'line_thickness': self.metrics['line_thickness'],
+            'segment_algorithm': self.segment_algorithm,
+        }
+
         self.report_txt = (
             f'\nImage: {self.input_file}\n'
             f'Image size: {px_w}x{px_h}\n'
@@ -2605,7 +2794,7 @@ class ImageViewer(ProcessImage):
             f'skimage functions:\n'
             f'{"   peak_local_max:".ljust(space)}min_distance={min_dist},'
             f' footprint=np.ones({p_kernel})\n'
-            f'{"   watershed:".ljust(space)}connectivity={connections},'
+            f'{"   watershed:".ljust(space)}connectivity={ws_connectivity},'
             f' compactness={compact_val}\n'
             f'{divider}\n'
             f'{"# Selected objects:".ljust(space)}{num_selected},'
@@ -2634,6 +2823,7 @@ class ImageViewer(ProcessImage):
         Returns:
             *event* as a formality; functionally None.
         """
+
         self.widget_control('on')
         self.adjust_contrast()
         self.reduce_noise()
@@ -2675,13 +2865,11 @@ class ImageViewer(ProcessImage):
 
         if self.segment_algorithm == 'ws':
             self.watershed_segmentation(self.make_labeled_array())
-            self.config_annotations()
             self.draw_ws_segments()
             self.select_and_size(contour_pointset=self.ws_basins)
             algorithm = 'Watershed'
         else:  # is 'rw'
             self.randomwalk_segmentation(self.make_labeled_array())
-            self.config_annotations()
             self.draw_rw_segments()
             self.select_and_size(contour_pointset=self.rw_contours)
             algorithm = 'Random walker'
@@ -2703,7 +2891,7 @@ class ImageViewer(ProcessImage):
             self.after(ms=6666, func=self.show_info_msg)
         else:
             _info = (f'\n{algorithm} segments found and sizes calculated.\n'
-                     'Report and windows for segmented and selected objects are updated.\n'
+                     'Report and windows for segmented and selected objects updated.\n'
                      f'{self.elapsed} processing seconds elapsed.\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
