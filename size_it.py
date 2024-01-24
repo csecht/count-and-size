@@ -141,7 +141,7 @@ class ProcessImage(tk.Tk):
             # For textvariables in config_comboboxes()...
             'morphop': tk.StringVar(),
             'morphshape': tk.StringVar(),
-            'filter': tk.StringVar(),
+            'filter_type': tk.StringVar(),
             'th_type': tk.StringVar(),
             'dt_type': tk.StringVar(),
             'dt_mask_size': tk.StringVar(),
@@ -160,24 +160,24 @@ class ProcessImage(tk.Tk):
         self.tkimg = {
             'input': tk.PhotoImage(),
             'gray': tk.PhotoImage(),
-            'contrast': tk.PhotoImage(),
-            'redux': tk.PhotoImage(),
-            'filter': tk.PhotoImage(),
-            'segments': tk.PhotoImage(),
-            'dist_trans': tk.PhotoImage(),
-            'thresh': tk.PhotoImage(),
+            'contrasted': tk.PhotoImage(),
+            'reduced_noise': tk.PhotoImage(),
+            'filtered': tk.PhotoImage(),
+            'segmented_objects': tk.PhotoImage(),
+            'transformed': tk.PhotoImage(),
+            'thresholded': tk.PhotoImage(),
             'sized': tk.PhotoImage(),
         }
 
         self.cvimg = {
             'input': const.STUB_ARRAY,
             'gray': const.STUB_ARRAY,
-            'contrast': const.STUB_ARRAY,
-            'redux': const.STUB_ARRAY,
-            'filter': const.STUB_ARRAY,
-            'segments': const.STUB_ARRAY,
-            'dist_trans': const.STUB_ARRAY,
-            'thresh': const.STUB_ARRAY,
+            'contrasted': const.STUB_ARRAY,
+            'reduced_noise': const.STUB_ARRAY,
+            'filtered': const.STUB_ARRAY,
+            'segmented_objects': const.STUB_ARRAY,
+            'transformed': const.STUB_ARRAY,
+            'thresholded': const.STUB_ARRAY,
             'sized': const.STUB_ARRAY,
         }
 
@@ -237,7 +237,7 @@ class ProcessImage(tk.Tk):
         # https://docs.opencv2.org/3.4/d3/dc1/tutorial_basic_linear_transform.html
         # https://stackoverflow.com/questions/39308030/
         #   how-do-i-increase-the-contrast-of-an-image-in-python-opencv
-        self.cvimg['contrast'] = (
+        self.cvimg['contrasted'] = (
             cv2.convertScaleAbs(
                 src=self.cvimg['gray'],
                 alpha=self.slider_val['alpha'].get(),
@@ -245,8 +245,8 @@ class ProcessImage(tk.Tk):
             )
         )
 
-        self.update_image(img_name='contrast',
-                          img_array=self.cvimg['contrast'])
+        self.update_image(img_name='contrasted',
+                          img_array=self.cvimg['contrasted'])
 
     def reduce_noise(self) -> None:
         """
@@ -267,8 +267,8 @@ class ProcessImage(tk.Tk):
         # If redux iteration slider is set to 0, then proceed without,
         # noise reduction and use the contrast image from adjust_contrast().
         if iteration == 0:
-            self.update_image(img_name='redux',
-                              img_array=self.cvimg['contrast'])
+            self.update_image(img_name='reduced_noise',
+                              img_array=self.cvimg['contrasted'])
             return
 
         # Need integers for the cv function parameters.
@@ -289,16 +289,16 @@ class ProcessImage(tk.Tk):
         #   MORPH_OPEN is useful to remove noise and small features.
         #   MORPH_CLOSE is better for certain images, but generally is worse.
         #   MORPH_HITMISS helps to separate close objects by shrinking them.
-        self.cvimg['redux'] = cv2.morphologyEx(
-            src=self.cvimg['contrast'],
+        self.cvimg['reduced_noise'] = cv2.morphologyEx(
+            src=self.cvimg['contrasted'],
             op=morph_op,
             kernel=element,
             iterations=iteration,
             borderType=cv2.BORDER_DEFAULT,
         )
 
-        self.update_image(img_name='redux',
-                          img_array=self.cvimg['redux'])
+        self.update_image(img_name='reduced_noise',
+                          img_array=self.cvimg['reduced_noise'])
 
     def filter_image(self) -> None:
         """
@@ -312,7 +312,7 @@ class ProcessImage(tk.Tk):
             None
         """
 
-        filter_selected = self.cbox_val['filter'].get()
+        filter_selected = self.cbox_val['filter_type'].get()
         border_type = cv2.BORDER_ISOLATED  # cv2.BORDER_REPLICATE #cv2.BORDER_DEFAULT
         noise_iter = self.slider_val['noise_iter'].get()
 
@@ -321,23 +321,23 @@ class ProcessImage(tk.Tk):
         # If filter kernel slider and noise iteration are both set to 0,
         # then proceed without filtering and use the contrasted image.
         if _k == 0 and noise_iter == 0:
-            self.update_image(img_name='filter',
-                              img_array=self.cvimg['contrast'])
+            self.update_image(img_name='filtered',
+                              img_array=self.cvimg['contrasted'])
             return
 
         # If filter kernel slider is set to 0, then proceed without
         # filtering and use the reduced noise image.
         if _k == 0:
-            self.update_image(img_name='filter',
-                              img_array=self.cvimg['redux'])
+            self.update_image(img_name='filtered',
+                              img_array=self.cvimg['reduced_noise'])
             return
 
         # Need to filter the contrasted image when noise reduction is
         #  not applied.
         if noise_iter == 0:
-            image2filter = self.cvimg['contrast']
+            image2filter = self.cvimg['contrasted']
         else:
-            image2filter = self.cvimg['redux']
+            image2filter = self.cvimg['reduced_noise']
 
         # cv2.GaussianBlur and cv2.medianBlur need to have odd kernels,
         #   but cv2.blur and cv2.bilateralFilter will shift image between
@@ -365,31 +365,31 @@ class ProcessImage(tk.Tk):
         #    Gaussian blurring is highly effective in removing Gaussian noise
         #    from an image.
         if filter_selected == 'cv2.blur':
-            self.cvimg['filter'] = cv2.blur(
+            self.cvimg['filtered'] = cv2.blur(
                 src=image2filter,
                 ksize=(filter_k, filter_k),
                 borderType=border_type)
         elif filter_selected == 'cv2.bilateralFilter':
-            self.cvimg['filter'] = cv2.bilateralFilter(
+            self.cvimg['filtered'] = cv2.bilateralFilter(
                 src=image2filter,
                 d=filter_k,
                 sigmaColor=100,
                 sigmaSpace=100,
                 borderType=border_type)
         elif filter_selected == 'cv2.GaussianBlur':
-            self.cvimg['filter'] = cv2.GaussianBlur(
+            self.cvimg['filtered'] = cv2.GaussianBlur(
                 src=image2filter,
                 ksize=(filter_k, filter_k),
                 sigmaX=0,
                 sigmaY=0,
                 borderType=border_type)
         elif filter_selected == 'cv2.medianBlur':
-            self.cvimg['filter'] = cv2.medianBlur(
+            self.cvimg['filtered'] = cv2.medianBlur(
                 src=image2filter,
                 ksize=filter_k)
 
-        self.update_image(img_name='filter',
-                          img_array=self.cvimg['filter'])
+        self.update_image(img_name='filtered',
+                          img_array=self.cvimg['filtered'])
 
     def th_and_dist_trans(self) -> None:
         """
@@ -415,13 +415,13 @@ class ProcessImage(tk.Tk):
         # Need to use type *_INVERSE for black-on-white images.
 
         if filter_k == 0 and noise_iter == 0:
-            image2threshold = self.cvimg['contrast']
+            image2threshold = self.cvimg['contrasted']
         elif filter_k == 0:
-            image2threshold = self.cvimg['redux']
+            image2threshold = self.cvimg['reduced_noise']
         else:
-            image2threshold = self.cvimg['filter']
+            image2threshold = self.cvimg['filtered']
 
-        _, self.cvimg['thresh'] = cv2.threshold(src=image2threshold,
+        _, self.cvimg['thresholded'] = cv2.threshold(src=image2threshold,
                                                 thresh=0,
                                                 maxval=255,
                                                 type=th_type)
@@ -432,15 +432,15 @@ class ProcessImage(tk.Tk):
         #  Returns a float64 ndarray.
         # Note that maskSize=0 calculates the precise mask size only for
         #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
-        self.cvimg['dist_trans']: np.ndarray = cv2.distanceTransform(
-            src=self.cvimg['thresh'],
+        self.cvimg['transformed']: np.ndarray = cv2.distanceTransform(
+            src=self.cvimg['thresholded'],
             distanceType=dt_type,
             maskSize=mask_size)
 
-        self.update_image(img_name='thresh',
-                          img_array=self.cvimg['thresh'])
-        self.update_image(img_name='dist_trans',
-                          img_array=np.uint8(self.cvimg['dist_trans']))
+        self.update_image(img_name='thresholded',
+                          img_array=self.cvimg['thresholded'])
+        self.update_image(img_name='transformed',
+                          img_array=np.uint8(self.cvimg['transformed']))
 
     def make_labeled_array(self) -> int:
         """
@@ -462,17 +462,17 @@ class ProcessImage(tk.Tk):
         # Generate the markers as local maxima of the distance to the background.
         # Don't use exclude_border; objects touching image border will be excluded
         #   in ImageViewer.select_and_size().
-        local_max: ndimage = peak_local_max(image=self.cvimg['dist_trans'],
+        local_max: ndimage = peak_local_max(image=self.cvimg['transformed'],
                                             min_distance=min_dist,
                                             exclude_border=False,  # True is min_dist
                                             num_peaks=np.inf,
                                             footprint=plm_kernel,
-                                            labels=self.cvimg['thresh'],
+                                            labels=self.cvimg['thresholded'],
                                             num_peaks_per_label=np.inf,
                                             p_norm=np.inf)  # Chebyshev distance
         # p_norm=2,  # Euclidean distance
 
-        mask = np.zeros(shape=self.cvimg['dist_trans'].shape, dtype=bool)
+        mask = np.zeros(shape=self.cvimg['transformed'].shape, dtype=bool)
         # Set background to True (not zero: True or 1)
         mask[tuple(local_max.T)] = True
 
@@ -487,7 +487,7 @@ class ProcessImage(tk.Tk):
         #  account (they are removed from the graph).
 
         # Replace thresh_img background with -1 to ignore those pixels.
-        labeled_array[labeled_array == self.cvimg['thresh']] = -1
+        labeled_array[labeled_array == self.cvimg['thresholded']] = -1
 
         return labeled_array
 
@@ -514,11 +514,11 @@ class ProcessImage(tk.Tk):
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Need watershed_line to show boundaries on displayed watershed contour_pointset.
         # compactness=1.0 based on: DOI:10.1109/ICPR.2014.181
-        self.cvimg['segments']: np.ndarray = watershed(
-            image=-self.cvimg['dist_trans'],
+        self.cvimg['segmented_objects']: np.ndarray = watershed(
+            image=-self.cvimg['transformed'],
             markers=array,
             connectivity=ws_connectivity,
-            mask=self.cvimg['thresh'],
+            mask=self.cvimg['thresholded'],
             compactness=1.0,
             watershed_line=True)
 
@@ -536,12 +536,12 @@ class ProcessImage(tk.Tk):
         # Conversion with cv2.convertScaleAbs(watershed_img) also works.
         # NOTE: Use method=cv2.CHAIN_APPROX_NONE when masking individual segments
         #   in select_and_export(). CHAIN_APPROX_NONE can work, but NONE is best?
-        self.ws_basins, _ = cv2.findContours(image=np.uint8(self.cvimg['segments']),
+        self.ws_basins, _ = cv2.findContours(image=np.uint8(self.cvimg['segmented_objects']),
                                              mode=cv2.RETR_EXTERNAL,
                                              method=cv2.CHAIN_APPROX_NONE)
 
         # Convert watershed array data from int32 to allow colored contour_pointset.
-        watershed_img = cv2.cvtColor(src=np.uint8(self.cvimg['segments']),
+        watershed_img = cv2.cvtColor(src=np.uint8(self.cvimg['segmented_objects']),
                                      code=cv2.COLOR_GRAY2BGR)
 
         # Need to prevent a thickness value of 0, yet have it be a function
@@ -570,7 +570,7 @@ class ProcessImage(tk.Tk):
                          thickness=line_thickness,
                          lineType=cv2.LINE_AA)
 
-        self.update_image(img_name='segments',
+        self.update_image(img_name='segmented_objects',
                           img_array=watershed_img)
 
         # Now need to draw enclosing circles around watershed segments and
@@ -594,8 +594,8 @@ class ProcessImage(tk.Tk):
         #  performance with the sample images running an Intel i9600k @ 4.8 GHz.
         #  Default beta & tol take ~8x longer to process for similar results.
         # Need pyamg installed for mode='cg_mg'.
-        self.cvimg['segments']: np.ndarray = random_walker(
-            data=self.cvimg['thresh'],
+        self.cvimg['segmented_objects']: np.ndarray = random_walker(
+            data=self.cvimg['thresholded'],
             labels=array,
             beta=5,  # default: 130,
             mode='cg_mg',  # default: 'cg_j'
@@ -612,7 +612,7 @@ class ProcessImage(tk.Tk):
         #  than using parallelization modules (parallel.py and pool-worker.py
         #  in utility_modules).
         self.rw_contours.clear()
-        for label in np.unique(ar=self.cvimg['segments']):
+        for label in np.unique(ar=self.cvimg['segmented_objects']):
 
             # If the label is zero, we are examining the 'background',
             #   so simply ignore it.
@@ -621,8 +621,8 @@ class ProcessImage(tk.Tk):
 
             # ...otherwise, allocate memory for the label region and draw
             #   it on the mask.
-            mask = np.zeros(shape=self.cvimg['segments'].shape, dtype="uint8")
-            mask[self.cvimg['segments'] == label] = 255
+            mask = np.zeros(shape=self.cvimg['segmented_objects'].shape, dtype="uint8")
+            mask[self.cvimg['segmented_objects'] == label] = 255
 
             # Detect contours in the mask and grab the largest one.
             contours, _ = cv2.findContours(image=mask.copy(),
@@ -643,7 +643,7 @@ class ProcessImage(tk.Tk):
         """
 
         # Convert array data from int32 to allow colored contours.
-        rw_img = cv2.cvtColor(src=np.uint8(self.cvimg['segments']),
+        rw_img = cv2.cvtColor(src=np.uint8(self.cvimg['segmented_objects']),
                               code=cv2.COLOR_GRAY2BGR)
 
         # Need to prevent white or black contours because they
@@ -663,7 +663,7 @@ class ProcessImage(tk.Tk):
                          thickness=self.metrics['line_thickness'],
                          lineType=cv2.LINE_AA)
 
-        self.update_image(img_name='segments',
+        self.update_image(img_name='segmented_objects',
                           img_array=rw_img)
 
         # Now need to draw enclosing circles around RW segments and
@@ -757,7 +757,7 @@ class ImageViewer(ProcessImage):
             'morphshape': ttk.Combobox(master=self.selectors_frame),
             'morphshape_lbl': tk.Label(master=self.selectors_frame),
 
-            'filter': ttk.Combobox(master=self.selectors_frame),
+            'filter_type': ttk.Combobox(master=self.selectors_frame),
             'filter_lbl': tk.Label(master=self.selectors_frame),
 
             'th_type': ttk.Combobox(master=self.selectors_frame),
@@ -1128,11 +1128,9 @@ class ImageViewer(ProcessImage):
             settings_json = _f.read()
             self.imported_settings: dict = loads(settings_json)
 
-        # Set/Reset Scale widgets. Do not include the 'scale' value b/c
-        #  it is set fresh for each image input.
+        # Set/Reset Scale widgets.
         for _k in self.slider_val:
-            if _k != 'scale':
-                self.slider_val[_k].set(self.imported_settings[_k])
+            self.slider_val[_k].set(self.imported_settings[_k])
 
         # Set/Reset Combobox widgets.
         for _k in self.cbox_val:
@@ -1182,14 +1180,14 @@ class ImageViewer(ProcessImage):
                  'the annotation color.')
 
         def _increase_scale_factor() -> None:
-            scale_val = self.scale_factor.get()
+            scale_val = round(self.scale_factor.get(), 2)
             scale_val *= 1.1
             self.scale_factor.set(scale_val)
             self.info_txt.set(_info)
             self.info_label.config(fg=const.COLORS_TK['blue'])
 
         def _decrease_scale_factor() -> None:
-            scale_val = self.scale_factor.get()
+            scale_val = round(self.scale_factor.get(), 2)
             scale_val *= 0.9
             if scale_val < 0.1:
                 scale_val = 0.1
@@ -1288,9 +1286,9 @@ class ImageViewer(ProcessImage):
         # Dictionary item order determines stack order of windows.
         self.img_window = {
             'input': tk.Toplevel(),
-            'contrast': tk.Toplevel(),
-            'filter': tk.Toplevel(),
-            'dist_trans': tk.Toplevel(),
+            'contrasted': tk.Toplevel(),
+            'filtered': tk.Toplevel(),
+            'transformed': tk.Toplevel(),
             'sized': tk.Toplevel(),
         }
 
@@ -1302,14 +1300,14 @@ class ImageViewer(ProcessImage):
             'input': tk.Label(self.img_window['input']),
             'gray': tk.Label(self.img_window['input']),
 
-            'contrast': tk.Label(self.img_window['contrast']),
-            'redux': tk.Label(self.img_window['contrast']),
+            'contrasted': tk.Label(self.img_window['contrasted']),
+            'reduced_noise': tk.Label(self.img_window['contrasted']),
 
-            'filter': tk.Label(self.img_window['filter']),
-            'thresh': tk.Label(self.img_window['filter']),
+            'filtered': tk.Label(self.img_window['filtered']),
+            'thresholded': tk.Label(self.img_window['filtered']),
 
-            'dist_trans': tk.Label(self.img_window['dist_trans']),
-            'segments': tk.Label(self.img_window['dist_trans']),
+            'transformed': tk.Label(self.img_window['transformed']),
+            'segmented_objects': tk.Label(self.img_window['transformed']),
 
             'sized': tk.Label(self.img_window['sized']),
         }
@@ -1813,7 +1811,7 @@ class ImageViewer(ProcessImage):
 
         self.cbox['filter_lbl'].config(text='Filter type:',
                                        **const.LABEL_PARAMETERS)
-        self.cbox['filter'].config(textvariable=self.cbox_val['filter'],
+        self.cbox['filter_type'].config(textvariable=self.cbox_val['filter_type'],
                                    width=14 + width_correction,
                                    values=list(const.CV_FILTER.keys()),
                                    **const.COMBO_PARAMETERS)
@@ -2083,7 +2081,7 @@ class ImageViewer(ProcessImage):
         self.slider['noise_iter'].grid(column=1, row=5, **slider_grid_params)
 
         self.cbox['filter_lbl'].grid(column=0, row=6, **east_grid_params)
-        self.cbox['filter'].grid(column=1, row=6, **west_grid_params)
+        self.cbox['filter_type'].grid(column=1, row=6, **west_grid_params)
 
         # The label widget is gridded to the left, based on this widget's width.
         self.cbox['th_type'].grid(column=1, row=6, **east_grid_params)
@@ -2178,14 +2176,14 @@ class ImageViewer(ProcessImage):
 
         self.img_label['input'].grid(**const.PANEL_LEFT)
 
-        self.img_label['contrast'].grid(**const.PANEL_LEFT)
-        self.img_label['redux'].grid(**const.PANEL_RIGHT)
+        self.img_label['contrasted'].grid(**const.PANEL_LEFT)
+        self.img_label['reduced_noise'].grid(**const.PANEL_RIGHT)
 
-        self.img_label['filter'].grid(**const.PANEL_LEFT)
-        self.img_label['thresh'].grid(**const.PANEL_RIGHT)
+        self.img_label['filtered'].grid(**const.PANEL_LEFT)
+        self.img_label['thresholded'].grid(**const.PANEL_RIGHT)
 
-        self.img_label['dist_trans'].grid(**const.PANEL_LEFT)
-        self.img_label['segments'].grid(**const.PANEL_RIGHT)
+        self.img_label['transformed'].grid(**const.PANEL_LEFT)
+        self.img_label['segmented_objects'].grid(**const.PANEL_RIGHT)
 
         self.img_label['sized'].grid(**const.PANEL_LEFT)
 
@@ -2203,7 +2201,7 @@ class ImageViewer(ProcessImage):
         tkimg = self.tkimg[image_name]
 
         click_info = (f'The displayed {image_name} image was saved at'
-                      f' {self.slider_val["scale"].get()} scale.')
+                      f' {self.scale_factor.get()} scale.')
 
         utils.save_settings_and_img(input_path=self.input_file,
                                     img2save=tkimg,
@@ -2215,7 +2213,7 @@ class ImageViewer(ProcessImage):
         folder = str(Path(self.input_file).parent)
         _info = (f'\nThe result image, "{image_name}", was saved to:\n'
                  f'{utils.valid_path_to(folder)},\n'
-                 'with a timestamp.\n\n')
+                 f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
         self.info_txt.set(_info)
 
     def display_windows(self) -> None:
@@ -2305,7 +2303,7 @@ class ImageViewer(ProcessImage):
         # Set/Reset Combobox widgets.
         self.cbox['morphop'].current(0)  # 'cv2.MORPH_OPEN' == 2
         self.cbox['morphshape'].current(2)  # 'cv2.MORPH_ELLIPSE' == 2
-        self.cbox['filter'].current(1)  # 'cv2.bilateralFilter'
+        self.cbox['filter_type'].current(1)  # 'cv2.bilateralFilter'
         self.cbox['dt_type'].current(1)  # 'cv2.DIST_L2' == 2
         self.cbox['dt_mask_size'].current(1)  # '3' == cv2.DIST_MASK_3
         self.cbox['ws_connectivity'].current(1)  # '4'
@@ -2676,7 +2674,7 @@ class ImageViewer(ProcessImage):
         noise_iter: int = self.slider_val['noise_iter'].get()
         morph_op: str = self.cbox_val['morphop'].get()
         morph_shape: str = self.cbox_val['morphshape'].get()
-        filter_selected: str = self.cbox_val['filter'].get()
+        filter_selected: str = self.cbox_val['filter_type'].get()
         th_type: str = self.cbox_val['th_type'].get()
         circle_r_min: int = self.slider_val['circle_r_min'].get()
         circle_r_max: int = self.slider_val['circle_r_max'].get()
@@ -2755,7 +2753,7 @@ class ImageViewer(ProcessImage):
             'noise_iter': noise_iter,
             'morphop': morph_op,
             'morphshape': morph_shape,
-            'filter': filter_selected,
+            'filter_type': filter_selected,
             'th_type': th_type,
             'circle_r_min': circle_r_min,
             'circle_r_max': circle_r_max,
