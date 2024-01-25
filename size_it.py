@@ -157,29 +157,11 @@ class ProcessImage(tk.Tk):
         #  Dict values will be defined for panels of PIL ImageTk.PhotoImage
         #  with Label images displayed in their respective img_window Toplevel.
         # The cvimg images are numpy arrays.
-        self.tkimg = {
-            'input': tk.PhotoImage(),
-            'gray': tk.PhotoImage(),
-            'contrasted': tk.PhotoImage(),
-            'reduced_noise': tk.PhotoImage(),
-            'filtered': tk.PhotoImage(),
-            'segmented_objects': tk.PhotoImage(),
-            'transformed': tk.PhotoImage(),
-            'thresholded': tk.PhotoImage(),
-            'sized': tk.PhotoImage(),
-        }
-
-        self.cvimg = {
-            'input': const.STUB_ARRAY,
-            'gray': const.STUB_ARRAY,
-            'contrasted': const.STUB_ARRAY,
-            'reduced_noise': const.STUB_ARRAY,
-            'filtered': const.STUB_ARRAY,
-            'segmented_objects': const.STUB_ARRAY,
-            'transformed': const.STUB_ARRAY,
-            'thresholded': const.STUB_ARRAY,
-            'sized': const.STUB_ARRAY,
-        }
+        self.tkimg: dict = {}
+        self.cvimg: dict = {}
+        for _name in const.IMAGE_NAMES:
+            self.tkimg[_name] = tk.PhotoImage()
+            self.cvimg[_name] = const.STUB_ARRAY
 
         # img_label dictionary is set up in ImageViewer.setup_image_windows(),
         #  but is used in all Class methods here.
@@ -783,7 +765,6 @@ class ImageViewer(ProcessImage):
             'px_entry': tk.Entry(self.selectors_frame),
             'px_val': tk.StringVar(),
             'px_lbl': tk.Label(self.selectors_frame),
-
             'custom_entry': tk.Entry(self.selectors_frame),
             'custom_val': tk.StringVar(),
             'custom_lbl': tk.Label(self.selectors_frame),
@@ -1285,14 +1266,25 @@ class ImageViewer(ProcessImage):
             None
         """
 
-        # NOTE: keys here must match corresponding keys in const.WIN_NAME.
+        # NOTE: keys in the following dictionaries must match.
+
         # Dictionary item order determines stack order of windows.
+        # Toplevel() is assigned here, not in __init__, to control timing
+        #  and smoothness of window appearance at startup.
         self.img_window = {
             'input': tk.Toplevel(),
             'contrasted': tk.Toplevel(),
             'filtered': tk.Toplevel(),
             'transformed': tk.Toplevel(),
             'sized': tk.Toplevel(),
+        }
+
+        window_title = {
+            'input': 'Input image',
+            'contrasted': 'Adjusted contrast <- | -> Reduced noise',
+            'filtered': 'Filtered <- | -> Thresholded',
+            'transformed': 'Distance transformed <- | -> Segmented objects',
+            'sized': 'Size-selected objects, circled with diameters.',
         }
 
         # Labels to display scaled images, which are updated using
@@ -1317,15 +1309,6 @@ class ImageViewer(ProcessImage):
 
         # Need an image to replace blank tk desktop icon for each img window.
         #  Set correct path to the local 'images' directory and icon file.
-        # Withdraw all windows here for clean transition; all are deiconified
-        #  in display_windows().
-        # Need to disable default window Exit in display windows b/c
-        #  subsequent calls to them need a valid path name.
-        # Allow image label panels in image windows to resize with window.
-        #  Note that images don't proportionally resize, just their boundaries;
-        #  images will remain anchored at their top left corners.
-        # Configure windows the same as the settings window, to give a yellow
-        #  border when it has focus and light grey when being dragged.
         icon_path = None
         try:
             #  If the icon file is not present, a Terminal notice will be
@@ -1335,6 +1318,13 @@ class ImageViewer(ProcessImage):
         except tk.TclError as _msg:
             pass
 
+        # Withdraw all windows here for clean transition; all are deiconified
+        #  in display_windows().
+        # Need to disable default window Exit in display windows b/c
+        #  subsequent calls to them need a valid path name.
+        # Allow image label panels in image windows to resize with window.
+        #  Note that images don't proportionally resize, just their boundaries;
+        #  images will remain anchored at their top left corners.
         for _name, _toplevel in self.img_window.items():
             _toplevel.wm_withdraw()
             if icon_path:
@@ -1344,11 +1334,8 @@ class ImageViewer(ProcessImage):
             _toplevel.columnconfigure(index=0, weight=1)
             _toplevel.columnconfigure(index=1, weight=1)
             _toplevel.rowconfigure(index=0, weight=1)
-            _toplevel.title(const.WIN_NAME[_name])
-            _toplevel.config(bg=const.MASTER_BG,
-                             highlightthickness=5,
-                             highlightcolor=const.COLORS_TK['yellow'],
-                             highlightbackground=const.DRAG_GRAY)
+            _toplevel.title(window_title[_name])
+            _toplevel.config(**const.WINDOW_PARAMETERS)
             _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(self))
             _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
 
@@ -1363,13 +1350,7 @@ class ImageViewer(ProcessImage):
 
         # Color in the main (self) window and give it a yellow border;
         #   border highlightcolor changes to grey with loss of focus.
-        self.config(
-            bg=const.MASTER_BG,
-            # bg=const.COLORS_TK['sky blue'],  # for development
-            highlightthickness=5,
-            highlightcolor=const.COLORS_TK['yellow'],
-            highlightbackground=const.DRAG_GRAY,
-        )
+        self.config(**const.WINDOW_PARAMETERS)
 
         # Default Frame() arguments work fine to display report text.
         # bg won't show when grid sticky EW for tk.Text; see utils.display_report().

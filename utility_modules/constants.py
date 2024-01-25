@@ -14,6 +14,7 @@ DARK_BG
 DISTANCE_TRANS_TYPE
 DRAG_GRAY
 FONT_TYPE
+IMAGE_NAMES
 LABEL_PARAMETERS
 MASTER_BG
 MY_OS
@@ -28,7 +29,6 @@ STD_CONTOUR_COLOR
 STUB_ARRAY
 THRESH_TYPE
 WIDGET_FG
-WIN_NAME
 """
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License'
 
@@ -47,13 +47,17 @@ STUB_ARRAY: np.ndarray = np.ones(shape=(5, 5), dtype='uint8')
 
 SAVED_SETTINGS = 'saved_settings.json'
 
-WIN_NAME = {
-    'input': 'Input image',
-    'contrasted': 'Adjusted contrast <- | -> Reduced noise',
-    'filtered': 'Filtered <- | -> Thresholded',
-    'transformed': 'Distance transformed <- | -> Segmented objects',
-    'sized': 'Size-selected objects, circled with diameters.',
-}
+# Names are used for keys for image dictionaries.
+IMAGE_NAMES = ('input',
+               'gray',
+               'contrasted',
+               'reduced_noise',
+               'filtered',
+               'segmented_objects',
+               'transformed',
+               'thresholded',
+               'sized',
+               )
 
 # Set ranges for trackbars used to adjust contrast and brightness for
 #  the cv2.convertScaleAbs method.
@@ -174,7 +178,7 @@ COLORS_TK = {
     'white': 'white',
     'tk_white': '',  # system's default, conditional on MY_OS
     'red': 'red1',
-    'green':'green1',
+    'green': 'green1',
 }
 
 STD_CONTOUR_COLOR = {'green': (0, 255, 0)}
@@ -246,6 +250,15 @@ RADIO_PARAMETERS = dict(
     **radio_params  # are OS-specific.
 )
 
+WINDOW_PARAMETERS = dict(
+    bg=MASTER_BG,
+    # bg=COLORS_TK['sky blue'],  # for development
+    highlightthickness=5,
+    highlightcolor=COLORS_TK['yellow'],
+    highlightbackground=DRAG_GRAY,
+)
+
+
 # Here 'font' sets the shown value; font in the pull-down values
 #   is set by option_add in ContourViewer.setup_styles()
 if MY_OS == 'lin':
@@ -256,7 +269,7 @@ if MY_OS == 'lin':
         state='readonly')
 elif MY_OS == 'win':  # is Windows
     COMBO_PARAMETERS = dict(
-        font=('TkTooltipFont', 7), # not size 8
+        font=('TkTooltipFont', 7),  # not size 8
         takefocus=False,
         state='readonly')
 else:  # is macOS
@@ -267,13 +280,13 @@ else:  # is macOS
 
 # Grid arguments to place Label images in image windows.
 PANEL_LEFT = dict(
-            column=0, row=0,
-            padx=5, pady=5,
-            sticky='nsew')
+    column=0, row=0,
+    padx=5, pady=5,
+    sticky='nsew')
 PANEL_RIGHT = dict(
-            column=1, row=0,
-            padx=5, pady=5,
-            sticky='nsew')
+    column=1, row=0,
+    padx=5, pady=5,
+    sticky='nsew')
 
 # Values are in mm units.
 # Value of 0.999 for 'None' is a hack to force 3 sig.fig as the default.
