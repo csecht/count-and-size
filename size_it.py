@@ -39,7 +39,7 @@ scikit-image, scipy, and psutil.
 See this distribution's requirements.txt file for details.
 Developed in Python 3.8 and 3.9, tested up to 3.11.
 """
-# Copyright (C) 2023 C.S. Echt, under GNU General Public License
+# Copyright (C) 2024 C.S. Echt, under GNU General Public License
 
 # Standard library imports.
 import sys
@@ -2615,6 +2615,10 @@ class AppSetup(ImageViewer):
             padx=10,
             pady=(0, 2),
             sticky=tk.W)
+        relative_b_grid_params = dict(
+            pady=(0, 2),
+            sticky=tk.W)
+
         # Widgets gridded in the self.selectors_frame Frame.
         # Sorted by row number:
         self.slider['alpha_lbl'].grid(column=0, row=0, **east_grid_params)
@@ -2727,29 +2731,26 @@ class AppSetup(ImageViewer):
         # Remove initially; show only when Custom size is needed.
         self.size_std['custom_lbl'].grid_remove()
 
+        # Buttons' grids in the mainloop (self) window.
         self.button['process_rw'].grid(
             column=0, row=2,
             padx=process_rw_padx,
-            pady=(0, 2),
-            sticky=tk.W)
+            **relative_b_grid_params)
 
         self.button['export_settings'].grid(
             column=0, row=3,
             padx=(save_results_w + 15, 0),
-            pady=2,
-            sticky=tk.W)
+            **relative_b_grid_params)
 
         self.button['new_input'].grid(
             column=0, row=4,
             padx=(export_obj_w + 15, 0),
-            pady=2,
-            sticky=tk.W)
+            **relative_b_grid_params)
 
         self.button['reset'].grid(
             column=0, row=4,
             padx=(export_obj_w * 2, 0),
-            pady=2,
-            sticky=tk.W)
+            **relative_b_grid_params)
 
     def grid_img_labels(self) -> None:
         """
