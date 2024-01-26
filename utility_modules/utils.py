@@ -41,7 +41,7 @@ def about_win(parent: tk.Toplevel) -> None:
     """
     Basic information about the package in scrolling text in a new
     Toplevel window. Closes when the calling *parent* closes.
-    Called from Start window "About" button.
+    Called from AppSetup window "About" button.
 
     Args:
         parent: The Toplevel name that is calling.

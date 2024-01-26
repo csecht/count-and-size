@@ -34,8 +34,6 @@ WIDGET_FG
 
 # Standard library import
 import sys
-# from multiprocessing import cpu_count
-from psutil import cpu_count
 
 # Third party import
 import cv2
@@ -257,7 +255,6 @@ WINDOW_PARAMETERS = dict(
     highlightcolor=COLORS_TK['yellow'],
     highlightbackground=DRAG_GRAY,
 )
-
 
 # Here 'font' sets the shown value; font in the pull-down values
 #   is set by option_add in ContourViewer.setup_styles()

@@ -96,7 +96,7 @@ def input_metrics(img: np.ndarray) -> dict:
 
     # Ideas for scaling: https://stackoverflow.com/questions/52846474/
     #   how-to-resize-text-for-cv2-puttext-according-to-the-image-size-in-opencv-python
-    font_scale: float = max(fig_width * const.SIZE_FACTOR, 0.2)
+    font_scale: float = round(max(fig_width * const.SIZE_FACTOR, 0.20), 2)
 
     metrics = {
         'img_area': img_area,
