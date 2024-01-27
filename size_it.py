@@ -2956,7 +2956,6 @@ def run_checks() -> None:
 
 if __name__ == "__main__":
 
-    # NOTE: Comment out this call when running PyInstaller.
     run_checks()
 
     try:
