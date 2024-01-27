@@ -191,17 +191,15 @@ def save_report_and_img(input_path: str,
                      f'{txt2save}')
 
     # Use this Path function for saving individual report files:
-    # Path(f'{img_stem}_{caller}_settings{curr_time}.txt').write_text(data2save)
+    #   Path(f'{img_stem}_{caller}_settings{curr_time}.txt').write_text(data2save)
     # Use this for appending multiple reports to single file:
-    with report_file_path.open('a', encoding='utf-8') as _fp:
+    with open(report_file_path, mode='a', encoding='utf-8') as _fp:
         _fp.write(data2save)
 
     # Contour images are np.ndarray direct from cv2 functions, while
     #   other images are those displayed as ImageTk.PhotoImage.
     if isinstance(img2save, np.ndarray):
-        # if first_word == 'Image:':  # text is from contoured_txt
-        # file_name = f'{img_stem}_{caller}_{curr_time}{img_ext}'
-        cv2.imwrite(image_file_path, img2save)
+        cv2.imwrite(filename=image_file_path, img=img2save)
     elif isinstance(img2save, ImageTk.PhotoImage):
         # Need to get the ImageTK image into a format that can be saved to file.
         # source: https://stackoverflow.com/questions/45440746/
@@ -272,11 +270,6 @@ def display_report(frame: tk.Frame, report: str) -> None:
 
     max_line = len(max(report.splitlines(), key=len))
 
-    # Note: 'TkFixedFont' only works when not in a tuple, so no font size.
-    #  The goal is to get a suitable platform-independent mono font.
-    #  font=('Courier', 10) should also work, if need to set font size.
-    #  Smaller fonts are needed to shorten the window as lines & rows are added.
-    #  With smaller font, need better fg font contrast, e.g. yellow, not MASTER_BG.
     reporttxt = ScrolledText(master=frame,
                              font=const.REPORT_FONT,
                              bg=const.DARK_BG,
