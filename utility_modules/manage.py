@@ -64,7 +64,7 @@ def arguments() -> dict:
         sys.exit(0)
 
     # The 'about' key is called from setup_start_window() Help menu.
-    #  The 'terminal' key is called from utils.save_settings_and_img().
+    #  The 'terminal' key is called from utils.save_report_and_img().
     arg_dict = {
         'about': about_text,
         'terminal': args.terminal,
