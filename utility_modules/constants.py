@@ -43,7 +43,7 @@ MY_OS: str = sys.platform[:3]
 
 STUB_ARRAY: np.ndarray = np.ones(shape=(5, 5), dtype='uint8')
 
-SAVED_SETTINGS = 'saved_settings.json'
+SETTINGS_FILE_NAME = 'saved_settings.json'
 
 # Names are used for keys for image dictionaries.
 IMAGE_NAMES = ('input',

@@ -4,7 +4,7 @@ Functions:
 about_win: a toplevel window for the Help>About menu selection.
 check_platform - Exit if not Linux, Windows, or macOS.
 valid_path_to - Get correct path to program's files.
-save_settings_and_img- Save files of result image and its report.
+save_report_and_img- Save files of result image and its report.
 display_report - Place a formatted text string into a specified Frame.
 count_sig_fig - Count number of significant figures in a number.
 quit_gui -  Error-free and informative exit from the program.
@@ -127,12 +127,12 @@ def valid_path_to(input_path: str) -> Path:
     return valid_path
 
 
-def save_settings_and_img(input_path: str,
-                          img2save: Union[np.ndarray, ImageTk.PhotoImage],
-                          txt2save: str,
-                          caller: str,
-                          settings2save=None,
-                          ) -> None:
+def save_report_and_img(input_path: str,
+                        img2save: Union[np.ndarray, ImageTk.PhotoImage],
+                        txt2save: str,
+                        caller: str,
+                        settings2save=None,
+                        ) -> None:
     """
     Write to file the current report of calculated image processing
     values. Save current result image or selected displayed image.
@@ -146,17 +146,17 @@ def save_settings_and_img(input_path: str,
                 widget to insert in the file name, e.g. 'report',
                 'contrast', etc.
         settings2save: a dictionary of settings values; optional call by
-                    the 'Export settings' Button() cmd.
+                    the 'Export settings' Button() cmd; will be written
+                    to a json file to save.
     Returns: None
     """
 
-    # Only the 'Export settings' button cmd uses the settings2save parameter,
-    #  which is given the value of self.settings_dict in report_results().
-    #  So only save that json file, nothing else.
+    # Only the 'Export settings' button cmd uses the settings2save parameter.
+    #  In that case, save only json file argument (a settings dictionary).
     #  Note that the json.dumps() function formats single quotes to double.
-    settings_file_path = valid_path_to(const.SAVED_SETTINGS)
+    settings_path = Path(Path(input_path).parent/const.SETTINGS_FILE_NAME)
     if settings2save:
-        with settings_file_path.open('w', encoding='utf-8') as _fp:
+        with open(settings_path, mode='wt', encoding='utf-8') as _fp:
             _fp.write(dumps(settings2save))
         return
 

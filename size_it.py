@@ -403,10 +403,11 @@ class ProcessImage(tk.Tk):
         else:
             image2threshold = self.cvimg['filtered']
 
-        _, self.cvimg['thresholded'] = cv2.threshold(src=image2threshold,
-                                                thresh=0,
-                                                maxval=255,
-                                                type=th_type)
+        _, self.cvimg['thresholded'] = cv2.threshold(
+            src=image2threshold,
+            thresh=0,
+            maxval=255,
+            type=th_type)
 
         # Calculate the distance transform of the objects' thresholds,
         #  by replacing each foreground (non-zero) element, with its
@@ -774,9 +775,8 @@ class ImageViewer(ProcessImage):
         self.slider_values: list = []
 
         # Is an instance attribute here only because it is used in call
-        #  to utils.save_settings_and_img() from the Save button.
+        #  to utils.save_report_and_img() from the Save button.
         self.report_txt: str = ''
-        self.settings_dict: dict = {}
         self.imported_settings: dict = {}
         self.use_saved_settings = False
 
@@ -825,7 +825,9 @@ class ImageViewer(ProcessImage):
         #  Can be later reset with keybindings in set_manual_scale_factor().
         self.set_auto_scale_factor()
 
-        if utils.valid_path_to(const.SAVED_SETTINGS).exists():
+        input_path = Path(self.input_file).parent
+        settings_path = Path(input_path / const.SETTINGS_FILE_NAME)
+        if settings_path.exists():
             if self.first_run:
                 msg = ('Yes: use saved settings.\n'
                        'No: use startup defaults.')
@@ -868,8 +870,11 @@ class ImageViewer(ProcessImage):
         that are to be applied to a new image.
         """
 
-        with open(const.SAVED_SETTINGS, encoding='utf-8') as _f:
-            settings_json = _f.read()
+        input_folder = Path(self.input_file).parent
+        settings_file = f'{input_folder}/{const.SETTINGS_FILE_NAME}'
+
+        with open(settings_file, mode='rt', encoding='utf-8') as _fp:
+            settings_json = _fp.read()
             self.imported_settings: dict = loads(settings_json)
 
         # Set/Reset Scale widgets.
@@ -947,16 +952,16 @@ class ImageViewer(ProcessImage):
         click_info = (f'The displayed {image_name} image was saved at'
                       f' {self.scale_factor.get()} scale.')
 
-        utils.save_settings_and_img(input_path=self.input_file,
-                                    img2save=tkimg,
-                                    txt2save=click_info,
-                                    caller=image_name)
+        utils.save_report_and_img(input_path=self.input_file,
+                                  img2save=tkimg,
+                                  txt2save=click_info,
+                                  caller=image_name)
 
         # Provide user with a notice that a file was created and
         #  give user time to read the message before resetting it.
-        folder = str(Path(self.input_file).parent)
+        input_folder = str(Path(self.input_file).parent)
         _info = (f'\nThe result image, "{image_name}", was saved to:\n'
-                 f'{utils.valid_path_to(folder)},\n'
+                 f'{input_folder}\n'
                  f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
         self.info_txt.set(_info)
 
@@ -1371,11 +1376,11 @@ class ImageViewer(ProcessImage):
         noise_iter: int = self.slider_val['noise_iter'].get()
         morph_op: str = self.cbox_val['morphop'].get()
         morph_shape: str = self.cbox_val['morphshape'].get()
-        filter_selected: str = self.cbox_val['filter_type'].get()
+        filter_type: str = self.cbox_val['filter_type'].get()
         th_type: str = self.cbox_val['th_type'].get()
         circle_r_min: int = self.slider_val['circle_r_min'].get()
         circle_r_max: int = self.slider_val['circle_r_max'].get()
-        min_dist: int = self.slider_val['plm_mindist'].get()
+        plm_mindist: int = self.slider_val['plm_mindist'].get()
         dt_type: str = self.cbox_val['dt_type'].get()
         mask_size: int = int(self.cbox_val['dt_mask_size'].get())
         plm_footprint: int = self.slider_val['plm_footprint'].get()
@@ -1390,7 +1395,7 @@ class ImageViewer(ProcessImage):
 
         # Only odd kernel integers are used for processing.
         _nk: int = self.slider_val['noise_k'].get()
-        if noise_iter == 0:
+        if _nk == 0:
             noise_k = 'noise reduction not applied'
         else:
             noise_k = _nk + 1 if _nk % 2 == 0 else _nk
@@ -1438,37 +1443,6 @@ class ImageViewer(ProcessImage):
         tab = " " * space
         divider = "═" * 20  # divider's unicode_escape: u'\u2550\'
 
-        # This dictionary is used with the 'Export settings' button cmd
-        #  to save all current settings to a json file.
-        #  These dict keys need to match those in slider_val, cbox,
-        #  cbox_val, and size_std dictionaries.
-        self.settings_dict = {
-            'alpha': alpha,
-            'beta': beta,
-            'noise_iter': noise_iter,
-            'morphop': morph_op,
-            'morphshape': morph_shape,
-            'filter_type': filter_selected,
-            'th_type': th_type,
-            'circle_r_min': circle_r_min,
-            'circle_r_max': circle_r_max,
-            'plm_mindist': min_dist,
-            'plm_footprint': plm_footprint,
-            'dt_type': dt_type,
-            'dt_mask_size': mask_size,
-            'ws_connectivity': ws_connectivity,
-            'noise_k': noise_k,
-            'filter_k': _fk,
-            'size_std': size_std,
-            # 'scale': self.scale_factor.get(),
-            'px_val': self.size_std['px_val'].get(),
-            'custom_val': self.size_std['custom_val'].get(),
-            'color': self.cbox_val['color'].get(),
-            'font_scale': self.metrics['font_scale'],
-            'line_thickness': self.metrics['line_thickness'],
-            'seg_algorithm': self.seg_algorithm,
-        }
-
         self.report_txt = (
             f'\nImage: {self.input_file}\n'
             f'Image size: {px_w}x{px_h}\n'
@@ -1478,13 +1452,13 @@ class ImageViewer(ProcessImage):
             f'{tab}cv2.getStructuringElement shape={morph_shape}\n'
             f'{tab}cv2.morphologyEx iterations={noise_iter}\n'
             f'{tab}cv2.morphologyEx op={morph_op},\n'
-            f'{"Filter:".ljust(space)}{filter_selected} ksize={filter_k}\n'
+            f'{"Filter:".ljust(space)}{filter_type} ksize={filter_k}\n'
             f'{"cv2.threshold:".ljust(space)}type={th_type}\n'
             f'{"cv2.distanceTransform:".ljust(space)}'
             f'distanceType={dt_type}, maskSize={mask_size}\n'
             f'{"scimage functions:".ljust(space)}segmentation algorithm: {self.seg_algorithm}\n'
             f'{"   peak_local_max:".ljust(space)}'
-            f'min_distance={min_dist}, footprint=np.ones({p_kernel})\n'
+            f'min_distance={plm_mindist}, footprint=np.ones({p_kernel})\n'
             f'{"   watershed params:".ljust(space)}'
             f'connectivity={ws_connectivity}, compactness={compact_val}\n'
             f'{divider}\n'
@@ -1635,6 +1609,7 @@ class AppSetup(ImageViewer):
         _delete_window_message
         setup_image_windows
         configure_main_window
+        _settings_dict
         configure_buttons
         _need_to_click
         config_sliders
@@ -1647,6 +1622,7 @@ class AppSetup(ImageViewer):
         config_annotations
         display_windows
     """
+
     def __init__(self):
         super().__init__()
 
@@ -2130,6 +2106,51 @@ class AppSetup(ImageViewer):
         #  display_windows() after all image windows so that, at startup,
         #  it stacks on top.
 
+    def _settings_dict(self) -> dict:
+        """
+        Creates a dictionary is used for the 'Export settings' button
+        cmd to save all current settings to a json file. The dict keys
+        must match those in slider_val, cbox, cbox_val, and size_std
+        dictionaries.
+        Called only from configure_buttons._export_settings().
+
+        Returns: A dictionary of all settings values.
+        """
+
+        if self.seg_algorithm == 'Watershed':
+            ws_connectivity: str = self.cbox_val['ws_connectivity'].get()
+        else:  # is 'Random Walker'
+            ws_connectivity: str = 'n/a'
+
+        settings_dict = {
+            'alpha': self.slider_val['alpha'].get(),
+            'beta': self.slider_val['beta'].get(),
+            'noise_iter': self.slider_val['noise_iter'].get(),
+            'morphop': self.cbox_val['morphop'].get(),
+            'morphshape': self.cbox_val['morphshape'].get(),
+            'filter_type': self.cbox_val['filter_type'].get(),
+            'th_type': self.cbox_val['th_type'].get(),
+            'circle_r_min': self.slider_val['circle_r_min'].get(),
+            'circle_r_max': self.slider_val['circle_r_max'].get(),
+            'plm_mindist': self.slider_val['plm_mindist'].get(),
+            'plm_footprint': self.slider_val['plm_footprint'].get(),
+            'dt_type': self.cbox_val['dt_type'].get(),
+            'dt_mask_size': int(self.cbox_val['dt_mask_size'].get()),
+            'ws_connectivity': ws_connectivity,
+            'noise_k': self.slider_val['noise_k'].get(),
+            'filter_k': self.slider_val['filter_k'].get(),
+            'size_std': self.cbox_val['size_std'].get(),
+            # 'scale': self.scale_factor.get(),
+            'px_val': self.size_std['px_val'].get(),
+            'custom_val': self.size_std['custom_val'].get(),
+            'color': self.cbox_val['color'].get(),
+            'font_scale': self.metrics['font_scale'],
+            'line_thickness': self.metrics['line_thickness'],
+            'seg_algorithm': self.seg_algorithm,
+        }
+
+        return settings_dict
+
     def configure_buttons(self) -> None:
         """
         Assign and grid Buttons in the settings (mainloop) window.
@@ -2140,7 +2161,7 @@ class AppSetup(ImageViewer):
         """
         manage.ttk_styles(mainloop=self)
 
-        _folder = str(Path(self.input_file).parent)
+        input_folder = Path(self.input_file).parent
 
         # These inner functions are used for Button commands.
         def _run_watershed():
@@ -2157,7 +2178,7 @@ class AppSetup(ImageViewer):
             individual object sizes appended.
             """
             _sizes = ', '.join(str(i) for i in self.sorted_size_list)
-            utils.save_settings_and_img(
+            utils.save_report_and_img(
                 input_path=self.input_file,
                 img2save=self.cvimg['sized'],
                 txt2save=self.report_txt + f'\n{_sizes}',
@@ -2165,26 +2186,28 @@ class AppSetup(ImageViewer):
             )
 
             _info = ('\n\nSettings report and result image have been saved to:\n'
-                     f'{utils.valid_path_to(_folder)}\n\n')
+                     f'{input_folder}\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
 
         def _export_settings():
             """
             Save only the settings dictionary, as a json file. It is
-            handled as a special case in utils.save_settings_and_img().
+            handled as a special case in utils.save_report_and_img().
             """
-            _sizes = ', '.join(str(i) for i in self.sorted_size_list)
-            utils.save_settings_and_img(
-                input_path='',
+
+            settings_file = f'{input_folder}/{const.SETTINGS_FILE_NAME}'
+            settings_dict = self._settings_dict()
+            utils.save_report_and_img(
+                input_path=settings_file,
                 img2save=const.STUB_ARRAY,
                 txt2save='',
                 caller='',
-                settings2save=self.settings_dict,
+                settings2save=settings_dict,
             )
 
-            _info = ("\nSettings values have been exported to:\n"
-                     f"{utils.valid_path_to(const.SAVED_SETTINGS)}\n"
+            _info = ('\nSettings values have been exported to:\n'
+                     f'{settings_file}\n'
                      'and are available to use with "New input" or\n'
                      'at startup. Previous settings file is overwritten.\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
@@ -2195,19 +2218,19 @@ class AppSetup(ImageViewer):
                 title="Export only objects' segmented areas?",
                 detail='Yes: ...with a white background.\n'
                        'No: Include area around object\n'
-                       "     ...with image's background.\n"
+                       '     ...with image\'s background.\n'
                        'Cancel: Export nothing and return.')
 
             if self.export_segment:
                 self.export_hull = messagebox.askyesno(
-                    title="Fill in partially segmented objects?",
+                    title='Fill in partially segmented objects?',
                     detail='Yes: Try to include more object area;\n'
                            '     may include some image background.\n'
                            'No: Export just segments, on white.\n')
 
             _num = self.select_and_export()
             _info = (f'\n\n{_num} selected objects were individually exported to:\n'
-                     f'{utils.valid_path_to(_folder)}\n\n')
+                     f'{input_folder}\n\n')
             self.info_txt.set(_info)
 
         def _new_input():
@@ -2456,9 +2479,9 @@ class AppSetup(ImageViewer):
         self.cbox['filter_lbl'].config(text='Filter type:',
                                        **const.LABEL_PARAMETERS)
         self.cbox['filter_type'].config(textvariable=self.cbox_val['filter_type'],
-                                   width=14 + width_correction,
-                                   values=list(const.CV_FILTER.keys()),
-                                   **const.COMBO_PARAMETERS)
+                                        width=14 + width_correction,
+                                        values=list(const.CV_FILTER.keys()),
+                                        **const.COMBO_PARAMETERS)
 
         self.cbox['th_type_lbl'].config(text='Threshold type:',
                                         **const.LABEL_PARAMETERS)
@@ -2873,7 +2896,7 @@ class AppSetup(ImageViewer):
         Ready all image window for display. Show the input image in its window.
         Bind rt-click to save any displayed image.
         Called from __init__.
-        Calls update_image(), utils.save_settings_and_img().
+        Calls update_image(), utils.save_report_and_img().
 
         Returns:
             None
