@@ -761,8 +761,11 @@ class ImageViewer(ProcessImage):
             'reset': ttk.Button(master=self),
         }
 
-        # Screen pixel width is defined in setup_main_window()
+        # Screen pixel width is defined in set_auto_scale_factor().
         self.screen_width: int = 0
+
+        # Defined in setup_start_window() Radiobuttons.
+        self.do_inverse_th = tk.BooleanVar()
 
         self.input_file: str = ''
 
@@ -778,12 +781,13 @@ class ImageViewer(ProcessImage):
         #  to utils.save_report_and_img() from the Save button.
         self.report_txt: str = ''
         self.imported_settings: dict = {}
-        self.use_saved_settings = False
+        self.use_saved_settings: bool = False
 
         # Info label is gridded in configure_main_window().
         self.info_txt = tk.StringVar()
         self.info_label = tk.Label(master=self, textvariable=self.info_txt)
 
+        # Set as startup default. (This attribution needs improvement.)
         self.seg_algorithm = 'Watershed'
 
     def open_input(self, toplevel) -> None:
@@ -871,11 +875,18 @@ class ImageViewer(ProcessImage):
         """
 
         input_folder = Path(self.input_file).parent
-        settings_file = f'{input_folder}/{const.SETTINGS_FILE_NAME}'
+        settings_file = Path(input_folder/const.SETTINGS_FILE_NAME)
 
-        with open(settings_file, mode='rt', encoding='utf-8') as _fp:
-            settings_json = _fp.read()
-            self.imported_settings: dict = loads(settings_json)
+        try:
+            with open(settings_file, mode='rt', encoding='utf-8') as _fp:
+                settings_json = _fp.read()
+                self.imported_settings: dict = loads(settings_json)
+        except FileNotFoundError as fnf:
+            print('The settings JSON file could not be found.\n'
+                  f'{fnf}')
+        except OSError as ose:
+            print('There was a problem reading the settings JSON file.\n'
+                  f'{ose}')
 
         # Set/Reset Scale widgets.
         for _k in self.slider_val:
@@ -884,6 +895,9 @@ class ImageViewer(ProcessImage):
         # Set/Reset Combobox widgets.
         for _k in self.cbox_val:
             self.cbox_val[_k].set(self.imported_settings[_k])
+
+        # Set the threshold selection Radiobutton in setup_start_window().
+        self.do_inverse_th.set(self.imported_settings['do_inverse_th'])
 
         self.metrics['font_scale'] = self.imported_settings['font_scale']
         self.metrics['line_thickness'] = self.imported_settings['line_thickness']
@@ -1630,9 +1644,6 @@ class AppSetup(ImageViewer):
         #   tk.Toplevel as values; don't want tk windows created here.
         self.img_window: dict = {}
 
-        # Used in setup_start_window().
-        self.do_inverse_th = tk.BooleanVar()
-
         # This order of events, when coordinated with the calls in
         #  start_now(), allow macOS implementation to flow well.
         self.setup_main_window()
@@ -2130,6 +2141,7 @@ class AppSetup(ImageViewer):
             'morphshape': self.cbox_val['morphshape'].get(),
             'filter_type': self.cbox_val['filter_type'].get(),
             'th_type': self.cbox_val['th_type'].get(),
+            'do_inverse_th': self.do_inverse_th.get(),
             'circle_r_min': self.slider_val['circle_r_min'].get(),
             'circle_r_max': self.slider_val['circle_r_max'].get(),
             'plm_mindist': self.slider_val['plm_mindist'].get(),
