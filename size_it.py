@@ -827,7 +827,7 @@ class ImageViewer(ProcessImage):
 
         # Auto-set images' scale factor based on input image size.
         #  Can be later reset with keybindings in set_manual_scale_factor().
-        self.set_auto_scale_factor()
+        # self.set_auto_scale_factor()
 
         input_path = Path(self.input_file).parent
         settings_path = Path(input_path / const.SETTINGS_FILE_NAME)
@@ -871,7 +871,8 @@ class ImageViewer(ProcessImage):
     def import_settings(self) -> None:
         """
         The dictionary of saved settings, imported via json.loads(),
-        that are to be applied to a new image.
+        that are to be applied to a new image. Includes all settings
+        except the scale_factor for window image size.
         """
 
         input_folder = Path(self.input_file).parent
@@ -884,9 +885,9 @@ class ImageViewer(ProcessImage):
         except FileNotFoundError as fnf:
             print('The settings JSON file could not be found.\n'
                   f'{fnf}')
-        except OSError as ose:
+        except OSError as oserr:
             print('There was a problem reading the settings JSON file.\n'
-                  f'{ose}')
+                  f'{oserr}')
 
         # Set/Reset Scale widgets.
         for _k in self.slider_val:
@@ -1514,7 +1515,7 @@ class ImageViewer(ProcessImage):
         # Var first_run is reset to False in process() at startup.
         if not self.first_run:
             _info = ('\nPreprocessing completed.\n'
-                     'Click "Run..." to update the report and the\n'
+                     'Select a "Run" button to update the report and the\n'
                      '"Size-selected.." and "Segmented objects" windows.\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
@@ -1920,11 +1921,10 @@ class AppSetup(ImageViewer):
         Returns: None
         """
 
-        _info = ('The new image scale will be applied with\n'
-                 'the next processing action.\n'
-                 'Rescaling "Size-selected.." and "Segmented objects"\n'
-                 'images requires clicking a "Run" button or changing\n'
-                 'the annotation color.')
+        _info = ('\nThe new image scale will be applied with the next processing action.\n'
+                 '(Tip: or just click on a slider handle.)\n'
+                 'Rescaling "Size-selected.." and "Segmented objects" images requires"\n'
+                 'selecting a "Run" button or changing the annotation color.\n')
 
         def _increase_scale_factor() -> None:
             scale_val = round(self.scale_factor.get(), 2)
@@ -2278,13 +2278,17 @@ class AppSetup(ImageViewer):
             self.info_txt.set(_info)
 
         def _reset_to_default_settings():
+            """Order of calls is important here."""
             self.slider_values.clear()
-            self.set_defaults()
             self.widget_control('off')  # is turned 'on' in preprocess().
+            self.metrics = manage.input_metrics(img=self.cvimg['input'])
+            self.set_auto_scale_factor()
+            self.set_defaults()
             self.preprocess()
 
-            _info = ('\nClick a "Run..." button to update counts and\n'
-                     'sizes with default settings.\n\n\n')
+            _info = ('\nDefault settings were applied to preprocess images.\n'
+                     'Select a "Run" button to update the report and reset the\n'
+                     '"Size-selected.." and "Segmented objects" windows.\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
 
@@ -2569,7 +2573,8 @@ class AppSetup(ImageViewer):
 
     def set_defaults(self) -> None:
         """
-        Sets and resets selector widgets.
+        Sets and resets selector widgets and keybind scaling functions
+        for image sizes and annotations.
         Called from __init__ and "Reset" button.
         Returns:
             None
@@ -2599,13 +2604,6 @@ class AppSetup(ImageViewer):
         if self.metrics['img_area'] > 6 * 10e5:
             self.slider_val['plm_mindist'].set(125)
 
-        if self.do_inverse_th.get():
-            self.cbox['th_type'].current(1)
-            self.cbox_val['th_type'].set('cv2.THRESH_OTSU_INVERSE')
-        else:
-            self.cbox['th_type'].current(0)
-            self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
-
         # Set/Reset Combobox widgets.
         self.cbox['morphop'].current(0)  # 'cv2.MORPH_OPEN' == 2
         self.cbox['morphshape'].current(2)  # 'cv2.MORPH_ELLIPSE' == 2
@@ -2615,7 +2613,17 @@ class AppSetup(ImageViewer):
         self.cbox['ws_connectivity'].current(1)  # '4'
         self.cbox['size_std'].current(0)  # 'None'
 
-        # Set to 1 to avoid division by 0.
+        if self.do_inverse_th.get():
+            self.cbox['th_type'].current(1)
+            self.cbox_val['th_type'].set('cv2.THRESH_OTSU_INVERSE')
+        else:
+            self.cbox['th_type'].current(0)
+            self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
+
+        # Reset annotation color.
+        self.cbox_val['color'].set('blue')
+
+        # Set/Reset Entry widgets.
         self.size_std['px_val'].set('1')
         self.size_std['custom_val'].set('0.0')
 
