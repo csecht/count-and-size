@@ -198,7 +198,6 @@ class ProcessImage(tk.Tk):
             None
         """
 
-        # Use .configure to update images.
         self.tkimg[img_name] = manage.tk_image(
             image=img_array,
             scale_coef=self.scale_factor.get()
@@ -524,8 +523,8 @@ class ProcessImage(tk.Tk):
                                              method=cv2.CHAIN_APPROX_NONE)
 
         # Convert watershed array data from int32 to allow colored contour_pointset.
-        watershed_img = cv2.cvtColor(src=np.uint8(self.cvimg['segmented_objects']),
-                                     code=cv2.COLOR_GRAY2BGR)
+        self.cvimg['Watershed'] = cv2.cvtColor(src=np.uint8(self.cvimg['segmented_objects']),
+                                               code=cv2.COLOR_GRAY2BGR)
 
         # Need to prevent a thickness value of 0, yet have it be a function
         #  of image size so that it looks good in scaled display. Because the
@@ -546,7 +545,7 @@ class ProcessImage(tk.Tk):
         else:
             line_color = const.COLORS_CV[self.cbox_val['color'].get()]
 
-        cv2.drawContours(image=watershed_img,
+        cv2.drawContours(image=self.cvimg['Watershed'],
                          contours=self.ws_basins,
                          contourIdx=-1,  # do all contour_pointset
                          color=line_color,
@@ -554,7 +553,7 @@ class ProcessImage(tk.Tk):
                          lineType=cv2.LINE_AA)
 
         self.update_image(img_name='segmented_objects',
-                          img_array=watershed_img)
+                          img_array=self.cvimg['Watershed'])
 
         # Now need to draw enclosing circles around watershed segments and
         #  annotate with object sizes in ImageViewer.select_and_size_objects().
@@ -626,8 +625,8 @@ class ProcessImage(tk.Tk):
         """
 
         # Convert array data from int32 to allow colored contours.
-        rw_img = cv2.cvtColor(src=np.uint8(self.cvimg['segmented_objects']),
-                              code=cv2.COLOR_GRAY2BGR)
+        self.cvimg['random_walker'] = cv2.cvtColor(src=np.uint8(self.cvimg['segmented_objects']),
+                                                  code=cv2.COLOR_GRAY2BGR)
 
         # Need to prevent white or black contours because they
         #  won't show on the white background with black segments.
@@ -639,7 +638,7 @@ class ProcessImage(tk.Tk):
         # Note: this does not update until process_rw_and_sizes() is called.
         #  It shares a window with the distance transform image, which
         #  updates with slider or combobox preprocessing changes.
-        cv2.drawContours(image=rw_img,
+        cv2.drawContours(image=self.cvimg['random_walker'],
                          contours=self.rw_contours,
                          contourIdx=-1,  # do all contours
                          color=line_color,
@@ -647,7 +646,7 @@ class ProcessImage(tk.Tk):
                          lineType=cv2.LINE_AA)
 
         self.update_image(img_name='segmented_objects',
-                          img_array=rw_img)
+                          img_array=self.cvimg['random_walker'])
 
         # Now need to draw enclosing circles around RW segments and
         #  annotate with object sizes in ImageViewer.select_and_size_objects().
@@ -827,8 +826,9 @@ class ImageViewer(ProcessImage):
 
         # Auto-set images' scale factor based on input image size.
         #  Can be later reset with keybindings in set_manual_scale_factor().
-        # self.set_auto_scale_factor()
+        self.set_auto_scale_factor()
 
+        # Handle condition for when user selects to use saved settings.
         input_path = Path(self.input_file).parent
         settings_path = Path(input_path / const.SETTINGS_FILE_NAME)
         if settings_path.exists():
@@ -876,7 +876,7 @@ class ImageViewer(ProcessImage):
         """
 
         input_folder = Path(self.input_file).parent
-        settings_file = Path(input_folder/const.SETTINGS_FILE_NAME)
+        settings_file = Path(input_folder / const.SETTINGS_FILE_NAME)
 
         try:
             with open(settings_file, mode='rt', encoding='utf-8') as _fp:
@@ -1520,6 +1520,12 @@ class ImageViewer(ProcessImage):
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
 
+            # This update is needed to re-scale the input when
+            #  set_manual_scale_factor() keybinds are used. Other images
+            #  are rescaled in their respective processing methods.
+            self.update_image(img_name='input',
+                              img_array=self.cvimg['input'])
+
         return event
 
     def process(self) -> None:
@@ -1914,35 +1920,53 @@ class AppSetup(ImageViewer):
     def set_manual_scale_factor(self) -> None:
         """
         The displayed image scale is set when an image is imported, but
-        can be adjusted with these keybindings. Changes in displayed image
-        scale take effect when ProcessImage.update_image() is called via
-        calls to preprocess() or process().
+        can be adjusted in-real-time with these keybindings.
 
         Returns: None
         """
 
-        _info = ('\nThe new image scale will be applied with the next processing action.\n'
-                 '(Tip: or just click on a slider handle.)\n'
-                 'Rescaling "Size-selected.." and "Segmented objects" images requires"\n'
-                 'selecting a "Run" button or changing the annotation color.\n')
+        # Cannot use const.IMAGE_NAMES to loop update_image() b/c two different
+        #  segmentation algorithms with the 'segmented_objects' image.
+        img_names = ('input',
+                     'contrasted',
+                     'reduced_noise',
+                     'filtered',
+                     'thresholded',
+                     'transformed',
+                     'sized',
+                     )
 
-        def _increase_scale_factor() -> None:
+        _a = 'Watershed' if self.seg_algorithm == 'Watershed' else 'Random Walker'
+
+        def _apply_new_scale():
+            _sf = round(self.scale_factor.get(), 2)
+            self.info_txt.set(f'\n\nA new scale factor of {_sf}'
+                              ' has been applied.\n\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+
+            # Note: conversion with np.uint8() for the img_array parameter
+            #  is required only to display the 'transformed' image.
+            for _n in img_names:
+                self.update_image(img_name=_n,
+                                  img_array=np.uint8(self.cvimg[_n]))
+            self.update_image(img_name='segmented_objects',
+                              img_array=np.uint8(self.cvimg[_a]))
+
+        def increase_scale_factor() -> None:
             scale_val = round(self.scale_factor.get(), 2)
             scale_val *= 1.1
             self.scale_factor.set(scale_val)
-            self.info_txt.set(_info)
-            self.info_label.config(fg=const.COLORS_TK['blue'])
+            _apply_new_scale()
 
-        def _decrease_scale_factor() -> None:
+        def decrease_scale_factor() -> None:
             scale_val = round(self.scale_factor.get(), 2)
             scale_val *= 0.9
             scale_val = max(scale_val, 0.1)
             self.scale_factor.set(scale_val)
-            self.info_txt.set(_info)
-            self.info_label.config(fg=const.COLORS_TK['blue'])
+            _apply_new_scale()
 
-        self.bind_all('<Control-Right>', lambda _: _increase_scale_factor())
-        self.bind_all('<Control-Left>', lambda _: _decrease_scale_factor())
+        self.bind_all('<Control-Right>', lambda _: increase_scale_factor())
+        self.bind_all('<Control-Left>', lambda _: decrease_scale_factor())
 
     def _delete_window_message(self) -> None:
         """
@@ -2180,7 +2204,7 @@ class AppSetup(ImageViewer):
             self.seg_algorithm = 'Watershed'
             self.process()
 
-        def _run_randomwalker():
+        def _run_random_walker():
             self.seg_algorithm = 'Random Walker'
             self.process()
 
@@ -2283,6 +2307,7 @@ class AppSetup(ImageViewer):
             self.widget_control('off')  # is turned 'on' in preprocess().
             self.metrics = manage.input_metrics(img=self.cvimg['input'])
             self.set_auto_scale_factor()
+            self.configure_circle_r_sliders()
             self.set_defaults()
             self.preprocess()
 
@@ -2305,7 +2330,7 @@ class AppSetup(ImageViewer):
 
         self.button['process_rw'].config(
             text='Run Random Walker',
-            command=_run_randomwalker,
+            command=_run_random_walker,
             **button_params)
 
         self.button['save_results'].config(
