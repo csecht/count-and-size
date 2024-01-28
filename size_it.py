@@ -473,7 +473,7 @@ class ProcessImage(tk.Tk):
 
         return labeled_array
 
-    def watershed_segmentation(self, array: np.ndarray) -> None:
+    def watershed_segmentation(self, labeled_array: np.ndarray) -> None:
         """
         Segment objects with skimage.segmentation.watershed().
         Argument *array* calls the make_labeled_array() method that
@@ -481,8 +481,8 @@ class ProcessImage(tk.Tk):
         Called from process().
 
         Args:
-            array: A skimage.features.peak_local_max array,
-                    e.g., from make_labeled_array().
+            labeled_array: A skimage.features.peak_local_max array,
+                           e.g., from make_labeled_array().
 
         Returns: None
         """
@@ -498,7 +498,7 @@ class ProcessImage(tk.Tk):
         # compactness=1.0 based on: DOI:10.1109/ICPR.2014.181
         self.cvimg['segmented_objects']: np.ndarray = watershed(
             image=-self.cvimg['transformed'],
-            markers=array,
+            markers=labeled_array,
             connectivity=ws_connectivity,
             mask=self.cvimg['thresholded'],
             compactness=1.0,
@@ -558,7 +558,7 @@ class ProcessImage(tk.Tk):
         # Now need to draw enclosing circles around watershed segments and
         #  annotate with object sizes in ImageViewer.select_and_size_objects().
 
-    def randomwalk_segmentation(self, array: np.ndarray) -> None:
+    def randomwalk_segmentation(self, labeled_array: np.ndarray) -> None:
         """
         Segment objects with skimage.segmentation.random_walker().
         Argument *array* calls the make_labeled_array() method that
@@ -566,8 +566,8 @@ class ProcessImage(tk.Tk):
         Called from process().
 
         Args:
-            array: A skimage.features.peak_local_max array,
-                    e.g., from make_labeled_array().
+            labeled_array: A skimage.features.peak_local_max array,
+                           e.g., from make_labeled_array().
 
         Returns: None
         """
@@ -578,7 +578,7 @@ class ProcessImage(tk.Tk):
         # Need pyamg installed for mode='cg_mg'.
         self.cvimg['segmented_objects']: np.ndarray = random_walker(
             data=self.cvimg['thresholded'],
-            labels=array,
+            labels=labeled_array,
             beta=5,  # default: 130,
             mode='cg_mg',  # default: 'cg_j'
             tol=0.1,  # default: 1.e-3
@@ -3013,8 +3013,8 @@ if __name__ == "__main__":
             icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
             app.wm_iconphoto(True, icon)
         except tk.TclError as err:
-            print('Cannot display program icon, so it will be blank or the tk default.')
-            print(f'tk error message: {err}')
+            print('Cannot display program icon, so it will be blank or the tk default.\n'
+                  f'tk error message: {err}')
 
         app.mainloop()
     except KeyboardInterrupt:
