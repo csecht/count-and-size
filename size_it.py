@@ -1584,7 +1584,7 @@ class ImageViewer(ProcessImage):
             #   values are entered.
             if (self.size_std['px_val'].get() == '1' or
                     self.cbox_val['size_std'].get() == 'None'):
-                self.after(ms=4444, func=self.show_info_msg)
+                self.after(ms=5555, func=self.show_info_msg)
 
     def process_sizes(self, event=None) -> None:
         """
@@ -1614,7 +1614,7 @@ class ImageViewer(ProcessImage):
         #  display the size standards instructions.
         if (self.size_std['px_val'].get() == '1' or
                 self.cbox_val['size_std'].get() == 'None'):
-            self.after(ms=4444, func=self.show_info_msg)
+            self.after(ms=5555, func=self.show_info_msg)
 
         return event
 
@@ -1926,7 +1926,7 @@ class AppSetup(ImageViewer):
         """
 
         # Cannot use const.IMAGE_NAMES to loop update_image() b/c two different
-        #  segmentation algorithms with the 'segmented_objects' image.
+        #  segmentation algorithms use the 'segmented_objects' image.
         img_names = ('input',
                      'contrasted',
                      'reduced_noise',
@@ -1989,7 +1989,7 @@ class AppSetup(ImageViewer):
 
         # Give user time to read the _info before resetting it to
         #  the previous info text.
-        self.after(ms=4444)
+        self.after(ms=5555)
         self.info_label.config(fg=prev_fg)
         self.info_txt.set(prev_txt)
 
