@@ -424,7 +424,7 @@ class ProcessImage(tk.Tk):
         self.update_image(img_name='transformed',
                           img_array=np.uint8(self.cvimg['transformed']))
 
-    def make_labeled_array(self) -> int:
+    def make_labeled_array(self) -> np.ndarray:
         """
         Finds peak local maximum as defined in skimage.feature. The
         array is used as the 'markers' or 'labels' arguments in
@@ -473,7 +473,7 @@ class ProcessImage(tk.Tk):
 
         return labeled_array
 
-    def watershed_segmentation(self, array: int) -> None:
+    def watershed_segmentation(self, array: np.ndarray) -> None:
         """
         Segment objects with skimage.segmentation.watershed().
         Argument *array* calls the make_labeled_array() method that
@@ -558,7 +558,7 @@ class ProcessImage(tk.Tk):
         # Now need to draw enclosing circles around watershed segments and
         #  annotate with object sizes in ImageViewer.select_and_size_objects().
 
-    def randomwalk_segmentation(self, array: int) -> None:
+    def randomwalk_segmentation(self, array: np.ndarray) -> None:
         """
         Segment objects with skimage.segmentation.random_walker().
         Argument *array* calls the make_labeled_array() method that
