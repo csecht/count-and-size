@@ -228,7 +228,7 @@ def export_segments(input_path: str,
     Writes an image file for an individual contoured segments from a
     list of contour. File names include a timestamp and segment index
     number.
-    Called from ImageViewer.select_and_export() from a Button() command.
+    Called from ImageViewer.select_and_export_objects() from a Button() command.
 
     Args:
         input_path: The input image file path, as string.

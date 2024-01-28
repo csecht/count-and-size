@@ -444,7 +444,7 @@ class ProcessImage(tk.Tk):
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Generate the markers as local maxima of the distance to the background.
         # Don't use exclude_border; objects touching image border will be excluded
-        #   in ImageViewer.select_and_size().
+        #   in ImageViewer.select_and_size_objects().
         local_max: ndimage = peak_local_max(image=self.cvimg['transformed'],
                                             min_distance=min_dist,
                                             exclude_border=False,  # True is min_dist
@@ -514,11 +514,11 @@ class ProcessImage(tk.Tk):
         Returns: None
         """
 
-        # self.ws_basins is used in select_and_size() to draw enclosing circles.
+        # self.ws_basins is used in select_and_size_objects() to draw enclosing circles.
         # Convert image array from int32 to uint8 data type to find contour_pointset.
         # Conversion with cv2.convertScaleAbs(watershed_img) also works.
         # NOTE: Use method=cv2.CHAIN_APPROX_NONE when masking individual segments
-        #   in select_and_export(). CHAIN_APPROX_NONE can work, but NONE is best?
+        #   in select_and_export_objects(). CHAIN_APPROX_NONE can work, but NONE is best?
         self.ws_basins, _ = cv2.findContours(image=np.uint8(self.cvimg['segmented_objects']),
                                              mode=cv2.RETR_EXTERNAL,
                                              method=cv2.CHAIN_APPROX_NONE)
@@ -557,7 +557,7 @@ class ProcessImage(tk.Tk):
                           img_array=watershed_img)
 
         # Now need to draw enclosing circles around watershed segments and
-        #  annotate with object sizes in ImageViewer.select_and_size().
+        #  annotate with object sizes in ImageViewer.select_and_size_objects().
 
     def randomwalk_segmentation(self, array: int) -> None:
         """
@@ -589,7 +589,7 @@ class ProcessImage(tk.Tk):
             prob_tol=0.1,  # default: 1.e-3
             channel_axis=None)
 
-        # self.rw_contours is used in select_and_size() to draw
+        # self.rw_contours is used in select_and_size_objects() to draw
         #   enclosing circles and calculate sizes of segmented objects.
         # Note: This for loop is much more stable, and in most cases faster,
         #  than using parallelization modules (parallel.py and pool-worker.py
@@ -650,7 +650,7 @@ class ProcessImage(tk.Tk):
                           img_array=rw_img)
 
         # Now need to draw enclosing circles around RW segments and
-        #  annotate with object sizes in ImageViewer.select_and_size().
+        #  annotate with object sizes in ImageViewer.select_and_size_objects().
 
 
 class ImageViewer(ProcessImage):
@@ -668,8 +668,8 @@ class ImageViewer(ProcessImage):
         validate_px_size_entry
         validate_custom_size_entry
         set_size_standard
-        select_and_size
-        select_and_export
+        select_and_size_objects
+        select_and_export_objects
         report_results
         preprocess
         process
@@ -1128,9 +1128,9 @@ class ImageViewer(ProcessImage):
                 self.num_sigfig = min(utils.count_sig_fig(preset_std_size),
                                       utils.count_sig_fig(size_std_px))
 
-    def select_and_size(self, contour_pointset: list) -> None:
+    def select_and_size_objects(self, contour_pointset: list) -> None:
         """
-        Select object contour based on area size and position,
+        Select object contour ROI based on area size and position,
         draw an enclosing circle around contours, then display them
         on the input image. Objects are expected to be oblong so that
         circle diameter can represent the object's length.
@@ -1242,10 +1242,10 @@ class ImageViewer(ProcessImage):
         self.update_image(img_name='sized',
                           img_array=self.cvimg['sized'])
 
-    def select_and_export(self) -> int:
+    def select_and_export_objects(self) -> int:
         """
         Takes a list of contour segments, selects, masks and extracts
-        each, to a bounding rectangle, for export to file.
+        each, to a bounding rectangle, for export of ROI to file.
         Calls utility_modules/utils.export_segments().
         Called from Button command in configure_buttons().
 
@@ -1269,7 +1269,7 @@ class ImageViewer(ProcessImage):
         time_now = datetime.now().strftime('%Y%m%d%I%M%S')
         roi_idx = 0
 
-        # Use the identical selection criteria as in select_and_size().
+        # Use the identical selection criteria as in select_and_size_objects().
         c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
         c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
         bottom_edge = self.cvimg['gray'].shape[0] - 1
@@ -1283,7 +1283,7 @@ class ImageViewer(ProcessImage):
 
         for _c in contour_pointset:
 
-            # As in select_and_size():
+            # As in select_and_size_objects():
             #  Exclude None elements.
             #  Exclude contours not in the specified size range.
             #  Exclude contours that have a coordinate point intersecting
@@ -1545,11 +1545,11 @@ class ImageViewer(ProcessImage):
         if self.seg_algorithm == 'Watershed':
             self.watershed_segmentation(self.make_labeled_array())
             self.draw_ws_segments()
-            self.select_and_size(contour_pointset=self.ws_basins)
+            self.select_and_size_objects(contour_pointset=self.ws_basins)
         else:  # is 'Random Walker'
             self.randomwalk_segmentation(self.make_labeled_array())
             self.draw_rw_segments()
-            self.select_and_size(contour_pointset=self.rw_contours)
+            self.select_and_size_objects(contour_pointset=self.rw_contours)
 
         # Record processing time; preprocessing time is negligible.
         self.elapsed = round(time() - self.time_start, 3)
@@ -1583,7 +1583,7 @@ class ImageViewer(ProcessImage):
         """
         Call only sizing and reporting methods to improve performance.
         Called from the circle_r_min and circle_r_max sliders.
-        Calls set_size_standard(), select_and_size(), report_results().
+        Calls set_size_standard(), select_and_size_objects(), report_results().
 
         Args:
             event: The implicit mouse button event.
@@ -1594,9 +1594,9 @@ class ImageViewer(ProcessImage):
         self.set_size_standard()
 
         if self.seg_algorithm == 'Watershed':
-            self.select_and_size(contour_pointset=self.ws_basins)
+            self.select_and_size_objects(contour_pointset=self.ws_basins)
         else:  # is 'Random Walker'
-            self.select_and_size(contour_pointset=self.rw_contours)
+            self.select_and_size_objects(contour_pointset=self.rw_contours)
 
         self.report_results()
 
@@ -2131,7 +2131,7 @@ class AppSetup(ImageViewer):
         if self.seg_algorithm == 'Watershed':
             ws_connectivity: str = self.cbox_val['ws_connectivity'].get()
         else:  # is 'Random Walker'
-            ws_connectivity: str = 'n/a'
+            ws_connectivity = 'n/a'
 
         settings_dict = {
             'alpha': self.slider_val['alpha'].get(),
@@ -2208,10 +2208,10 @@ class AppSetup(ImageViewer):
             handled as a special case in utils.save_report_and_img().
             """
 
-            settings_file = f'{input_folder}/{const.SETTINGS_FILE_NAME}'
+            settings_path = f'{input_folder}/{const.SETTINGS_FILE_NAME}'
             settings_dict = self._settings_dict()
             utils.save_report_and_img(
-                input_path=settings_file,
+                input_path=settings_path,
                 img2save=const.STUB_ARRAY,
                 txt2save='',
                 caller='',
@@ -2219,7 +2219,7 @@ class AppSetup(ImageViewer):
             )
 
             _info = ('\nSettings values have been exported to:\n'
-                     f'{settings_file}\n'
+                     f'{settings_path}\n'
                      'and are available to use with "New input" or\n'
                      'at startup. Previous settings file is overwritten.\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
@@ -2240,7 +2240,7 @@ class AppSetup(ImageViewer):
                            '     may include some image background.\n'
                            'No: Export just segments, on white.\n')
 
-            _num = self.select_and_export()
+            _num = self.select_and_export_objects()
             _info = (f'\n\n{_num} selected objects were individually exported to:\n'
                      f'{input_folder}\n\n')
             self.info_txt.set(_info)
@@ -2373,7 +2373,7 @@ class AppSetup(ImageViewer):
         # Scale widgets that are pre-random_walker (contrast, noise,
         # filter and threshold) and size max/min are called with mouse
         # button release.
-        # Peak-local-max params and select_and_size() are called with Button.
+        # Peak-local-max params and select_and_size_objects() are called with Button.
         self.slider['alpha_lbl'].configure(text='Contrast/gain/alpha:',
                                            **const.LABEL_PARAMETERS)
         self.slider['alpha'].configure(from_=0.0, to=4.0,
@@ -2839,21 +2839,21 @@ class AppSetup(ImageViewer):
         def _increase_font_size() -> None:
             self.metrics['font_scale'] *= 1.1
             self.metrics['font_scale'] = round(self.metrics['font_scale'], 2)
-            self.select_and_size(contour_pointset=self._current_contours())
+            self.select_and_size_objects(contour_pointset=self._current_contours())
 
         def _decrease_font_size() -> None:
             self.metrics['font_scale'] *= 0.9
             self.metrics['font_scale'] = round(max(self.metrics['font_scale'], 0.20), 2)
-            self.select_and_size(contour_pointset=self._current_contours())
+            self.select_and_size_objects(contour_pointset=self._current_contours())
 
         def _increase_line_thickness() -> None:
             self.metrics['line_thickness'] += 1
-            self.select_and_size(contour_pointset=self._current_contours())
+            self.select_and_size_objects(contour_pointset=self._current_contours())
 
         def _decrease_line_thickness() -> None:
             self.metrics['line_thickness'] -= 1
             self.metrics['line_thickness'] = max(self.metrics['line_thickness'], 1)
-            self.select_and_size(contour_pointset=self._current_contours())
+            self.select_and_size_objects(contour_pointset=self._current_contours())
 
         colors = list(const.COLORS_CV.keys())
 
@@ -2867,7 +2867,7 @@ class AppSetup(ImageViewer):
                 next_color = colors[current_index + 1]
             self.cbox_val['color'].set(next_color)
             print('Annotation font is now:', next_color)
-            self.select_and_size(contour_pointset=self._current_contours())
+            self.select_and_size_objects(contour_pointset=self._current_contours())
 
         def _preceding_font_color() -> None:
             current_color = self.cbox_val['color'].get()
@@ -2878,7 +2878,7 @@ class AppSetup(ImageViewer):
             preceding_color = colors[current_index - 1]
             self.cbox_val['color'].set(preceding_color)
             print('Annotation font is now :', preceding_color)
-            self.select_and_size(contour_pointset=self._current_contours())
+            self.select_and_size_objects(contour_pointset=self._current_contours())
 
         # Bindings are needed only for the settings and sized img windows,
         #  but is simpler to use bind_all() which does not depend on widget focus.
