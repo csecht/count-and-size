@@ -791,7 +791,7 @@ class ImageViewer(ProcessImage):
         # Set as startup default. (This attribution needs improvement.)
         self.seg_algorithm = 'Watershed'
 
-    def open_input(self, toplevel) -> None:
+    def open_input(self, toplevel) -> bool:
         """
         Provides an open file dialog to select an initial or new input
         image file. Also sets a scale slider value for the displayed img.
@@ -824,7 +824,10 @@ class ImageViewer(ProcessImage):
                                               code=cv2.COLOR_RGBA2GRAY)
             self.metrics = manage.input_metrics(img=self.cvimg['input'])
         elif toplevel != self:
+            # Was called from start window and canceled selection.
             utils.quit_gui(mainloop=self)
+        else:  # Was called from mainloop and canceled selection.
+            return False
 
         # Auto-set images' scale factor based on input image size.
         #  Can be later reset with keybindings in set_manual_scale_factor().
@@ -850,6 +853,8 @@ class ImageViewer(ProcessImage):
         else:
             self.set_auto_scale_factor()
             self.configure_circle_r_sliders()
+
+        return True
 
     def set_auto_scale_factor(self) -> None:
         """
@@ -2281,22 +2286,29 @@ class AppSetup(ImageViewer):
             preprocessing.
             Returns: None
             """
-            self.open_input(toplevel=self)
-            self.update_image(img_name='input',
-                              img_array=self.cvimg['input'])
+            if self.open_input(toplevel=self):
+                self.update_image(img_name='input',
+                                  img_array=self.cvimg['input'])
+                _info = '\n\nA new input image has been loaded. Processing...\n\n\n'
+                self.info_label.config(fg=const.COLORS_TK['blue'])
+                self.info_txt.set(_info)
+
+            else:  # User canceled input selection or closed messagebox window.
+                _info = '\n\nNo new input file was selected.\n\n\n'
+                self.info_label.config(fg=const.COLORS_TK['vermilion'])
+                self.info_txt.set(_info)
+
+                # Display the size standard instructions only when no
+                #  size standard values are entered.
+                if (self.size_std['px_val'].get() == '1' or
+                        self.cbox_val['size_std'].get() == 'None'):
+                    self.after(ms=4444, func=self.show_info_msg)
+
+                return
 
             if self.use_saved_settings:
                 self.import_settings()
                 self.use_saved_settings = False
-
-            if self.input_file:
-                _info = '\n\nA new input image has been loaded. Processing...\n\n\n'
-                self.info_label.config(fg=const.COLORS_TK['blue'])
-                self.info_txt.set(_info)
-            else:  # user clicked "Cancel" in file dialog.
-                _info = '\n\nNo new input file was selected.\n\n\n'
-                self.info_label.config(fg=const.COLORS_TK['blue'])
-                self.info_txt.set(_info)
 
             self.preprocess()
             self.process()
