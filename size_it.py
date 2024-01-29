@@ -572,10 +572,13 @@ class ProcessImage(tk.Tk):
         Returns: None
         """
 
-        # NOTE: beta and tolerances were empirically determined for best
-        #  performance with the sample images running an Intel i9600k @ 4.8 GHz.
-        #  Default beta & tol take ~8x longer to process for similar results.
-        # Need pyamg installed for mode='cg_mg'.
+        # Note that cvimg['segmented_objects'] is used for both watershed
+        #  and random walker images because both share the Label() grid for
+        #  img_label['segmented_objects'] in the img_window['transformed'] window.
+        # NOTE: beta and tolerances were empirically determined during development
+        #  for best performance with sample images run on an Intel i9600k @ 4.8 GHz.
+        #  Default beta & tol values take ~8x longer to process for similar results.
+        # Need pyamg installed with mode='cg_mg'. 'cg_j' gives bad results.
         self.cvimg['segmented_objects']: np.ndarray = random_walker(
             data=self.cvimg['thresholded'],
             labels=labeled_array,
@@ -625,20 +628,20 @@ class ProcessImage(tk.Tk):
         """
 
         # Convert array data from int32 to allow colored contours.
-        self.cvimg['random_walker'] = cv2.cvtColor(src=np.uint8(self.cvimg['segmented_objects']),
-                                                  code=cv2.COLOR_GRAY2BGR)
+        self.cvimg['Random Walker'] = cv2.cvtColor(src=np.uint8(self.cvimg['segmented_objects']),
+                                                   code=cv2.COLOR_GRAY2BGR)
 
         # Need to prevent white or black contours because they
         #  won't show on the white background with black segments.
         if self.cbox_val['color'].get() in 'white, black':
             line_color: tuple = const.COLORS_CV['blue']
         else:
-            line_color: tuple = const.COLORS_CV[self.cbox_val['color'].get()]
+            line_color = const.COLORS_CV[self.cbox_val['color'].get()]
 
         # Note: this does not update until process_rw_and_sizes() is called.
         #  It shares a window with the distance transform image, which
         #  updates with slider or combobox preprocessing changes.
-        cv2.drawContours(image=self.cvimg['random_walker'],
+        cv2.drawContours(image=self.cvimg['Random Walker'],
                          contours=self.rw_contours,
                          contourIdx=-1,  # do all contours
                          color=line_color,
@@ -646,7 +649,7 @@ class ProcessImage(tk.Tk):
                          lineType=cv2.LINE_AA)
 
         self.update_image(img_name='segmented_objects',
-                          img_array=self.cvimg['random_walker'])
+                          img_array=self.cvimg['Random Walker'])
 
         # Now need to draw enclosing circles around RW segments and
         #  annotate with object sizes in ImageViewer.select_and_size_objects().
@@ -735,7 +738,6 @@ class ImageViewer(ProcessImage):
             'ws_connectivity': ttk.Combobox(master=self.selectors_frame),
             'ws_connectivity_lbl': tk.Label(master=self.selectors_frame),
 
-            # for size standards
             'size_std_lbl': tk.Label(master=self.selectors_frame),
             'size_std': ttk.Combobox(master=self.selectors_frame),
         }
@@ -776,8 +778,6 @@ class ImageViewer(ProcessImage):
         #  prolonged processing times.
         self.slider_values: list = []
 
-        # Is an instance attribute here only because it is used in call
-        #  to utils.save_report_and_img() from the Save button.
         self.report_txt: str = ''
         self.imported_settings: dict = {}
         self.use_saved_settings: bool = False
@@ -1993,6 +1993,88 @@ class AppSetup(ImageViewer):
         self.info_label.config(fg=prev_fg)
         self.info_txt.set(prev_txt)
 
+    # def setup_image_windows(self) -> None:
+    #     """
+    #     Create and configure all Toplevel windows and their Labels that
+    #     are used to display and update processed images.
+    #
+    #     Returns:
+    #         None
+    #     """
+    #
+    #     # NOTE: keys in the following dictionaries must match.
+    #
+    #     # Dictionary item order determines stack order of windows.
+    #     # Toplevel() is assigned here, not in __init__, to control timing
+    #     #  and smoothness of window appearance at startup.
+    #     self.img_window = {
+    #         'input': tk.Toplevel(),
+    #         'contrasted': tk.Toplevel(),
+    #         'filtered': tk.Toplevel(),
+    #         'transformed': tk.Toplevel(),
+    #         'sized': tk.Toplevel(),
+    #     }
+    #
+    #     window_title = {
+    #         'input': 'Input image',
+    #         'contrasted': 'Adjusted contrast <- | -> Reduced noise',
+    #         'filtered': 'Filtered <- | -> Thresholded',
+    #         'transformed': 'Distance transformed <- | -> Segmented objects',
+    #         'sized': 'Size-selected objects, circled with diameters.',
+    #     }
+    #
+    #     # Labels to display scaled images, which are updated using
+    #     #  .configure() for 'image=' in their respective processing methods
+    #     #  via ProcessImage.update_image().
+    #     #  Labels are gridded in their respective img_window in grid_img_labels().
+    #     self.img_label = {
+    #         'input': tk.Label(self.img_window['input']),
+    #         # 'gray': tk.Label(self.img_window['input']),
+    #
+    #         'contrasted': tk.Label(self.img_window['contrasted']),
+    #         'reduced_noise': tk.Label(self.img_window['contrasted']),
+    #
+    #         'filtered': tk.Label(self.img_window['filtered']),
+    #         'thresholded': tk.Label(self.img_window['filtered']),
+    #
+    #         'transformed': tk.Label(self.img_window['transformed']),
+    #         'segmented_objects': tk.Label(self.img_window['transformed']),
+    #
+    #         'sized': tk.Label(self.img_window['sized']),
+    #     }
+    #
+    #     # Need an image to replace blank tk desktop icon for each img window.
+    #     #  Set correct path to the local 'images' directory and icon file.
+    #     icon_path = None
+    #     try:
+    #         #  If the icon file is not present, a Terminal notice will be
+    #         #   printed from <if __name__ == "__main__"> at startup.
+    #         icon_path = tk.PhotoImage(file=utils.valid_path_to('image/sizeit_icon_512.png'))
+    #         self.iconphoto(True, icon_path)
+    #     except tk.TclError as _msg:
+    #         pass
+    #
+    #     # Withdraw all windows here for clean transition; all are deiconified
+    #     #  in display_windows().
+    #     # Need to disable default window Exit in display windows b/c
+    #     #  subsequent calls to them need a valid path name.
+    #     # Allow image label panels in image windows to resize with window.
+    #     #  Note that images don't proportionally resize, just their boundaries;
+    #     #  images will remain anchored at their top left corners.
+    #     for _name, _toplevel in self.img_window.items():
+    #         _toplevel.wm_withdraw()
+    #         if icon_path:
+    #             _toplevel.iconphoto(True, icon_path)
+    #         _toplevel.wm_minsize(width=200, height=100)
+    #         _toplevel.protocol(name='WM_DELETE_WINDOW', func=self._delete_window_message)
+    #         _toplevel.columnconfigure(index=0, weight=1)
+    #         _toplevel.columnconfigure(index=1, weight=1)
+    #         _toplevel.rowconfigure(index=0, weight=1)
+    #         _toplevel.title(window_title[_name])
+    #         _toplevel.config(**const.WINDOW_PARAMETERS)
+    #         _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(self))
+    #         _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
+
     def setup_image_windows(self) -> None:
         """
         Create and configure all Toplevel windows and their Labels that
@@ -2008,19 +2090,22 @@ class AppSetup(ImageViewer):
         # Toplevel() is assigned here, not in __init__, to control timing
         #  and smoothness of window appearance at startup.
         self.img_window = {
-            'input': tk.Toplevel(),
-            'contrasted': tk.Toplevel(),
-            'filtered': tk.Toplevel(),
-            'transformed': tk.Toplevel(),
-            'sized': tk.Toplevel(),
+            'input_contrasted': tk.Toplevel(),
+            'reduced_filtered': tk.Toplevel(),
+            'thresholded_transformed': tk.Toplevel(),
+            'segmented_sized': tk.Toplevel(),
         }
 
+        if self.seg_algorithm == 'Watershed':
+            pane_title = 'Watershed segments'
+        else:
+            pane_title = 'Random Walker segments'
+
         window_title = {
-            'input': 'Input image',
-            'contrasted': 'Adjusted contrast <- | -> Reduced noise',
-            'filtered': 'Filtered <- | -> Thresholded',
-            'transformed': 'Distance transformed <- | -> Segmented objects',
-            'sized': 'Size-selected objects, circled with diameters.',
+            'input_contrasted': 'Input image <- | -> Adjusted contrast',
+            'reduced_filtered': 'Reduced noise <- | -> Filtered',
+            'thresholded_transformed': 'Thresholded <- | -> Distance transformed',
+            'segmented_sized': f'{pane_title} <- | -> Sized objects',
         }
 
         # Labels to display scaled images, which are updated using
@@ -2028,19 +2113,17 @@ class AppSetup(ImageViewer):
         #  via ProcessImage.update_image().
         #  Labels are gridded in their respective img_window in grid_img_labels().
         self.img_label = {
-            'input': tk.Label(self.img_window['input']),
-            'gray': tk.Label(self.img_window['input']),
+            'input': tk.Label(self.img_window['input_contrasted']),
+            'contrasted': tk.Label(self.img_window['input_contrasted']),
 
-            'contrasted': tk.Label(self.img_window['contrasted']),
-            'reduced_noise': tk.Label(self.img_window['contrasted']),
+            'reduced_noise': tk.Label(self.img_window['reduced_filtered']),
+            'filtered': tk.Label(self.img_window['reduced_filtered']),
 
-            'filtered': tk.Label(self.img_window['filtered']),
-            'thresholded': tk.Label(self.img_window['filtered']),
+            'thresholded': tk.Label(self.img_window['thresholded_transformed']),
+            'transformed': tk.Label(self.img_window['thresholded_transformed']),
 
-            'transformed': tk.Label(self.img_window['transformed']),
-            'segmented_objects': tk.Label(self.img_window['transformed']),
-
-            'sized': tk.Label(self.img_window['sized']),
+            'segmented_objects': tk.Label(self.img_window['segmented_sized']),
+            'sized': tk.Label(self.img_window['segmented_sized']),
         }
 
         # Need an image to replace blank tk desktop icon for each img window.
@@ -2074,6 +2157,7 @@ class AppSetup(ImageViewer):
             _toplevel.config(**const.WINDOW_PARAMETERS)
             _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(self))
             _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
+
 
     def configure_main_window(self) -> None:
         """
@@ -2153,9 +2237,12 @@ class AppSetup(ImageViewer):
         """
 
         if self.seg_algorithm == 'Watershed':
-            ws_connectivity: str = self.cbox_val['ws_connectivity'].get()
+            ws_connectivity = int(self.cbox_val['ws_connectivity'].get())
         else:  # is 'Random Walker'
-            ws_connectivity = 'n/a'
+            # Set to 1 b/c if Run Watershed following a settings import,
+            #  then anything than integer 1, 4, 8 raises an error. A 'n/a'
+            #  will be reported when running Random Walker, however.
+            ws_connectivity = 1
 
         settings_dict = {
             'alpha': self.slider_val['alpha'].get(),
@@ -2832,18 +2919,30 @@ class AppSetup(ImageViewer):
             None
         """
 
+        # self.img_label['input'].grid(**const.PANEL_LEFT)
+        #
+        # self.img_label['contrasted'].grid(**const.PANEL_LEFT)
+        # self.img_label['reduced_noise'].grid(**const.PANEL_RIGHT)
+        #
+        # self.img_label['filtered'].grid(**const.PANEL_LEFT)
+        # self.img_label['thresholded'].grid(**const.PANEL_RIGHT)
+        #
+        # self.img_label['transformed'].grid(**const.PANEL_LEFT)
+        # self.img_label['segmented_objects'].grid(**const.PANEL_RIGHT)
+        #
+        # self.img_label['sized'].grid(**const.PANEL_LEFT)
+
         self.img_label['input'].grid(**const.PANEL_LEFT)
+        self.img_label['contrasted'].grid(**const.PANEL_RIGHT)
 
-        self.img_label['contrasted'].grid(**const.PANEL_LEFT)
-        self.img_label['reduced_noise'].grid(**const.PANEL_RIGHT)
+        self.img_label['reduced_noise'].grid(**const.PANEL_LEFT)
+        self.img_label['filtered'].grid(**const.PANEL_RIGHT)
 
-        self.img_label['filtered'].grid(**const.PANEL_LEFT)
-        self.img_label['thresholded'].grid(**const.PANEL_RIGHT)
+        self.img_label['thresholded'].grid(**const.PANEL_LEFT)
+        self.img_label['transformed'].grid(**const.PANEL_RIGHT)
 
-        self.img_label['transformed'].grid(**const.PANEL_LEFT)
-        self.img_label['segmented_objects'].grid(**const.PANEL_RIGHT)
-
-        self.img_label['sized'].grid(**const.PANEL_LEFT)
+        self.img_label['segmented_objects'].grid(**const.PANEL_LEFT)
+        self.img_label['sized'].grid(**const.PANEL_RIGHT)
 
     def _current_contours(self) -> list:
         """
