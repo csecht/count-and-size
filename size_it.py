@@ -661,6 +661,7 @@ class ImageViewer(ProcessImage):
     Methods:
         open_input
         set_auto_scale_factor
+        set_manual_scale_factor
         import_settings
         show_info_msg
         configure_circle_r_sliders
@@ -675,7 +676,7 @@ class ImageViewer(ProcessImage):
         preprocess
         process
         process_sizes
-    """
+"""
 
     def __init__(self):
         super().__init__()
@@ -868,6 +869,60 @@ class ImageViewer(ProcessImage):
             estimated_scale = round((self.winfo_screenheight() * 0.66) / _y, 2)
 
         self.scale_factor.set(estimated_scale)
+
+    def set_manual_scale_factor(self) -> None:
+        """
+        The displayed image scale is set when an image is imported, but
+        can be adjusted in-real-time with these keybindings.
+
+        Returns: None
+        """
+
+        # Cannot use const.IMAGE_NAMES to loop update_image() b/c two different
+        #  segmentation algorithms use the 'segmented_objects' image.
+        img_names = ('input',
+                     'contrasted',
+                     'reduced_noise',
+                     'filtered',
+                     'thresholded',
+                     # 'transformed',
+                     'sized',
+                     )
+
+        _a = 'Watershed' if self.seg_algorithm == 'Watershed' else 'Random Walker'
+
+        def _apply_new_scale():
+            """
+            The scale_factor is applied in ProcessImage.update_image()
+            """
+            _sf = round(self.scale_factor.get(), 2)
+            self.info_txt.set(
+                f'\n\nA new scale factor of {_sf} has been applied.\n\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+
+            # Note: conversion with np.uint8() for the img_array argument
+            #  is required to display the 'transformed' image, if used.
+            for _n in img_names:
+                self.update_image(img_name=_n,
+                                  img_array=self.cvimg[_n])
+            self.update_image(img_name='segmented_objects',
+                              img_array=self.cvimg[_a])
+
+        def increase_scale_factor() -> None:
+            scale_val = round(self.scale_factor.get(), 2)
+            scale_val *= 1.1
+            self.scale_factor.set(scale_val)
+            _apply_new_scale()
+
+        def decrease_scale_factor() -> None:
+            scale_val = round(self.scale_factor.get(), 2)
+            scale_val *= 0.9
+            scale_val = max(scale_val, 0.1)
+            self.scale_factor.set(scale_val)
+            _apply_new_scale()
+
+        self.bind_all('<Control-Right>', lambda _: increase_scale_factor())
+        self.bind_all('<Control-Left>', lambda _: decrease_scale_factor())
 
     def import_settings(self) -> None:
         """
@@ -1627,7 +1682,6 @@ class AppSetup(ImageViewer):
         setup_main_window
         setup_start_window
         start_now
-        set_manual_scale_factor
         _delete_window_message
         setup_image_windows
         configure_main_window
@@ -1919,60 +1973,6 @@ class AppSetup(ImageViewer):
         self.process()
         self.display_windows()
 
-    def set_manual_scale_factor(self) -> None:
-        """
-        The displayed image scale is set when an image is imported, but
-        can be adjusted in-real-time with these keybindings.
-
-        Returns: None
-        """
-
-        # Cannot use const.IMAGE_NAMES to loop update_image() b/c two different
-        #  segmentation algorithms use the 'segmented_objects' image.
-        img_names = ('input',
-                     'contrasted',
-                     'reduced_noise',
-                     'filtered',
-                     'thresholded',
-                     # 'transformed',
-                     'sized',
-                     )
-
-        _a = 'Watershed' if self.seg_algorithm == 'Watershed' else 'Random Walker'
-
-        def _apply_new_scale():
-            """
-            The scale_factor is applied in ProcessImage.update_image()
-            """
-            _sf = round(self.scale_factor.get(), 2)
-            self.info_txt.set(
-                f'\n\nA new scale factor of {_sf} has been applied.\n\n\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-
-            # Note: conversion with np.uint8() for the img_array argument
-            #  is required to display the 'transformed' image, if used.
-            for _n in img_names:
-                self.update_image(img_name=_n,
-                                  img_array=self.cvimg[_n])
-            self.update_image(img_name='segmented_objects',
-                              img_array=self.cvimg[_a])
-
-        def increase_scale_factor() -> None:
-            scale_val = round(self.scale_factor.get(), 2)
-            scale_val *= 1.1
-            self.scale_factor.set(scale_val)
-            _apply_new_scale()
-
-        def decrease_scale_factor() -> None:
-            scale_val = round(self.scale_factor.get(), 2)
-            scale_val *= 0.9
-            scale_val = max(scale_val, 0.1)
-            self.scale_factor.set(scale_val)
-            _apply_new_scale()
-
-        self.bind_all('<Control-Right>', lambda _: increase_scale_factor())
-        self.bind_all('<Control-Left>', lambda _: decrease_scale_factor())
-
     def _delete_window_message(self) -> None:
         """
         Provide a notice in report and settings (mainloop, self)
@@ -2014,18 +2014,13 @@ class AppSetup(ImageViewer):
         self.img_window = {
             'input_contrasted': tk.Toplevel(),
             'reduced_filtered': tk.Toplevel(),
-            # 'thresholded_transformed': tk.Toplevel(),
-            # 'segmented_sized': tk.Toplevel(),
             'thresholded_segmented': tk.Toplevel(),
             'sized': tk.Toplevel(),
-
         }
 
         self.window_title = {
             'input_contrasted': 'Input image <- | -> Adjusted grayscale contrast',
             'reduced_filtered': 'Reduced noise <- | -> Filtered',
-            # 'thresholded_transformed': 'Thresholded <- | -> Distance transformed',
-            # 'segmented_sized': f'{self.seg_algorithm} segments <- | -> Sized objects',
             'thresholded_segmented': f'Thresholded <- | -> {self.seg_algorithm} segments',
             'sized': 'Selected & Sized objects',
         }
@@ -2041,13 +2036,9 @@ class AppSetup(ImageViewer):
             'reduced_noise': tk.Label(self.img_window['reduced_filtered']),
             'filtered': tk.Label(self.img_window['reduced_filtered']),
 
-            # 'thresholded': tk.Label(self.img_window['thresholded_transformed']),
-            # 'transformed': tk.Label(self.img_window['thresholded_transformed']),
             'thresholded': tk.Label(self.img_window['thresholded_segmented']),
             'segmented_objects': tk.Label(self.img_window['thresholded_segmented']),
 
-            # 'segmented_objects': tk.Label(self.img_window['segmented_sized']),
-            # 'sized': tk.Label(self.img_window['segmented_sized']),
             'sized': tk.Label(self.img_window['sized'])
         }
 
@@ -2846,19 +2837,6 @@ class AppSetup(ImageViewer):
         Returns:
             None
         """
-
-        # self.img_label['input'].grid(**const.PANEL_LEFT)
-        #
-        # self.img_label['contrasted'].grid(**const.PANEL_LEFT)
-        # self.img_label['reduced_noise'].grid(**const.PANEL_RIGHT)
-        #
-        # self.img_label['filtered'].grid(**const.PANEL_LEFT)
-        # self.img_label['thresholded'].grid(**const.PANEL_RIGHT)
-        #
-        # self.img_label['transformed'].grid(**const.PANEL_LEFT)
-        # self.img_label['segmented_objects'].grid(**const.PANEL_RIGHT)
-        #
-        # self.img_label['sized'].grid(**const.PANEL_LEFT)
 
         self.img_label['input'].grid(**const.PANEL_LEFT)
         self.img_label['contrasted'].grid(**const.PANEL_RIGHT)
