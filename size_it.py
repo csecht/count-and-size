@@ -178,7 +178,6 @@ class ProcessImage(tk.Tk):
         self.num_sigfig: int = 0
         self.time_start: float = 0
         self.elapsed: float = 0
-        self.first_run: bool = True
 
     def update_image(self,
                      img_name: str,
@@ -421,8 +420,8 @@ class ProcessImage(tk.Tk):
 
         self.update_image(img_name='thresholded',
                           img_array=self.cvimg['thresholded'])
-        self.update_image(img_name='transformed',
-                          img_array=np.uint8(self.cvimg['transformed']))
+        # self.update_image(img_name='transformed',
+        #                   img_array=np.uint8(self.cvimg['transformed']))
 
     def make_labeled_array(self) -> np.ndarray:
         """
@@ -680,6 +679,8 @@ class ImageViewer(ProcessImage):
 
     def __init__(self):
         super().__init__()
+
+        self.first_run: bool = True
 
         self.report_frame = tk.Frame()
         self.selectors_frame = tk.Frame()
@@ -1933,7 +1934,7 @@ class AppSetup(ImageViewer):
                      'reduced_noise',
                      'filtered',
                      'thresholded',
-                     'transformed',
+                     # 'transformed',
                      'sized',
                      )
 
@@ -1948,13 +1949,13 @@ class AppSetup(ImageViewer):
                 f'\n\nA new scale factor of {_sf} has been applied.\n\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
 
-            # Note: conversion with np.uint8() for the img_array parameter
-            #  is required only to display the 'transformed' image.
+            # Note: conversion with np.uint8() for the img_array argument
+            #  is required to display the 'transformed' image, if used.
             for _n in img_names:
                 self.update_image(img_name=_n,
-                                  img_array=np.uint8(self.cvimg[_n]))
+                                  img_array=self.cvimg[_n])
             self.update_image(img_name='segmented_objects',
-                              img_array=np.uint8(self.cvimg[_a]))
+                              img_array=self.cvimg[_a])
 
         def increase_scale_factor() -> None:
             scale_val = round(self.scale_factor.get(), 2)
@@ -2013,15 +2014,20 @@ class AppSetup(ImageViewer):
         self.img_window = {
             'input_contrasted': tk.Toplevel(),
             'reduced_filtered': tk.Toplevel(),
-            'thresholded_transformed': tk.Toplevel(),
-            'segmented_sized': tk.Toplevel(),
+            # 'thresholded_transformed': tk.Toplevel(),
+            # 'segmented_sized': tk.Toplevel(),
+            'thresholded_segmented': tk.Toplevel(),
+            'sized': tk.Toplevel(),
+
         }
 
         self.window_title = {
             'input_contrasted': 'Input image <- | -> Adjusted grayscale contrast',
             'reduced_filtered': 'Reduced noise <- | -> Filtered',
-            'thresholded_transformed': 'Thresholded <- | -> Distance transformed',
-            'segmented_sized': f'{self.seg_algorithm} segments <- | -> Sized objects',
+            # 'thresholded_transformed': 'Thresholded <- | -> Distance transformed',
+            # 'segmented_sized': f'{self.seg_algorithm} segments <- | -> Sized objects',
+            'thresholded_segmented': f'Thresholded <- | -> {self.seg_algorithm} segments',
+            'sized': 'Selected & Sized objects',
         }
 
         # Labels to display scaled images, which are updated using
@@ -2035,11 +2041,14 @@ class AppSetup(ImageViewer):
             'reduced_noise': tk.Label(self.img_window['reduced_filtered']),
             'filtered': tk.Label(self.img_window['reduced_filtered']),
 
-            'thresholded': tk.Label(self.img_window['thresholded_transformed']),
-            'transformed': tk.Label(self.img_window['thresholded_transformed']),
+            # 'thresholded': tk.Label(self.img_window['thresholded_transformed']),
+            # 'transformed': tk.Label(self.img_window['thresholded_transformed']),
+            'thresholded': tk.Label(self.img_window['thresholded_segmented']),
+            'segmented_objects': tk.Label(self.img_window['thresholded_segmented']),
 
-            'segmented_objects': tk.Label(self.img_window['segmented_sized']),
-            'sized': tk.Label(self.img_window['segmented_sized']),
+            # 'segmented_objects': tk.Label(self.img_window['segmented_sized']),
+            # 'sized': tk.Label(self.img_window['segmented_sized']),
+            'sized': tk.Label(self.img_window['sized'])
         }
 
         # Need an image to replace blank tk desktop icon for each img window.
@@ -2205,14 +2214,14 @@ class AppSetup(ImageViewer):
         def _run_watershed():
             self.seg_algorithm = 'Watershed'
             self.process()
-            self.img_window['segmented_sized'].title(
-                'Watershed segments <- | -> Sized objects')
+            self.img_window['thresholded_segmented'].title(
+                'Thresholded <- | -> Watershed segments')
 
         def _run_random_walker():
             self.seg_algorithm = 'Random Walker'
             self.process()
-            self.img_window['segmented_sized'].title(
-                'Random Walker segments <- | -> Sized objects')
+            self.img_window['thresholded_segmented'].title(
+                'Thresholded <- | -> Random Walker segments')
 
         def _save_results():
             """
@@ -2310,11 +2319,11 @@ class AppSetup(ImageViewer):
         def _reset_to_default_settings():
             """Order of calls is important here."""
             self.slider_values.clear()
-            self.widget_control('off')  # is turned 'on' in preprocess().
+            self.set_defaults()
             self.metrics = manage.input_metrics(img=self.cvimg['input'])
             self.set_auto_scale_factor()
             self.configure_circle_r_sliders()
-            self.set_defaults()
+            self.widget_control('off')  # is turned 'on' in preprocess()
             self.preprocess()
 
             _info = ('\nDefault settings were applied to preprocess images.\n'
@@ -2612,7 +2621,7 @@ class AppSetup(ImageViewer):
         """
 
         # This condition is needed to evaluate user's choice at startup.
-        if self.use_saved_settings:
+        if self.first_run and self.use_saved_settings:
             self.import_settings()
             self.use_saved_settings = False
             return
@@ -2858,9 +2867,8 @@ class AppSetup(ImageViewer):
         self.img_label['filtered'].grid(**const.PANEL_RIGHT)
 
         self.img_label['thresholded'].grid(**const.PANEL_LEFT)
-        self.img_label['transformed'].grid(**const.PANEL_RIGHT)
+        self.img_label['segmented_objects'].grid(**const.PANEL_RIGHT)
 
-        self.img_label['segmented_objects'].grid(**const.PANEL_LEFT)
         self.img_label['sized'].grid(**const.PANEL_RIGHT)
 
     def _current_contours(self) -> list:

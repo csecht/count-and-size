@@ -51,9 +51,9 @@ IMAGE_NAMES = ('input',
                'contrasted',
                'reduced_noise',
                'filtered',
-               'segmented_objects',
-               'transformed',
                'thresholded',
+               'transformed',  # May not in current use.
+               'segmented_objects',
                'sized',
                )
 
