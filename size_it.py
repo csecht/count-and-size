@@ -185,7 +185,7 @@ class ProcessImage(tk.Tk):
                      img_array: np.ndarray) -> None:
         """
         Process a cv2 image array to use as a tk PhotoImage and update
-        (configure) its window label for immediate display.
+        (configure) its window label for immediate display, at scale.
         Calls module manage.tk_image(). Called from all methods that
         display an image.
 
@@ -1650,6 +1650,7 @@ class AppSetup(ImageViewer):
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
         self.img_window: dict = {}
+        self.window_title: dict = {}
 
         # This order of events, when coordinated with the calls in
         #  start_now(), allow macOS implementation to flow well.
@@ -1939,9 +1940,12 @@ class AppSetup(ImageViewer):
         _a = 'Watershed' if self.seg_algorithm == 'Watershed' else 'Random Walker'
 
         def _apply_new_scale():
+            """
+            The scale_factor is applied in ProcessImage.update_image()
+            """
             _sf = round(self.scale_factor.get(), 2)
-            self.info_txt.set(f'\n\nA new scale factor of {_sf}'
-                              ' has been applied.\n\n\n')
+            self.info_txt.set(
+                f'\n\nA new scale factor of {_sf} has been applied.\n\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
 
             # Note: conversion with np.uint8() for the img_array parameter
@@ -1993,88 +1997,6 @@ class AppSetup(ImageViewer):
         self.info_label.config(fg=prev_fg)
         self.info_txt.set(prev_txt)
 
-    # def setup_image_windows(self) -> None:
-    #     """
-    #     Create and configure all Toplevel windows and their Labels that
-    #     are used to display and update processed images.
-    #
-    #     Returns:
-    #         None
-    #     """
-    #
-    #     # NOTE: keys in the following dictionaries must match.
-    #
-    #     # Dictionary item order determines stack order of windows.
-    #     # Toplevel() is assigned here, not in __init__, to control timing
-    #     #  and smoothness of window appearance at startup.
-    #     self.img_window = {
-    #         'input': tk.Toplevel(),
-    #         'contrasted': tk.Toplevel(),
-    #         'filtered': tk.Toplevel(),
-    #         'transformed': tk.Toplevel(),
-    #         'sized': tk.Toplevel(),
-    #     }
-    #
-    #     window_title = {
-    #         'input': 'Input image',
-    #         'contrasted': 'Adjusted contrast <- | -> Reduced noise',
-    #         'filtered': 'Filtered <- | -> Thresholded',
-    #         'transformed': 'Distance transformed <- | -> Segmented objects',
-    #         'sized': 'Size-selected objects, circled with diameters.',
-    #     }
-    #
-    #     # Labels to display scaled images, which are updated using
-    #     #  .configure() for 'image=' in their respective processing methods
-    #     #  via ProcessImage.update_image().
-    #     #  Labels are gridded in their respective img_window in grid_img_labels().
-    #     self.img_label = {
-    #         'input': tk.Label(self.img_window['input']),
-    #         # 'gray': tk.Label(self.img_window['input']),
-    #
-    #         'contrasted': tk.Label(self.img_window['contrasted']),
-    #         'reduced_noise': tk.Label(self.img_window['contrasted']),
-    #
-    #         'filtered': tk.Label(self.img_window['filtered']),
-    #         'thresholded': tk.Label(self.img_window['filtered']),
-    #
-    #         'transformed': tk.Label(self.img_window['transformed']),
-    #         'segmented_objects': tk.Label(self.img_window['transformed']),
-    #
-    #         'sized': tk.Label(self.img_window['sized']),
-    #     }
-    #
-    #     # Need an image to replace blank tk desktop icon for each img window.
-    #     #  Set correct path to the local 'images' directory and icon file.
-    #     icon_path = None
-    #     try:
-    #         #  If the icon file is not present, a Terminal notice will be
-    #         #   printed from <if __name__ == "__main__"> at startup.
-    #         icon_path = tk.PhotoImage(file=utils.valid_path_to('image/sizeit_icon_512.png'))
-    #         self.iconphoto(True, icon_path)
-    #     except tk.TclError as _msg:
-    #         pass
-    #
-    #     # Withdraw all windows here for clean transition; all are deiconified
-    #     #  in display_windows().
-    #     # Need to disable default window Exit in display windows b/c
-    #     #  subsequent calls to them need a valid path name.
-    #     # Allow image label panels in image windows to resize with window.
-    #     #  Note that images don't proportionally resize, just their boundaries;
-    #     #  images will remain anchored at their top left corners.
-    #     for _name, _toplevel in self.img_window.items():
-    #         _toplevel.wm_withdraw()
-    #         if icon_path:
-    #             _toplevel.iconphoto(True, icon_path)
-    #         _toplevel.wm_minsize(width=200, height=100)
-    #         _toplevel.protocol(name='WM_DELETE_WINDOW', func=self._delete_window_message)
-    #         _toplevel.columnconfigure(index=0, weight=1)
-    #         _toplevel.columnconfigure(index=1, weight=1)
-    #         _toplevel.rowconfigure(index=0, weight=1)
-    #         _toplevel.title(window_title[_name])
-    #         _toplevel.config(**const.WINDOW_PARAMETERS)
-    #         _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(self))
-    #         _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
-
     def setup_image_windows(self) -> None:
         """
         Create and configure all Toplevel windows and their Labels that
@@ -2084,11 +2006,10 @@ class AppSetup(ImageViewer):
             None
         """
 
-        # NOTE: keys in the following dictionaries must match.
-
         # Dictionary item order determines stack order of windows.
         # Toplevel() is assigned here, not in __init__, to control timing
         #  and smoothness of window appearance at startup.
+        # Note that keys in img_window and window_title must match
         self.img_window = {
             'input_contrasted': tk.Toplevel(),
             'reduced_filtered': tk.Toplevel(),
@@ -2096,16 +2017,11 @@ class AppSetup(ImageViewer):
             'segmented_sized': tk.Toplevel(),
         }
 
-        if self.seg_algorithm == 'Watershed':
-            pane_title = 'Watershed segments'
-        else:
-            pane_title = 'Random Walker segments'
-
-        window_title = {
-            'input_contrasted': 'Input image <- | -> Adjusted contrast',
+        self.window_title = {
+            'input_contrasted': 'Input image <- | -> Adjusted grayscale contrast',
             'reduced_filtered': 'Reduced noise <- | -> Filtered',
             'thresholded_transformed': 'Thresholded <- | -> Distance transformed',
-            'segmented_sized': f'{pane_title} <- | -> Sized objects',
+            'segmented_sized': f'{self.seg_algorithm} segments <- | -> Sized objects',
         }
 
         # Labels to display scaled images, which are updated using
@@ -2153,11 +2069,10 @@ class AppSetup(ImageViewer):
             _toplevel.columnconfigure(index=0, weight=1)
             _toplevel.columnconfigure(index=1, weight=1)
             _toplevel.rowconfigure(index=0, weight=1)
-            _toplevel.title(window_title[_name])
+            _toplevel.title(self.window_title[_name])
             _toplevel.config(**const.WINDOW_PARAMETERS)
             _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(self))
             _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
-
 
     def configure_main_window(self) -> None:
         """
@@ -2290,10 +2205,14 @@ class AppSetup(ImageViewer):
         def _run_watershed():
             self.seg_algorithm = 'Watershed'
             self.process()
+            self.img_window['segmented_sized'].title(
+                'Watershed segments <- | -> Sized objects')
 
         def _run_random_walker():
             self.seg_algorithm = 'Random Walker'
             self.process()
+            self.img_window['segmented_sized'].title(
+                'Random Walker segments <- | -> Sized objects')
 
         def _save_results():
             """
