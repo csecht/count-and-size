@@ -799,7 +799,8 @@ class ImageViewer(ProcessImage):
         Args:
             toplevel: The Toplevel window over which to place the dialog.
 
-        Returns: None
+        Returns:
+            True or False depending on whether input was selected.
 
         """
         self.input_file = filedialog.askopenfilename(
@@ -824,9 +825,10 @@ class ImageViewer(ProcessImage):
                                               code=cv2.COLOR_RGBA2GRAY)
             self.metrics = manage.input_metrics(img=self.cvimg['input'])
         elif toplevel != self:
-            # Was called from start window and canceled selection.
+            # Was called from start window and user clicked "Cancel".
             utils.quit_gui(mainloop=self)
-        else:  # Was called from mainloop and canceled selection.
+        else:
+            # Was called from report window (mainloop, self) and user clicked "Cancel".
             return False
 
         # Auto-set images' scale factor based on input image size.
@@ -838,19 +840,19 @@ class ImageViewer(ProcessImage):
         settings_path = Path(input_path / const.SETTINGS_FILE_NAME)
         if settings_path.exists():
             if self.first_run:
-                msg = ('Yes: use saved settings.\n'
-                       'No: use startup defaults.')
+                msg = (f'Yes: use settings file in folder: {input_path.parts[-1]}.\n'
+                       'No: use default settings.')
             else:
-                msg = ('Yes: use saved settings.\n'
+                msg = (f'Yes: use settings file in folder: {input_path.parts[-1]}.\n'
                        'No: use current settings.')
 
             self.use_saved_settings = messagebox.askyesno(
-                title="Use saved settings?",
+                title=f"Use saved settings with {Path(self.input_file).name}?",
                 detail=msg)
 
         if self.use_saved_settings:
             self.import_settings()
-        else:
+        else:  # user selected "No", or closed the messagebox window
             self.set_auto_scale_factor()
             self.configure_circle_r_sliders()
 
@@ -2329,9 +2331,10 @@ class AppSetup(ImageViewer):
             self.widget_control('off')  # is turned 'on' in preprocess()
             self.preprocess()
 
-            _info = ('\nDefault settings were applied to preprocess images.\n'
-                     'Select a "Run" button to update the report and reset the\n'
-                     '"Size-selected.." and "Segmented objects" windows.\n\n')
+            _info = ('\nSettings have been reset to their defaults.\n'
+                     'Check and adjust them if needed, then...\n'
+                     'Select a "Run" button to finalize updating the\n'
+                     'report and image results.\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
             self.info_txt.set(_info)
 
@@ -2623,11 +2626,20 @@ class AppSetup(ImageViewer):
             None
         """
 
-        # This condition is needed to evaluate user's choice at startup.
+        # This condition is needed to evaluate user's choices at startup.
         if self.first_run and self.use_saved_settings:
             self.import_settings()
             self.use_saved_settings = False
             return
+        elif self.first_run:
+            if self.do_inverse_th.get():
+                self.cbox['th_type'].current(1)
+                self.cbox_val['th_type'].set('cv2.THRESH_OTSU_INVERSE')
+            else:  # user selected 'No' for INVERSE threshold type.
+                self.cbox['th_type'].current(0)
+                self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
+        else:
+            self.cbox['th_type'].current(0)  # 'cv2.THRESH_OTSU'
 
         # Default settings are optimized for sample1.jpg input.
 
@@ -2655,13 +2667,6 @@ class AppSetup(ImageViewer):
         self.cbox['dt_mask_size'].current(1)  # '3' == cv2.DIST_MASK_3
         self.cbox['ws_connectivity'].current(1)  # '4'
         self.cbox['size_std'].current(0)  # 'None'
-
-        if self.do_inverse_th.get():
-            self.cbox['th_type'].current(1)
-            self.cbox_val['th_type'].set('cv2.THRESH_OTSU_INVERSE')
-        else:
-            self.cbox['th_type'].current(0)
-            self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
 
         # Reset annotation color.
         self.cbox_val['color'].set('blue')
