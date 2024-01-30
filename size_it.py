@@ -1396,7 +1396,7 @@ class ImageViewer(ProcessImage):
         """
 
         # Note: recall that *_val dictionaries are inherited from ProcessImage().
-        px_w, px_h = self.cvimg['gray'].shape
+        px_h, px_w = self.cvimg['gray'].shape
         alpha: float = self.slider_val['alpha'].get()
         beta: int = self.slider_val['beta'].get()
         noise_iter: int = self.slider_val['noise_iter'].get()
@@ -1471,7 +1471,7 @@ class ImageViewer(ProcessImage):
 
         self.report_txt = (
             f'\nImage: {self.input_file}\n'
-            f'Image size: {px_w}x{px_h}\n'
+            f'Image size, pixels (w x h): {px_w}x{px_h}\n'
             f'{divider}\n'
             f'{"Contrast:".ljust(space)}convertScaleAbs alpha={alpha}, beta={beta}\n'
             f'{"Noise reduction:".ljust(space)}cv2.getStructuringElement ksize={noise_k},\n'
@@ -1886,8 +1886,9 @@ class AppSetup(ImageViewer):
         start_win.title('Set start parameters')
 
         # ...fill in window header with input path and pixel dimensions,...
+        _h, _w = self.cvimg["gray"].shape
         window_header.config(text=f'Image: {self.input_file}\n'
-                                  f'size:{self.cvimg["gray"].shape[0]}x{self.cvimg["gray"].shape[1]}')
+                                  f'Image size, pixels (w x h): {_w}x{_h}\n')
 
         # ...and make all widgets active.
         color_label.config(state=tk.NORMAL)
