@@ -53,6 +53,8 @@ IMAGE_NAMES = ('input',
                'filtered',
                'thresholded',
                'transformed',  # May not in current use.
+               'Watershed',
+               'Random Walker',
                'segmented_objects',
                'sized',
                )

@@ -428,9 +428,11 @@ class ProcessImage(tk.Tk):
         Finds peak local maximum as defined in skimage.feature. The
         array is used as the 'markers' or 'labels' arguments in
         segmentation methods.
+        Called as an argument from watershed_segmentation() or
+        randomwalk_segmentation().
 
-        Returns: A labeled array, as an int datatype.
-
+        Returns: A labeled ndarray to use in one of the segmentation
+                 algorithms.
         """
         min_dist: int = self.slider_val['plm_mindist'].get()
         p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
@@ -661,7 +663,7 @@ class ImageViewer(ProcessImage):
     Methods:
         open_input
         set_auto_scale_factor
-        set_manual_scale_factor
+        bind_scale_adjustment
         import_settings
         show_info_msg
         configure_circle_r_sliders
@@ -788,7 +790,7 @@ class ImageViewer(ProcessImage):
         self.info_txt = tk.StringVar()
         self.info_label = tk.Label(master=self, textvariable=self.info_txt)
 
-        # Set as startup default. (This attribution needs improvement.)
+        # Set as startup default.
         self.seg_algorithm = 'Watershed'
 
     def open_input(self, toplevel) -> bool:
@@ -832,7 +834,7 @@ class ImageViewer(ProcessImage):
             return False
 
         # Auto-set images' scale factor based on input image size.
-        #  Can be later reset with keybindings in set_manual_scale_factor().
+        #  Can be later reset with keybindings in bind_scale_adjustment().
         self.set_auto_scale_factor()
 
         # Handle condition for when user selects to use saved settings.
@@ -876,60 +878,6 @@ class ImageViewer(ProcessImage):
             estimated_scale = round((self.winfo_screenheight() * 0.66) / _y, 2)
 
         self.scale_factor.set(estimated_scale)
-
-    def set_manual_scale_factor(self) -> None:
-        """
-        The displayed image scale is set when an image is imported, but
-        can be adjusted in-real-time with these keybindings.
-
-        Returns: None
-        """
-
-        # Cannot use const.IMAGE_NAMES to loop update_image() b/c two different
-        #  segmentation algorithms use the 'segmented_objects' image.
-        img_names = ('input',
-                     'contrasted',
-                     'reduced_noise',
-                     'filtered',
-                     'thresholded',
-                     # 'transformed',
-                     'sized',
-                     )
-
-        _a = 'Watershed' if self.seg_algorithm == 'Watershed' else 'Random Walker'
-
-        def _apply_new_scale():
-            """
-            The scale_factor is applied in ProcessImage.update_image()
-            """
-            _sf = round(self.scale_factor.get(), 2)
-            self.info_txt.set(
-                f'\n\nA new scale factor of {_sf} has been applied.\n\n\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-
-            # Note: conversion with np.uint8() for the img_array argument
-            #  is required to display the 'transformed' image, if used.
-            for _n in img_names:
-                self.update_image(img_name=_n,
-                                  img_array=self.cvimg[_n])
-            self.update_image(img_name='segmented_objects',
-                              img_array=self.cvimg[_a])
-
-        def increase_scale_factor() -> None:
-            scale_val = round(self.scale_factor.get(), 2)
-            scale_val *= 1.1
-            self.scale_factor.set(scale_val)
-            _apply_new_scale()
-
-        def decrease_scale_factor() -> None:
-            scale_val = round(self.scale_factor.get(), 2)
-            scale_val *= 0.9
-            scale_val = max(scale_val, 0.1)
-            self.scale_factor.set(scale_val)
-            _apply_new_scale()
-
-        self.bind_all('<Control-Right>', lambda _: increase_scale_factor())
-        self.bind_all('<Control-Left>', lambda _: decrease_scale_factor())
 
     def import_settings(self) -> None:
         """
@@ -1584,7 +1532,7 @@ class ImageViewer(ProcessImage):
             self.info_txt.set(_info)
 
             # This update is needed to re-scale the input when
-            #  set_manual_scale_factor() keybinds are used. Other images
+            #  bind_scale_adjustment() keybinds are used. Other images
             #  are rescaled in their respective processing methods.
             self.update_image(img_name='input',
                               img_array=self.cvimg['input'])
@@ -1702,7 +1650,7 @@ class AppSetup(ImageViewer):
         grid_widgets
         grid_img_labels
         _current_contours
-        config_annotations
+        bind_annotation_styles
         display_windows
     """
 
@@ -1958,7 +1906,7 @@ class AppSetup(ImageViewer):
         # This calling sequence produces a slight delay (longer for larger files)
         #  before anything is displayed, but assures that everything displays
         #  nearly simultaneously for a visually cleaner start.
-        self.set_manual_scale_factor()
+        self.bind_scale_adjustment()
         self.setup_image_windows()
         self.configure_main_window()
         self.show_info_msg()
@@ -1969,7 +1917,7 @@ class AppSetup(ImageViewer):
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
-        self.config_annotations()
+        self.bind_annotation_styles()
 
         # Run processing for the starting image prior to displaying images.
         # Call preprocess(), process(), and display_windows(), in this
@@ -2617,6 +2565,171 @@ class AppSetup(ImageViewer):
                 _w.bind('<Return>', func=self.process_sizes)
                 _w.bind('<KP_Enter>', func=self.process_sizes)
 
+    def _current_contours(self) -> list:
+        """
+        Determines current segment algorithm is use.
+        Called only from internal functions in bind_annotation_styles().
+        Returns:
+            Current algorithm's contour pointset, as a list.
+
+        """
+        if self.seg_algorithm == 'Watershed':
+            contours: list = self.ws_basins
+        else:  # is 'Random Walker'
+            contours: list = self.rw_contours
+        return contours
+
+    def bind_annotation_styles(self) -> None:
+        """
+        Set key bindings to change font size, color, and line thickness
+        of annotations in the 'sized' cv2 image.
+        Called after at startup and after any segmentation algorithm call
+        from process().
+
+        Returns: None
+        """
+
+        def _increase_font_size() -> None:
+            """Limit upper font size scale to a 5x increase."""
+            font_scale: float = self.metrics['font_scale']
+            font_scale *= 1.1
+            font_scale = round(min(font_scale, 5), 2)
+            self.metrics['font_scale'] = font_scale
+            self.select_and_size_objects(contour_pointset=self._current_contours())
+
+        def _decrease_font_size() -> None:
+            """Limit lower font size scale to a 1/5 decrease."""
+            font_scale: float = self.metrics['font_scale']
+            font_scale *= 0.9
+            font_scale = round(max(font_scale, 0.20), 2)
+            self.metrics['font_scale'] = font_scale
+            self.select_and_size_objects(contour_pointset=self._current_contours())
+
+        def _increase_line_thickness() -> None:
+            """Limit upper thickness to 10."""
+            line_thickness: int = self.metrics['line_thickness']
+            line_thickness += 1
+            self.metrics['line_thickness'] = min(line_thickness, 10)
+            self.select_and_size_objects(contour_pointset=self._current_contours())
+
+        def _decrease_line_thickness() -> None:
+            """Limit lower thickness to 1."""
+            line_thickness: int = self.metrics['line_thickness']
+            line_thickness -= 1
+            self.metrics['line_thickness'] = max(line_thickness, 1)
+            self.select_and_size_objects(contour_pointset=self._current_contours())
+
+        colors = list(const.COLORS_CV.keys())
+
+        def _next_font_color() -> None:
+            current_color: str = self.cbox_val['color'].get()
+            current_index = colors.index(current_color)
+            # Need to stop increasing idx at the end of colors list.
+            if current_index == len(colors) - 1:
+                next_color = colors[len(colors) - 1]
+            else:
+                next_color = colors[current_index + 1]
+            self.cbox_val['color'].set(next_color)
+            print('Annotation font is now:', next_color)
+            self.select_and_size_objects(contour_pointset=self._current_contours())
+
+        def _preceding_font_color() -> None:
+            current_color: str = self.cbox_val['color'].get()
+            current_index = colors.index(current_color)
+            # Need to stop decreasing idx at the beginning of colors list.
+            if current_index == 0:
+                current_index = 1
+            preceding_color = colors[current_index - 1]
+            self.cbox_val['color'].set(preceding_color)
+            print('Annotation font is now :', preceding_color)
+            self.select_and_size_objects(contour_pointset=self._current_contours())
+
+        # Bindings are needed only for the settings and sized img windows,
+        #  but is simpler to use bind_all() which does not depend on widget focus.
+        # NOTE: On Windows, KP_* is not a recognized keysym string; works on Linux.
+        #  Windows keysyms 'plus' & 'minus' are for both keyboard and keypad.
+        self.bind_all('<Control-equal>', lambda _: _increase_font_size())
+        self.bind_all('<Control-minus>', lambda _: _decrease_font_size())
+        self.bind_all('<Control-KP_Subtract>', lambda _: _decrease_font_size())
+
+        self.bind_all('<Shift-Control-plus>', lambda _: _increase_line_thickness())
+        self.bind_all('<Shift-Control-KP_Add>', lambda _: _increase_line_thickness())
+        self.bind_all('<Shift-Control-underscore>', lambda _: _decrease_line_thickness())
+
+        self.bind_all('<Control-Up>', lambda _: _next_font_color())
+        self.bind_all('<Control-Down>', lambda _: _preceding_font_color())
+
+        # Need platform-specific keypad keysym.
+        if const.MY_OS == 'win':
+            self.bind_all('<Control-plus>', lambda _: _increase_font_size())
+            self.bind_all('<Shift-Control-minus>', lambda _: _decrease_line_thickness())
+        else:
+            self.bind_all('<Control-KP_Add>', lambda _: _increase_font_size())
+            self.bind_all('<Shift-Control-KP_Subtract>', lambda _: _decrease_line_thickness())
+
+    def bind_scale_adjustment(self) -> None:
+        """
+        The displayed image scale is set when an image is imported, but
+        can be adjusted in-real-time with these keybindings.
+
+        Returns: None
+        """
+
+        # Cannot use const.IMAGE_NAMES to loop update_image() b/c two different
+        #  segmentation algorithms use the 'segmented_objects' image.
+        img_names = ('input',
+                     'contrasted',
+                     'reduced_noise',
+                     'filtered',
+                     'thresholded',
+                     # 'transformed',
+                     'sized',
+                     )
+
+        # Note that these string names must match the respective keys in
+        #  draw_ws_segments() and draw_rw_segments() methods.
+        _a = 'Watershed' if self.seg_algorithm == 'Watershed' else 'Random Walker'
+
+        def _apply_new_scale():
+            """
+            The scale_factor is applied in ProcessImage.update_image()
+            """
+            _sf = round(self.scale_factor.get(), 2)
+            self.info_txt.set(
+                f'\n\nA new scale factor of {_sf} has been applied.\n\n\n')
+            self.info_label.config(fg=const.COLORS_TK['blue'])
+
+            # Note: conversion with np.uint8() for the img_array argument
+            #  is required to display the 'transformed' image, if used.
+            for _n in img_names:
+                self.update_image(img_name=_n,
+                                  img_array=self.cvimg[_n])
+            self.update_image(img_name='segmented_objects',
+                              img_array=self.cvimg[_a])
+
+        def increase_scale_factor() -> None:
+            """
+            Limit upper factor to a 4x increase to maintain performance.
+            """
+            scale_factor: float = self.scale_factor.get()
+            scale_factor *= 1.1
+            scale_factor = round(min(scale_factor, 4), 2)
+            self.scale_factor.set(scale_factor)
+            _apply_new_scale()
+
+        def decrease_scale_factor() -> None:
+            """
+            Limit lower factor to a 1/4 decrease to maintain readability.
+            """
+            scale_factor: float = self.scale_factor.get()
+            scale_factor *= 0.9
+            scale_factor = round(max(scale_factor, 0.25), 2)
+            self.scale_factor.set(scale_factor)
+            _apply_new_scale()
+
+        self.bind_all('<Control-Right>', lambda _: increase_scale_factor())
+        self.bind_all('<Control-Left>', lambda _: decrease_scale_factor())
+
     def set_defaults(self) -> None:
         """
         Sets and resets selector widgets and keybind scaling functions
@@ -2865,97 +2978,6 @@ class AppSetup(ImageViewer):
         self.img_label['segmented_objects'].grid(**const.PANEL_RIGHT)
 
         self.img_label['sized'].grid(**const.PANEL_RIGHT)
-
-    def _current_contours(self) -> list:
-        """
-        Determines current segment algorithm is use.
-        Called only from internal functions in config_annotations().
-        Returns:
-            Current algorithm's contour pointset, as a list.
-
-        """
-        if self.seg_algorithm == 'Watershed':
-            contours: list = self.ws_basins
-        else:  # is 'Random Walker'
-            contours: list = self.rw_contours
-        return contours
-
-    def config_annotations(self) -> None:
-        """
-        Set key bindings to change font size, color, and line thickness
-        of annotations in the 'sized' cv2 image.
-        Called after at startup and after any segmentation algorithm call
-        from process().
-
-        Returns: None
-        """
-
-        def _increase_font_size() -> None:
-            self.metrics['font_scale'] *= 1.1
-            self.metrics['font_scale'] = round(self.metrics['font_scale'], 2)
-            self.select_and_size_objects(contour_pointset=self._current_contours())
-
-        def _decrease_font_size() -> None:
-            self.metrics['font_scale'] *= 0.9
-            self.metrics['font_scale'] = round(max(self.metrics['font_scale'], 0.20), 2)
-            self.select_and_size_objects(contour_pointset=self._current_contours())
-
-        def _increase_line_thickness() -> None:
-            self.metrics['line_thickness'] += 1
-            self.select_and_size_objects(contour_pointset=self._current_contours())
-
-        def _decrease_line_thickness() -> None:
-            self.metrics['line_thickness'] -= 1
-            self.metrics['line_thickness'] = max(self.metrics['line_thickness'], 1)
-            self.select_and_size_objects(contour_pointset=self._current_contours())
-
-        colors = list(const.COLORS_CV.keys())
-
-        def _next_font_color() -> None:
-            current_color = self.cbox_val['color'].get()
-            current_index = colors.index(current_color)
-            # Need to stop increasing idx at the end of colors list.
-            if current_index == len(colors) - 1:
-                next_color = colors[len(colors) - 1]
-            else:
-                next_color = colors[current_index + 1]
-            self.cbox_val['color'].set(next_color)
-            print('Annotation font is now:', next_color)
-            self.select_and_size_objects(contour_pointset=self._current_contours())
-
-        def _preceding_font_color() -> None:
-            current_color = self.cbox_val['color'].get()
-            current_index = colors.index(current_color)
-            # Need to stop decreasing idx at the beginning of colors list.
-            if current_index == 0:
-                current_index = 1
-            preceding_color = colors[current_index - 1]
-            self.cbox_val['color'].set(preceding_color)
-            print('Annotation font is now :', preceding_color)
-            self.select_and_size_objects(contour_pointset=self._current_contours())
-
-        # Bindings are needed only for the settings and sized img windows,
-        #  but is simpler to use bind_all() which does not depend on widget focus.
-        # NOTE: On Windows, KP_* is not a recognized keysym string; works on Linux.
-        #  Windows keysyms 'plus' & 'minus' are for both keyboard and keypad.
-        self.bind_all('<Control-equal>', lambda _: _increase_font_size())
-        self.bind_all('<Control-minus>', lambda _: _decrease_font_size())
-        self.bind_all('<Control-KP_Subtract>', lambda _: _decrease_font_size())
-
-        self.bind_all('<Shift-Control-plus>', lambda _: _increase_line_thickness())
-        self.bind_all('<Shift-Control-KP_Add>', lambda _: _increase_line_thickness())
-        self.bind_all('<Shift-Control-underscore>', lambda _: _decrease_line_thickness())
-
-        self.bind_all('<Control-Up>', lambda _: _next_font_color())
-        self.bind_all('<Control-Down>', lambda _: _preceding_font_color())
-
-        # Need platform-specific keypad keysym.
-        if const.MY_OS == 'win':
-            self.bind_all('<Control-plus>', lambda _: _increase_font_size())
-            self.bind_all('<Shift-Control-minus>', lambda _: _decrease_line_thickness())
-        else:
-            self.bind_all('<Control-KP_Add>', lambda _: _increase_font_size())
-            self.bind_all('<Shift-Control-KP_Subtract>', lambda _: _decrease_line_thickness())
 
     def display_windows(self) -> None:
         """
