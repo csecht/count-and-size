@@ -14,7 +14,6 @@ DARK_BG
 DISTANCE_TRANS_TYPE
 DRAG_GRAY
 FONT_TYPE
-IMAGE_NAMES
 LABEL_PARAMETERS
 MASTER_BG
 MY_OS
@@ -23,6 +22,7 @@ PANEL_LEFT
 PANEL_RIGHT
 RADIO_PARAMETERS
 SCALE_PARAMETERS
+SETTINGS_FILE_NAME
 SIZE_STANDARDS
 SIZE_TO_WAIT
 STD_CONTOUR_COLOR
@@ -44,20 +44,6 @@ MY_OS: str = sys.platform[:3]
 STUB_ARRAY: np.ndarray = np.ones(shape=(5, 5), dtype='uint8')
 
 SETTINGS_FILE_NAME = 'saved_settings.json'
-
-# Names are used for keys for image dictionaries.
-IMAGE_NAMES = ('input',
-               'gray',
-               'contrasted',
-               'reduced_noise',
-               'filtered',
-               'thresholded',
-               'transformed',  # May not in current use.
-               'Watershed',
-               'Random Walker',
-               'segmented_objects',
-               'sized',
-               )
 
 # Set ranges for trackbars used to adjust contrast and brightness for
 #  the cv2.convertScaleAbs method.

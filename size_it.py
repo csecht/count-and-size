@@ -155,11 +155,23 @@ class ProcessImage(tk.Tk):
         #  the purpose of self.tkimg[*] as an instance attribute is to
         #  retain the attribute reference and thus prevent garbage collection.
         #  Dict values will be defined for panels of PIL ImageTk.PhotoImage
-        #  with Label images displayed in their respective img_window Toplevel.
+        #  with Label images displayed in their respective tkimg_window Toplevel.
         # The cvimg images are numpy arrays.
         self.tkimg: dict = {}
         self.cvimg: dict = {}
-        for _name in const.IMAGE_NAMES:
+        image_names = ('input',
+                       'gray',
+                       'contrasted',
+                       'reduced_noise',
+                       'filtered',
+                       'thresholded',
+                       'transformed',
+                       'Watershed',
+                       'Random Walker',
+                       'segmented_objects',
+                       'sized')
+
+        for _name in image_names:
             self.tkimg[_name] = tk.PhotoImage()
             self.cvimg[_name] = const.STUB_ARRAY
 
@@ -180,8 +192,8 @@ class ProcessImage(tk.Tk):
         self.elapsed: float = 0
 
     def update_image(self,
-                     img_name: str,
-                     img_array: np.ndarray) -> None:
+                     tkimg_name: str,
+                     cvimg_array: np.ndarray) -> None:
         """
         Process a cv2 image array to use as a tk PhotoImage and update
         (configure) its window label for immediate display, at scale.
@@ -189,19 +201,19 @@ class ProcessImage(tk.Tk):
         display an image.
 
         Args:
-            img_name: The key name used in the tkimg and img_label
-                      dictionaries.
-            img_array: The new cv2 processed numpy image array.
+            tkimg_name: The key name used in the tkimg and img_label
+                        dictionaries.
+            cvimg_array: The new cv2 processed numpy image array.
 
         Returns:
             None
         """
 
-        self.tkimg[img_name] = manage.tk_image(
-            image=img_array,
-            scale_coef=self.scale_factor.get()
+        self.tkimg[tkimg_name] = manage.tk_image(
+            image=cvimg_array,
+            scale_factor=self.scale_factor.get()
         )
-        self.img_label[img_name].configure(image=self.tkimg[img_name])
+        self.img_label[tkimg_name].configure(image=self.tkimg[tkimg_name])
 
     def adjust_contrast(self) -> None:
         """
@@ -225,8 +237,8 @@ class ProcessImage(tk.Tk):
             )
         )
 
-        self.update_image(img_name='contrasted',
-                          img_array=self.cvimg['contrasted'])
+        self.update_image(tkimg_name='contrasted',
+                          cvimg_array=self.cvimg['contrasted'])
 
     def reduce_noise(self) -> None:
         """
@@ -247,8 +259,8 @@ class ProcessImage(tk.Tk):
         # If redux iteration slider is set to 0, then proceed without,
         # noise reduction and use the contrast image from adjust_contrast().
         if iteration == 0:
-            self.update_image(img_name='reduced_noise',
-                              img_array=self.cvimg['contrasted'])
+            self.update_image(tkimg_name='reduced_noise',
+                              cvimg_array=self.cvimg['contrasted'])
             return
 
         # Need integers for the cv function parameters.
@@ -277,8 +289,8 @@ class ProcessImage(tk.Tk):
             borderType=cv2.BORDER_DEFAULT,
         )
 
-        self.update_image(img_name='reduced_noise',
-                          img_array=self.cvimg['reduced_noise'])
+        self.update_image(tkimg_name='reduced_noise',
+                          cvimg_array=self.cvimg['reduced_noise'])
 
     def filter_image(self) -> None:
         """
@@ -301,15 +313,15 @@ class ProcessImage(tk.Tk):
         # If filter kernel slider and noise iteration are both set to 0,
         # then proceed without filtering and use the contrasted image.
         if _k == 0 and noise_iter == 0:
-            self.update_image(img_name='filtered',
-                              img_array=self.cvimg['contrasted'])
+            self.update_image(tkimg_name='filtered',
+                              cvimg_array=self.cvimg['contrasted'])
             return
 
         # If filter kernel slider is set to 0, then proceed without
         # filtering and use the reduced noise image.
         if _k == 0:
-            self.update_image(img_name='filtered',
-                              img_array=self.cvimg['reduced_noise'])
+            self.update_image(tkimg_name='filtered',
+                              cvimg_array=self.cvimg['reduced_noise'])
             return
 
         # Need to filter the contrasted image when noise reduction is
@@ -368,8 +380,8 @@ class ProcessImage(tk.Tk):
                 src=image2filter,
                 ksize=filter_k)
 
-        self.update_image(img_name='filtered',
-                          img_array=self.cvimg['filtered'])
+        self.update_image(tkimg_name='filtered',
+                          cvimg_array=self.cvimg['filtered'])
 
     def th_and_dist_trans(self) -> None:
         """
@@ -418,10 +430,10 @@ class ProcessImage(tk.Tk):
             distanceType=dt_type,
             maskSize=mask_size)
 
-        self.update_image(img_name='thresholded',
-                          img_array=self.cvimg['thresholded'])
-        # self.update_image(img_name='transformed',
-        #                   img_array=np.uint8(self.cvimg['transformed']))
+        self.update_image(tkimg_name='thresholded',
+                          cvimg_array=self.cvimg['thresholded'])
+        # self.update_image(tkimg_name='transformed',
+        #                   cvimg_array=np.uint8(self.cvimg['transformed']))
 
     def make_labeled_array(self) -> np.ndarray:
         """
@@ -553,8 +565,8 @@ class ProcessImage(tk.Tk):
                          thickness=line_thickness,
                          lineType=cv2.LINE_AA)
 
-        self.update_image(img_name='segmented_objects',
-                          img_array=self.cvimg['Watershed'])
+        self.update_image(tkimg_name='segmented_objects',
+                          cvimg_array=self.cvimg['Watershed'])
 
         # Now need to draw enclosing circles around watershed segments and
         #  annotate with object sizes in ImageViewer.select_and_size_objects().
@@ -575,7 +587,7 @@ class ProcessImage(tk.Tk):
 
         # Note that cvimg['segmented_objects'] is used for both watershed
         #  and random walker images because both share the Label() grid for
-        #  img_label['segmented_objects'] in the img_window['transformed'] window.
+        #  img_label['segmented_objects'] in the tkimg_window['transformed'] window.
         # NOTE: beta and tolerances were empirically determined during development
         #  for best performance with sample images run on an Intel i9600k @ 4.8 GHz.
         #  Default beta & tol values take ~8x longer to process for similar results.
@@ -649,8 +661,8 @@ class ProcessImage(tk.Tk):
                          thickness=self.metrics['line_thickness'],
                          lineType=cv2.LINE_AA)
 
-        self.update_image(img_name='segmented_objects',
-                          img_array=self.cvimg['Random Walker'])
+        self.update_image(tkimg_name='segmented_objects',
+                          cvimg_array=self.cvimg['Random Walker'])
 
         # Now need to draw enclosing circles around RW segments and
         #  annotate with object sizes in ImageViewer.select_and_size_objects().
@@ -842,11 +854,11 @@ class ImageViewer(ProcessImage):
         settings_path = Path(input_path / const.SETTINGS_FILE_NAME)
         if settings_path.exists():
             if self.first_run:
-                msg = (f'Yes: use settings file in folder: {input_path.parts[-1]}.\n'
-                       'No: use default settings.')
+                msg = (f'Yes, use settings file in the folder: {input_path.parts[-1]}.\n'
+                       'No, use default settings.')
             else:
-                msg = (f'Yes: use settings file in folder: {input_path.parts[-1]}.\n'
-                       'No: use current settings.')
+                msg = (f'Yes, use settings file in folder: {input_path.parts[-1]}.\n'
+                       'No, use current settings.')
 
             self.use_saved_settings = messagebox.askyesno(
                 title=f"Use saved settings with {Path(self.input_file).name}?",
@@ -985,7 +997,7 @@ class ImageViewer(ProcessImage):
 
         # Provide user with a notice that a file was created and
         #  give user time to read the message before resetting it.
-        input_folder = str(Path(self.input_file).parent)
+        input_folder = Path(self.input_file).parent
         _info = (f'\nThe result image, "{image_name}", was saved to:\n'
                  f'{input_folder}\n'
                  f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
@@ -1251,8 +1263,8 @@ class ImageViewer(ProcessImage):
         else:
             utils.no_objects_found_msg()
 
-        self.update_image(img_name='sized',
-                          img_array=self.cvimg['sized'])
+        self.update_image(tkimg_name='sized',
+                          cvimg_array=self.cvimg['sized'])
 
     def select_and_export_objects(self) -> int:
         """
@@ -1534,8 +1546,8 @@ class ImageViewer(ProcessImage):
             # This update is needed to re-scale the input when
             #  bind_scale_adjustment() keybinds are used. Other images
             #  are rescaled in their respective processing methods.
-            self.update_image(img_name='input',
-                              img_array=self.cvimg['input'])
+            self.update_image(tkimg_name='input',
+                              cvimg_array=self.cvimg['input'])
 
         return event
 
@@ -1659,7 +1671,7 @@ class AppSetup(ImageViewer):
 
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
-        self.img_window: dict = {}
+        self.tkimg_window: dict = {}
         self.window_title: dict = {}
 
         # This order of events, when coordinated with the calls in
@@ -1852,7 +1864,7 @@ class AppSetup(ImageViewer):
         # Grid start win widgets; sorted by row.
         padding = dict(padx=5, pady=5)
 
-        window_header.grid(row=0, column=0, **padding, columnspan=2, sticky=tk.EW)
+        window_header.grid(row=0, column=0, columnspan=2, **padding, sticky=tk.EW)
 
         color_label.grid(row=2, column=0, **padding, sticky=tk.E)
         color_cbox.grid(row=2, column=1, **padding, sticky=tk.W)
@@ -1888,7 +1900,7 @@ class AppSetup(ImageViewer):
         # ...fill in window header with input path and pixel dimensions,...
         _h, _w = self.cvimg["gray"].shape
         window_header.config(text=f'Image: {self.input_file}\n'
-                                  f'Image size, pixels (w x h): {_w}x{_h}\n')
+                                  f'Image size, pixels (w x h): {_w}x{_h}')
 
         # ...and make all widgets active.
         color_label.config(state=tk.NORMAL)
@@ -1907,7 +1919,6 @@ class AppSetup(ImageViewer):
         # This calling sequence produces a slight delay (longer for larger files)
         #  before anything is displayed, but assures that everything displays
         #  nearly simultaneously for a visually cleaner start.
-        self.bind_scale_adjustment()
         self.setup_image_windows()
         self.configure_main_window()
         self.show_info_msg()
@@ -1915,10 +1926,11 @@ class AppSetup(ImageViewer):
         self.config_sliders()
         self.config_comboboxes()
         self.config_entries()
+        self.bind_annotation_styles()
+        self.bind_scale_adjustment()
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
-        self.bind_annotation_styles()
 
         # Run processing for the starting image prior to displaying images.
         # Call preprocess(), process(), and display_windows(), in this
@@ -1966,8 +1978,8 @@ class AppSetup(ImageViewer):
         # Dictionary item order determines stack order of windows.
         # Toplevel() is assigned here, not in __init__, to control timing
         #  and smoothness of window appearance at startup.
-        # Note that keys in img_window and window_title must match
-        self.img_window = {
+        # Note that keys in tkimg_window and window_title must match
+        self.tkimg_window = {
             'input_contrasted': tk.Toplevel(),
             'reduced_filtered': tk.Toplevel(),
             'thresholded_segmented': tk.Toplevel(),
@@ -1984,18 +1996,18 @@ class AppSetup(ImageViewer):
         # Labels to display scaled images, which are updated using
         #  .configure() for 'image=' in their respective processing methods
         #  via ProcessImage.update_image().
-        #  Labels are gridded in their respective img_window in grid_img_labels().
+        #  Labels are gridded in their respective tkimg_window in grid_img_labels().
         self.img_label = {
-            'input': tk.Label(self.img_window['input_contrasted']),
-            'contrasted': tk.Label(self.img_window['input_contrasted']),
+            'input': tk.Label(self.tkimg_window['input_contrasted']),
+            'contrasted': tk.Label(self.tkimg_window['input_contrasted']),
 
-            'reduced_noise': tk.Label(self.img_window['reduced_filtered']),
-            'filtered': tk.Label(self.img_window['reduced_filtered']),
+            'reduced_noise': tk.Label(self.tkimg_window['reduced_filtered']),
+            'filtered': tk.Label(self.tkimg_window['reduced_filtered']),
 
-            'thresholded': tk.Label(self.img_window['thresholded_segmented']),
-            'segmented_objects': tk.Label(self.img_window['thresholded_segmented']),
+            'thresholded': tk.Label(self.tkimg_window['thresholded_segmented']),
+            'segmented_objects': tk.Label(self.tkimg_window['thresholded_segmented']),
 
-            'sized': tk.Label(self.img_window['sized'])
+            'sized': tk.Label(self.tkimg_window['sized'])
         }
 
         # Need an image to replace blank tk desktop icon for each img window.
@@ -2016,7 +2028,7 @@ class AppSetup(ImageViewer):
         # Allow image label panels in image windows to resize with window.
         #  Note that images don't proportionally resize, just their boundaries;
         #  images will remain anchored at their top left corners.
-        for _name, _toplevel in self.img_window.items():
+        for _name, _toplevel in self.tkimg_window.items():
             _toplevel.wm_withdraw()
             if icon_path:
                 _toplevel.iconphoto(True, icon_path)
@@ -2161,13 +2173,13 @@ class AppSetup(ImageViewer):
         def _run_watershed():
             self.seg_algorithm = 'Watershed'
             self.process()
-            self.img_window['thresholded_segmented'].title(
+            self.tkimg_window['thresholded_segmented'].title(
                 'Thresholded <- | -> Watershed segments')
 
         def _run_random_walker():
             self.seg_algorithm = 'Random Walker'
             self.process()
-            self.img_window['thresholded_segmented'].title(
+            self.tkimg_window['thresholded_segmented'].title(
                 'Thresholded <- | -> Random Walker segments')
 
         def _save_results():
@@ -2214,17 +2226,17 @@ class AppSetup(ImageViewer):
         def _export_objects():
             self.export_segment = messagebox.askyesnocancel(
                 title="Export only objects' segmented areas?",
-                detail='Yes: ...with a white background.\n'
-                       'No: Include area around object\n'
+                detail='Yes, ...with a white background.\n'
+                       'No, include area around object\n'
                        '     ...with image\'s background.\n'
                        'Cancel: Export nothing and return.')
 
             if self.export_segment:
                 self.export_hull = messagebox.askyesno(
                     title='Fill in partially segmented objects?',
-                    detail='Yes: Try to include more object area;\n'
+                    detail='Yes, try to include more object area;\n'
                            '     may include some image background.\n'
-                           'No: Export just segments, on white.\n')
+                           'No, export just segments, on white.\n')
 
             _num = self.select_and_export_objects()
             _info = (f'\n\n{_num} selected objects were individually exported to:\n'
@@ -2238,8 +2250,8 @@ class AppSetup(ImageViewer):
             Returns: None
             """
             if self.open_input(toplevel=self):
-                self.update_image(img_name='input',
-                                  img_array=self.cvimg['input'])
+                self.update_image(tkimg_name='input',
+                                  cvimg_array=self.cvimg['input'])
                 _info = '\n\nA new input image has been loaded. Processing...\n\n\n'
                 self.info_label.config(fg=const.COLORS_TK['blue'])
                 self.info_txt.set(_info)
@@ -2676,20 +2688,19 @@ class AppSetup(ImageViewer):
         Returns: None
         """
 
-        # Cannot use const.IMAGE_NAMES to loop update_image() b/c two different
-        #  segmentation algorithms use the 'segmented_objects' image.
-        img_names = ('input',
-                     'contrasted',
-                     'reduced_noise',
-                     'filtered',
-                     'thresholded',
-                     # 'transformed',
-                     'sized',
-                     )
+        # These names need to be a subset of those in ProcessImage.__init__
+        #  tuple of image_names used to create keys for the cvimg dictionary.
+        tkimg_names = ('input',
+                       'contrasted',
+                       'reduced_noise',
+                       'filtered',
+                       'thresholded',
+                       'sized',
+                       )
 
         # Note that these string names must match the respective keys in
         #  draw_ws_segments() and draw_rw_segments() methods.
-        _a = 'Watershed' if self.seg_algorithm == 'Watershed' else 'Random Walker'
+        seg_name = 'Watershed' if self.seg_algorithm == 'Watershed' else 'Random Walker'
 
         def _apply_new_scale():
             """
@@ -2700,15 +2711,15 @@ class AppSetup(ImageViewer):
                 f'\n\nA new scale factor of {_sf} has been applied.\n\n\n')
             self.info_label.config(fg=const.COLORS_TK['blue'])
 
-            # Note: conversion with np.uint8() for the img_array argument
+            # Note: conversion with np.uint8() for the cvimg_array argument
             #  is required to display the 'transformed' image, if used.
-            for _n in img_names:
-                self.update_image(img_name=_n,
-                                  img_array=self.cvimg[_n])
-            self.update_image(img_name='segmented_objects',
-                              img_array=self.cvimg[_a])
+            for _n in tkimg_names:
+                self.update_image(tkimg_name=_n,
+                                  cvimg_array=self.cvimg[_n])
+            self.update_image(tkimg_name='segmented_objects',
+                              cvimg_array=self.cvimg[seg_name])
 
-        def increase_scale_factor() -> None:
+        def _increase_scale_factor() -> None:
             """
             Limit upper factor to a 4x increase to maintain performance.
             """
@@ -2718,7 +2729,7 @@ class AppSetup(ImageViewer):
             self.scale_factor.set(scale_factor)
             _apply_new_scale()
 
-        def decrease_scale_factor() -> None:
+        def _decrease_scale_factor() -> None:
             """
             Limit lower factor to a 1/4 decrease to maintain readability.
             """
@@ -2728,8 +2739,8 @@ class AppSetup(ImageViewer):
             self.scale_factor.set(scale_factor)
             _apply_new_scale()
 
-        self.bind_all('<Control-Right>', lambda _: increase_scale_factor())
-        self.bind_all('<Control-Left>', lambda _: decrease_scale_factor())
+        self.bind_all('<Control-Right>', lambda _: _increase_scale_factor())
+        self.bind_all('<Control-Left>', lambda _: _decrease_scale_factor())
 
     def set_defaults(self) -> None:
         """
@@ -2994,7 +3005,7 @@ class AppSetup(ImageViewer):
         # All image windows were withdrawn upon their creation in
         #  setup_image_windows() to keep things tidy.
         #  Now is the time to show them.
-        for _, toplevel in self.img_window.items():
+        for _, toplevel in self.tkimg_window.items():
             toplevel.wm_deiconify()
 
         # Display the input image. It is static, so does not need
@@ -3004,8 +3015,8 @@ class AppSetup(ImageViewer):
         # Note: here and throughout, use 'self' to scope the
         #  ImageTk.PhotoImage image in the Class, otherwise it will/may
         #  not display because of garbage collection.
-        self.update_image(img_name='input',
-                          img_array=self.cvimg['input'])
+        self.update_image(tkimg_name='input',
+                          cvimg_array=self.cvimg['input'])
 
         # macOS right mouse button has a different ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'

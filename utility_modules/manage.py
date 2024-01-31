@@ -110,7 +110,7 @@ def input_metrics(img: np.ndarray) -> dict:
     return metrics
 
 
-def tk_image(image: np.ndarray, scale_coef: float) -> PhotoImage:
+def tk_image(image: np.ndarray, scale_factor: float) -> PhotoImage:
     """
     Scales and converts cv2 images to a compatible format for display
     in tk window. Be sure that the returned image is properly scoped in
@@ -119,22 +119,22 @@ def tk_image(image: np.ndarray, scale_coef: float) -> PhotoImage:
     Args:
         image: A cv2 numpy array of the image to scale and convert to
                a PIL ImageTk.PhotoImage.
-        scale_coef: The user-selected scaling, from start parameters.
+        scale_factor: The user-selected scaling, from start parameters.
 
     Returns:
         Scaled PIL ImageTk.PhotoImage to display in tk.Label.
     """
 
     # Need to scale images for display; images for processing are left raw.
-    scale_coef = 1 if scale_coef == 0 else scale_coef
+    scale_factor = 1 if scale_factor == 0 else scale_factor
 
     # Provide the best interpolation method for slight improvement of
     #  resized image depending on whether it is down- or up-scaled.
-    interpolate = cv2.INTER_AREA if scale_coef < 0 else cv2.INTER_CUBIC
+    interpolate = cv2.INTER_AREA if scale_factor < 0 else cv2.INTER_CUBIC
 
     scaled_img = cv2.resize(src=image,
                             dsize=None,
-                            fx=scale_coef, fy=scale_coef,
+                            fx=scale_factor, fy=scale_factor,
                             interpolation=interpolate)
 
     # based on tutorial: https://pyimagesearch.com/2016/05/23/opencv-with-tkinter/
