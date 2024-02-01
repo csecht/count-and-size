@@ -32,7 +32,7 @@ For some slider settings however, when prompted, click the
 Save settings report and the annotated image with the "Save" button.
 
 Quit program with Esc key, Ctrl-Q key, the close window icon of the
-settings windows, or from command line with Ctrl-C.
+report window, or from command line with Ctrl-C.
 
 Requires Python 3.7 or later and the packages opencv-python, numpy,
 scikit-image, scipy, and psutil.
@@ -175,11 +175,11 @@ class ProcessImage(tk.Tk):
             self.tkimg[_name] = tk.PhotoImage()
             self.cvimg[_name] = const.STUB_ARRAY
 
-        # img_label dictionary is set up in ImageViewer.setup_image_windows(),
+        # img_label dictionary is set up in ViewImage.setup_image_windows(),
         #  but is used in all Class methods here.
         self.img_label: dict = {}
 
-        # metrics dict is populated in ImageViewer.open_input().
+        # metrics dict is populated in ViewImage.open_input().
         self.metrics: dict = {}
 
         self.num_dt_segments: int = 0
@@ -456,7 +456,7 @@ class ProcessImage(tk.Tk):
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Generate the markers as local maxima of the distance to the background.
         # Don't use exclude_border; objects touching image border will be excluded
-        #   in ImageViewer.select_and_size_objects().
+        #   in ViewImage.select_and_size_objects().
         local_max: ndimage = peak_local_max(image=self.cvimg['transformed'],
                                             min_distance=min_dist,
                                             exclude_border=False,  # True is min_dist
@@ -569,7 +569,7 @@ class ProcessImage(tk.Tk):
                           cvimg_array=self.cvimg['Watershed'])
 
         # Now need to draw enclosing circles around watershed segments and
-        #  annotate with object sizes in ImageViewer.select_and_size_objects().
+        #  annotate with object sizes in ViewImage.select_and_size_objects().
 
     def randomwalk_segmentation(self, labeled_array: np.ndarray) -> None:
         """
@@ -665,19 +665,19 @@ class ProcessImage(tk.Tk):
                           cvimg_array=self.cvimg['Random Walker'])
 
         # Now need to draw enclosing circles around RW segments and
-        #  annotate with object sizes in ImageViewer.select_and_size_objects().
+        #  annotate with object sizes in ViewImage.select_and_size_objects().
 
 
-class ImageViewer(ProcessImage):
+class ViewImage(ProcessImage):
     """
     A suite of methods to display cv segments based on selected settings
     and parameters that are in ProcessImage() methods.
     Methods:
         open_input
         set_auto_scale_factor
-        bind_scale_adjustment
         import_settings
-        show_info_msg
+        delay_size_std_info_msg
+        show_info_message
         configure_circle_r_sliders
         _on_click_save_img
         widget_control
@@ -690,7 +690,7 @@ class ImageViewer(ProcessImage):
         preprocess
         process
         process_sizes
-"""
+    """
 
     def __init__(self):
         super().__init__()
@@ -842,7 +842,7 @@ class ImageViewer(ProcessImage):
             # Was called from start window and user clicked "Cancel".
             utils.quit_gui(mainloop=self)
         else:
-            # Was called from report window (mainloop, self) and user clicked "Cancel".
+            # Was called from report window and user clicked "Cancel".
             return False
 
         # Auto-set images' scale factor based on input image size.
@@ -931,23 +931,53 @@ class ImageViewer(ProcessImage):
 
         self.seg_algorithm = self.imported_settings['seg_algorithm']
 
-    def show_info_msg(self) -> None:
+    def delay_size_std_info_msg(self) -> None:
         """
-        Informative note at bottom of settings (mainloop) window about
-        the displayed size units and other information for user actions.
-        Called from __init__, but info_label is configured in numerous
-        methods.
+        When no size standard values ar entered, after a few seconds,
+        display the size standard instructions in the mainloop (app)
+        window. Internal function calls show_info_message().
+        Called from process(), process_sizes(), and
+        configure_buttons._new_input().
 
         Returns: None
         """
 
-        _info = ('\nWhen the entered pixel size is 1 and selected size standard is\n'
-                 'None, the displayed sizes are pixels. Size units are mm for any\n'
-                 'pre-set size standard, but are undefined for custom standards.\n'
-                 f'(Processing time elapsed: {self.elapsed})\n')
+        def _show_msg() -> None:
+            _info = ('\nWhen the entered pixel size is 1 or selected size standard\n'
+                     'is None, then the units of displayed size are pixels.\n'
+                     'Size units are millimeters for any pre-set size standard.\n'
+                     f'(Processing time elapsed: {self.elapsed})\n')
 
-        self.info_txt.set(_info)
-        self.info_label.config(fg='black')
+            self.show_info_message(info=_info, color='black')
+
+        if (self.size_std['px_val'].get() == '1' or
+                self.cbox_val['size_std'].get() == 'None'):
+
+            app.after(ms=5555, func=_show_msg)
+
+    def show_info_message(self, info: str, color: str) -> None:
+        """
+        Configure for display and update the informational message in
+        the report and settings window.
+        Args:
+            info: The text string of the message to display.
+            color: The font color string, either as a key in the
+                   const.COLORS_TK dictionary or as a Tk compatible fg
+                   color string code, i.e. hex code.
+
+        Returns:
+            None
+        """
+        self.info_txt.set(info)
+
+        # Need to handle case when color is defined as a dictionary key
+        #  or as a hex code.
+        try:
+            tk_color = const.COLORS_TK[color]
+        except KeyError:
+            tk_color = color
+
+        self.info_label.config(fg=tk_color)
 
     def configure_circle_r_sliders(self) -> None:
         """
@@ -957,7 +987,7 @@ class ImageViewer(ProcessImage):
         """
 
         # Note: this widget configuration method is here, instead of in
-        #  AppSetup() b/c it is called from open_input() as well as from
+        #  SetupApp() b/c it is called from open_input() as well as from
         #  config_sliders().
         # Note: may need to adjust circle_r_min scaling with image size b/c
         #  large contours cannot be selected if circle_r_max is too small.
@@ -1001,7 +1031,7 @@ class ImageViewer(ProcessImage):
         _info = (f'\nThe result image, "{image_name}", was saved to:\n'
                  f'{input_folder}\n'
                  f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
-        self.info_txt.set(_info)
+        self.show_info_message(info=_info, color='black')
 
     def widget_control(self, action: str) -> None:
         """
@@ -1538,10 +1568,8 @@ class ImageViewer(ProcessImage):
         # Var first_run is reset to False in process() at startup.
         if not self.first_run:
             _info = ('\nPreprocessing completed.\n'
-                     'Select a "Run" button to update the report and the\n'
-                     '"Size-selected.." and "Segmented objects" windows.\n\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            self.info_txt.set(_info)
+                     'Select a "Run" button to process segments and object sizes\n\n\n')
+            self.show_info_message(info=_info, color='blue')
 
             # This update is needed to re-scale the input when
             #  bind_scale_adjustment() keybinds are used. Other images
@@ -1565,9 +1593,10 @@ class ImageViewer(ProcessImage):
             if self.cbox_val['size_std'].get() == 'Custom':
                 self.validate_custom_size_entry()
 
-        _info = '\n\nRunning segmentation algorithm...\n\n\n'
         self.info_label.config(fg=const.COLORS_TK['blue'])
-        self.info_txt.set(_info)
+
+        _info = '\n\nRunning segmentation algorithm...\n\n\n'
+        self.show_info_message(info=_info, color='blue')
 
         self.widget_control('off')
         self.time_start: float = time()
@@ -1588,26 +1617,21 @@ class ImageViewer(ProcessImage):
 
         # Here, at the end of the processing pipeline, is where the
         #  first_run flag is set to False.
+        setting_type = 'Saved' if self.use_saved_settings else 'Default'
         if self.first_run:
             self.first_run = False
-            _info = (f'\nInitial processing time elapsed: {self.elapsed}\n'
-                     'Default settings were used. Settings that increase or\n'
-                     'decrease number of detected objects will respectively\n'
-                     'increase or decrease the processing time.\n')
-            self.info_txt.set(_info)
-            self.after(ms=6666, func=self.show_info_msg)
-        else:
-            _info = (f'\n{self.seg_algorithm} segments found and sizes calculated.\n'
-                     'Report and windows for segmented and selected objects updated.\n'
-                     f'{self.elapsed} processing seconds elapsed.\n\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            self.info_txt.set(_info)
+            self.use_saved_settings = False
 
-            # Display the size standard instructions only when no size standard
-            #   values are entered.
-            if (self.size_std['px_val'].get() == '1' or
-                    self.cbox_val['size_std'].get() == 'None'):
-                self.after(ms=5555, func=self.show_info_msg)
+            _info = (f'\nInitial processing time elapsed: {self.elapsed}\n'
+                     f'{setting_type} settings were used.\n\n\n')
+            self.show_info_message(info=_info, color='black')
+
+        else:
+            _info = (f'\n{self.seg_algorithm} segmentation completed and sizes calculated.\n'
+                     f'{self.elapsed} processing seconds elapsed.\n\n\n')
+            self.show_info_message(info=_info, color='blue')
+
+        self.delay_size_std_info_msg()
 
     def process_sizes(self, event=None) -> None:
         """
@@ -1631,18 +1655,16 @@ class ImageViewer(ProcessImage):
         self.report_results()
 
         _info = '\n\nNew object size range selected. Report updated.\n\n\n'
-        self.info_txt.set(_info)
+        self.show_info_message(info=_info, color='blue')
 
-        # When user has entered a size std value, there is no need to
-        #  display the size standards instructions.
-        if (self.size_std['px_val'].get() == '1' or
-                self.cbox_val['size_std'].get() == 'None'):
-            self.after(ms=5555, func=self.show_info_msg)
+        # Display the size standard instructions only when no size
+        #  standard values are entered.
+        self.delay_size_std_info_msg()
 
         return event
 
 
-class AppSetup(ImageViewer):
+class SetupApp(ViewImage):
     """
     The mainloop Class that configures windows and widgets.
     Methods:
@@ -1658,11 +1680,12 @@ class AppSetup(ImageViewer):
         config_sliders
         config_comboboxes
         config_entries
+        _current_contours
+        bind_annotation_styles
+        bind_scale_adjustment
         set_defaults
         grid_widgets
         grid_img_labels
-        _current_contours
-        bind_annotation_styles
         display_windows
     """
 
@@ -1921,7 +1944,6 @@ class AppSetup(ImageViewer):
         #  nearly simultaneously for a visually cleaner start.
         self.setup_image_windows()
         self.configure_main_window()
-        self.show_info_msg()
         self.configure_buttons()
         self.config_sliders()
         self.config_comboboxes()
@@ -1935,8 +1957,8 @@ class AppSetup(ImageViewer):
         # Run processing for the starting image prior to displaying images.
         # Call preprocess(), process(), and display_windows(), in this
         #  sequence, for best performance. These methods are inherited
-        #  from  ImageViewer(), while the other methods are members of
-        #  this AppSetup() class.
+        #  from  ViewImage(), while the other methods are members of
+        #  this SetupApp() class.
         self.preprocess()
         self.process()
         self.display_windows()
@@ -1956,15 +1978,14 @@ class AppSetup(ImageViewer):
         _info = ('\nThat window cannot be closed from its window bar.\n'
                  'Minimize it if it is in the way.\n'
                  'Esc or Ctrl-Q keys will quit the program.\n\n')
-        self.info_label.config(fg=const.COLORS_TK['vermilion'])
-        self.info_txt.set(_info)
+        self.show_info_message(info=_info, color='vermilion')
+
         self.update()
 
         # Give user time to read the _info before resetting it to
         #  the previous info text.
-        self.after(ms=5555)
-        self.info_label.config(fg=prev_fg)
-        self.info_txt.set(prev_txt)
+        app.after(ms=5555)
+        self.show_info_message(info=prev_txt, color=prev_fg)
 
     def setup_image_windows(self) -> None:
         """
@@ -2104,7 +2125,7 @@ class AppSetup(ImageViewer):
         self.info_label.grid(column=1, row=2, rowspan=5,
                              padx=(0, 20), sticky=tk.E)
 
-        # Note: the main window (mainloop, self) is deiconified in
+        # Note: the main window (mainloop, self, app) is deiconified in
         #  display_windows() after all image windows so that, at startup,
         #  it stacks on top.
 
@@ -2159,7 +2180,7 @@ class AppSetup(ImageViewer):
 
     def configure_buttons(self) -> None:
         """
-        Assign and grid Buttons in the settings (mainloop) window.
+        Assign and grid Buttons in the settings (mainloop, self) window.
         Called from __init__.
 
         Returns:
@@ -2197,8 +2218,7 @@ class AppSetup(ImageViewer):
 
             _info = ('\n\nSettings report and result image have been saved to:\n'
                      f'{input_folder}\n\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            self.info_txt.set(_info)
+            self.show_info_message(info=_info, color='blue')
 
         def _export_settings():
             """
@@ -2220,8 +2240,7 @@ class AppSetup(ImageViewer):
                      f'{settings_path}\n'
                      'and are available to use with "New input" or\n'
                      'at startup. Previous settings file is overwritten.\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            self.info_txt.set(_info)
+            self.show_info_message(info=_info, color='blue')
 
         def _export_objects():
             self.export_segment = messagebox.askyesnocancel(
@@ -2241,7 +2260,7 @@ class AppSetup(ImageViewer):
             _num = self.select_and_export_objects()
             _info = (f'\n\n{_num} selected objects were individually exported to:\n'
                      f'{input_folder}\n\n')
-            self.info_txt.set(_info)
+            self.show_info_message(info=_info, color='blue')
 
         def _new_input():
             """
@@ -2253,25 +2272,18 @@ class AppSetup(ImageViewer):
                 self.update_image(tkimg_name='input',
                                   cvimg_array=self.cvimg['input'])
                 _info = '\n\nA new input image has been loaded. Processing...\n\n\n'
-                self.info_label.config(fg=const.COLORS_TK['blue'])
-                self.info_txt.set(_info)
+                self.show_info_message(info=_info, color='blue')
 
             else:  # User canceled input selection or closed messagebox window.
                 _info = '\n\nNo new input file was selected.\n\n\n'
-                self.info_label.config(fg=const.COLORS_TK['vermilion'])
-                self.info_txt.set(_info)
+                self.show_info_message(info=_info, color='vermilion')
 
-                # Display the size standard instructions only when no
-                #  size standard values are entered.
-                if (self.size_std['px_val'].get() == '1' or
-                        self.cbox_val['size_std'].get() == 'None'):
-                    self.after(ms=4444, func=self.show_info_msg)
+                self.delay_size_std_info_msg()
 
                 return
 
             if self.use_saved_settings:
                 self.import_settings()
-                self.use_saved_settings = False
 
             self.preprocess()
             self.process()
@@ -2279,8 +2291,7 @@ class AppSetup(ImageViewer):
 
             _info = ('\n\nProcessing completed for the new input image.\n'
                      f'{self.elapsed} processing seconds elapsed.\n\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            self.info_txt.set(_info)
+            self.show_info_message(info=_info, color='blue')
 
         def _reset_to_default_settings():
             """Order of calls is important here."""
@@ -2296,8 +2307,7 @@ class AppSetup(ImageViewer):
                      'Check and adjust them if needed, then...\n'
                      'Select a "Run" button to finalize updating the\n'
                      'report and image results.\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-            self.info_txt.set(_info)
+            self.show_info_message(info=_info, color='blue')
 
         # Configure all items in the dictionary of ttk buttons.
         button_params = dict(
@@ -2353,23 +2363,22 @@ class AppSetup(ImageViewer):
         self.report_results()
 
         if self.slider_val['plm_footprint'].get() == 1:
-            _info = ('\nClick a "Run" button to update the report and\n'
-                     '"Size-selected.." and "Segmented objects" images.\n'
-                     'A peak_local_max footprint of 1 may take a while.\n\n')
-            self.info_label.config(fg=const.COLORS_TK['vermilion'])
+            _info = ('\nA peak_local_max footprint of 1 may run a long time.\n'
+                     'If that is not a problem, then...\n'
+                     'Click a "Run" button to update the "Size-selected.." \n'
+                     'and "Segmented objects" images.\n')
+            self.show_info_message(info=_info, color='vermilion')
         else:
-            _info = ('\nClick "Run..." to update the report and the\n'
+            _info = ('\nClick "Run" to update the report and the\n'
                      '"Size-selected.." and "Segmented objects" images.\n\n\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
-
-        self.info_txt.set(_info)
+            self.show_info_message(info=_info, color='blue')
 
         return event
 
     def config_sliders(self) -> None:
         """
         Configure arguments and mouse button bindings for all Scale
-        widgets in the settings (mainloop) window.
+        widgets in the settings (mainloop, self) window.
         Called from __init__.
 
         Returns:
@@ -2473,7 +2482,7 @@ class AppSetup(ImageViewer):
     def config_comboboxes(self) -> None:
         """
         Configure arguments and mouse button bindings for all Comboboxes
-        in the settings (mainloop) window.
+        in the settings (mainloop, self) window.
         Called from __init__.
 
         Returns:
@@ -2556,7 +2565,7 @@ class AppSetup(ImageViewer):
     def config_entries(self) -> None:
         """
         Configure arguments and mouse button bindings for Entry widgets
-        in the settings (mainloop) window.
+        in the settings (mainloop, self) window.
         Called from __init__.
 
         Returns: None
@@ -2707,9 +2716,8 @@ class AppSetup(ImageViewer):
             The scale_factor is applied in ProcessImage.update_image()
             """
             _sf = round(self.scale_factor.get(), 2)
-            self.info_txt.set(
-                f'\n\nA new scale factor of {_sf} has been applied.\n\n\n')
-            self.info_label.config(fg=const.COLORS_TK['blue'])
+            _info = f'\n\nA new scale factor of {_sf} has been applied.\n\n\n'
+            self.show_info_message(info=_info, color='black')
 
             # Note: conversion with np.uint8() for the cvimg_array argument
             #  is required to display the 'transformed' image, if used.
@@ -2745,18 +2753,23 @@ class AppSetup(ImageViewer):
     def set_defaults(self) -> None:
         """
         Sets and resets selector widgets and keybind scaling functions
-        for image sizes and annotations.
+        for image sizes and annotations. Evaluates selection of using
+        saved or default settings.
+
         Called from __init__ and "Reset" button.
         Returns:
             None
         """
 
+        # Default settings are optimized for sample1.jpg input.
+
         # This condition is needed to evaluate user's choices at startup.
         if self.first_run and self.use_saved_settings:
             self.import_settings()
-            self.use_saved_settings = False
+            # self.use_saved_settings = False
             return
-        elif self.first_run:
+
+        if self.first_run:
             if self.do_inverse_th.get():
                 self.cbox['th_type'].current(1)
                 self.cbox_val['th_type'].set('cv2.THRESH_OTSU_INVERSE')
@@ -2765,8 +2778,6 @@ class AppSetup(ImageViewer):
                 self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
         else:
             self.cbox['th_type'].current(0)  # 'cv2.THRESH_OTSU'
-
-        # Default settings are optimized for sample1.jpg input.
 
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
@@ -3031,8 +3042,8 @@ class AppSetup(ImageViewer):
         # Update to ensure that the label images are current.
         self.update()
 
-        # Now is time to show the mainloop (self) settings window that was
-        #   hidden in setup_main_window().
+        # Now is time to show the mainloop (self) report window that
+        #   was hidden in setup_main_window().
         #   Deiconifying here stacks it on top of all windows at startup.
         self.wm_deiconify()
 
@@ -3060,7 +3071,7 @@ if __name__ == "__main__":
 
     try:
         print(f'{PROGRAM_NAME} has launched...')
-        app = AppSetup()
+        app = SetupApp()
         app.title(f'{PROGRAM_NAME} Report & Settings')
 
         # The custom app icon is expected to be in the repository images folder.

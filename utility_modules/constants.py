@@ -132,7 +132,6 @@ DISTANCE_TRANS_TYPE = {
 Colorblind color pallet source:
   Wong, B. Points of view: Color blindness. Nat Methods 8, 441 (2011).
   https://doi.org/10.1038/nmeth.1618
-Hex values source: https://www.rgbtohex.net/
 See also: https://matplotlib.org/stable/tutorials/colors/colormaps.html
 """
 # OpenCV uses a BGR (B, G, R) color convention, instead of RGB.
@@ -151,6 +150,7 @@ COLORS_CV = {
     'green': (0, 255, 0)
 }
 
+# Hex values source: https://www.rgbtohex.net/
 COLORS_TK = {
     'blue': '#0072B2',
     'orange': '#E69F00',
