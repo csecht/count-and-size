@@ -274,10 +274,11 @@ PANEL_RIGHT = dict(
     sticky='nsew')
 
 # Values are in mm units.
-# Value of 0.999 for 'None' is a hack to force 3 sig.fig as the default.
-#   This allows the most accurate display of pixel widths at startup.
+# Value of 1.001 for 'None' is a hack to force 4 sig.fig as the default.
+#  This allows the most accurate display of pixel widths at startup,
+#  assuming that object sizes are limited to <10,000 pixel diameters.
 SIZE_STANDARDS = {
-    'None': 0.999,
+    'None': 1.001,
     'Custom': 0,
     'Puck': 76.2,
     'Cent': 19.0,

@@ -535,7 +535,7 @@ class ProcessImage(tk.Tk):
                                              mode=cv2.RETR_EXTERNAL,
                                              method=cv2.CHAIN_APPROX_NONE)
 
-        # Convert watershed array data from int32 to allow colored contour_pointset.
+        # Convert watershed array data from int32 to allow colored contours.
         self.cvimg['Watershed'] = cv2.cvtColor(src=np.uint8(self.cvimg['segmented_objects']),
                                                code=cv2.COLOR_GRAY2BGR)
 
@@ -551,7 +551,7 @@ class ProcessImage(tk.Tk):
         else:
             line_thickness = self.metrics['line_thickness'] // 2
 
-        # Need to prevent black contour_pointset because they won't show on the
+        # Need to prevent black contours because they won't show on the
         #  black background of the watershed_img image.
         if self.cbox_val['color'].get() == 'black':
             line_color = const.COLORS_CV['blue']
@@ -560,7 +560,7 @@ class ProcessImage(tk.Tk):
 
         cv2.drawContours(image=self.cvimg['Watershed'],
                          contours=self.ws_basins,
-                         contourIdx=-1,  # do all contour_pointset
+                         contourIdx=-1,  # do all contours
                          color=line_color,
                          thickness=line_thickness,
                          lineType=cv2.LINE_AA)
@@ -622,12 +622,11 @@ class ProcessImage(tk.Tk):
             mask = np.zeros(shape=self.cvimg['segmented_objects'].shape, dtype="uint8")
             mask[self.cvimg['segmented_objects'] == label] = 255
 
-            # Detect contours in the mask and grab the largest one.
+            # Detect contours in the mask, grab the largest, and add it
+            #   to the list used to draw, size, export, etc. the RW ROIs.
             contours, _ = cv2.findContours(image=mask.copy(),
                                            mode=cv2.RETR_EXTERNAL,
                                            method=cv2.CHAIN_APPROX_SIMPLE)
-
-            # Add to the list used to draw, size, export, etc. the RW ROIs.
             self.rw_contours.append(max(contours, key=cv2.contourArea))
 
     def draw_rw_segments(self) -> None:
@@ -943,16 +942,15 @@ class ViewImage(ProcessImage):
         """
 
         def _show_msg() -> None:
-            _info = ('\nWhen the entered pixel size is 1 or selected size standard\n'
-                     'is None, then the units of displayed size are pixels.\n'
+            _info = ('\nWhen the entered pixel size is 1 AND selected size standard\n'
+                     'is "None", then the size units displayed size are pixels.\n'
                      'Size units are millimeters for any pre-set size standard.\n'
                      f'(Processing time elapsed: {self.elapsed})\n')
 
             self.show_info_message(info=_info, color='black')
 
-        if (self.size_std['px_val'].get() == '1' or
+        if (self.size_std['px_val'].get() == '1' and
                 self.cbox_val['size_std'].get() == 'None'):
-
             app.after(ms=5555, func=_show_msg)
 
     def show_info_message(self, info: str, color: str) -> None:
@@ -1117,14 +1115,19 @@ class ViewImage(ProcessImage):
         custom_size: str = self.size_std['custom_val'].get()
         size_std_px: str = self.size_std['px_val'].get()
 
-        # Verify that entries are numbers and define self.num_sigfig.
-        #  Custom sizes can be entered as integer, float, or power operator.
+        # Verify that entries are positive numbers. Define self.num_sigfig.
+        # Custom sizes can be entered as integer, float, or power operator.
         # Number of significant figures is the lowest of that for the
-        #  standard's size value or pixel diameter.
-
+        #  standard's size value or pixel diameter. Therefore, lo-res input
+        #  are more likely to have size std diameters of <100 px, thus
+        #  limiting calculated sizes to 2 sigfig.
         try:
             float(custom_size)  # will raise ValueError if not a number.
+            if float(custom_size) <= 0:
+                raise ValueError
+
             self.unit_per_px.set(float(custom_size) / int(size_std_px))
+
             if size_std_px == '1':
                 self.num_sigfig = utils.count_sig_fig(custom_size)
             else:
@@ -1136,7 +1139,7 @@ class ViewImage(ProcessImage):
             self.widget_control('off')
             messagebox.showinfo(
                 title='Custom size',
-                detail='Enter a number.\n'
+                detail='Enter a number > 0.\n'
                        'Accepted types:\n'
                        '  integer: 26, 2651, 2_651\n'
                        '  decimal: 26.5, 0.265, .2\n'
@@ -1176,6 +1179,7 @@ class ViewImage(ProcessImage):
             self.size_std['custom_val'].set('0.0')
 
             self.unit_per_px.set(preset_std_size / int(size_std_px))
+
             if size_std_px == '1':
                 self.num_sigfig = utils.count_sig_fig(preset_std_size)
             else:
@@ -1191,6 +1195,10 @@ class ViewImage(ProcessImage):
         Called by process_ws_and_sizes(), process_sizes().
         Calls update_image().
 
+        Args:
+            contour_pointset: A list of contour coordinates generated by
+                              one of the segmentation algorithms. e.g.,
+                              self.ws_basins or self.rw_contours.
         Returns:
             None
         """
@@ -1255,6 +1263,14 @@ class ViewImage(ProcessImage):
             #  num_sigfig value is determined in set_size_standard().
             size2display: str = to_p.to_precision(value=object_size,
                                                   precision=self.num_sigfig)
+
+            # Need to have pixel diameters as integers. Because...
+            #  When num_sigfig is 4, as is case for None:'1.001' in
+            #  const.SIZE_STANDARDS, then for px_val==1, objects <1000 px
+            #  diameter would display as pixel decimal fractions.
+            if (self.size_std['px_val'].get() == '1' and
+                    self.cbox_val['size_std'].get() == 'None'):
+                size2display = str(round(float(size2display)))
 
             # Convert size strings to float, assuming that individual
             #  sizes listed in the report may be used in a spreadsheet
@@ -1482,7 +1498,7 @@ class ViewImage(ProcessImage):
             size_std_size: str = const.SIZE_STANDARDS[size_std]
 
         # Size units are millimeters for the preset size standards.
-        unit = 'unknown unit' if size_std in 'None, Custom' else 'mm'
+        unit = 'unknown' if size_std in 'None, Custom' else 'mm'
 
         # Work up some summary metrics with correct number of sig. fig.
         if self.sorted_size_list:
@@ -1532,9 +1548,9 @@ class ViewImage(ProcessImage):
             f'{divider}\n'
             f'{"# Selected objects:".ljust(space)}{num_selected},'
             f' out of {self.num_dt_segments} total segments\n'
-            f'{"Selected size range:".ljust(space)}{circle_r_min}--{circle_r_max} pixels, diameter\n'
-            f'{"Selected size std.:".ljust(space)}{size_std},'
-            f' {size_std_size} {unit} diameter\n'
+            f'{"Selected size range:".ljust(space)}{circle_r_min}--{circle_r_max} pixels\n'
+            f'{"Selected size std.:".ljust(space)}{size_std}, with a diameter of'
+            f' {size_std_size} {unit} units.\n'
             f'{tab}Pixel diameter entered: {self.size_std["px_val"].get()},'
             f' unit/px factor: {unit_per_px}\n'
             f'{"Object size metrics,".ljust(space)}mean: {mean_unit_dia}, median:'
@@ -1633,19 +1649,43 @@ class ViewImage(ProcessImage):
 
         self.delay_size_std_info_msg()
 
-    def process_sizes(self, event=None) -> None:
+    def process_sizes(self, caller: str) -> None:
         """
         Call only sizing and reporting methods to improve performance.
         Called from the circle_r_min and circle_r_max sliders.
         Calls set_size_standard(), select_and_size_objects(), report_results().
 
         Args:
-            event: The implicit mouse button event.
+            caller: An identifier for the event-bound widget, either
+                    "circle_r" for the radius range sliders, or
+                    "size_std" for size standard combobox, or,
+                    "px_entry" and "custom_entry" for size std entries.
 
-        Returns:
-            *event* as a formality; is functionally None.
+        Returns: None
         """
         self.set_size_standard()
+
+        size_std: str = self.cbox_val['size_std'].get()
+        size_std_px: str = self.size_std['px_val'].get()
+
+        if size_std == 'None' and int(size_std_px) > 1:
+            self.size_std['custom_entry'].grid_remove()
+            self.size_std['custom_lbl'].grid_remove()
+            self.size_std['custom_val'].set('0.0')
+            _info = ('\nUsing a pixel size greater than 1 AND "None" for a'
+                     ' size standard\n'
+                     'will give wrong object sizes.\n\n\n')
+            self.show_info_message(info=_info, color='vermilion')
+        elif caller == 'circle_r':
+            _info = ('\nNew size range for selected objects.\n'
+                     'Counts may have changed.\n\n\n')
+            self.show_info_message(info=_info, color='blue')
+        elif caller in 'size_std, px_entry, custom_entry':
+            _info = '\nNew object sizes calculated.\n\n\n\n'
+            self.show_info_message(info=_info, color='blue')
+        else:
+            print('Oops, an unrecognized process_sizes() argument was used:\n'
+                  f'caller={caller}')
 
         if self.seg_algorithm == 'Watershed':
             self.select_and_size_objects(contour_pointset=self.ws_basins)
@@ -1654,14 +1694,9 @@ class ViewImage(ProcessImage):
 
         self.report_results()
 
-        _info = '\n\nNew object size range selected. Report updated.\n\n\n'
-        self.show_info_message(info=_info, color='blue')
-
         # Display the size standard instructions only when no size
         #  standard values are entered.
         self.delay_size_std_info_msg()
-
-        return event
 
 
 class SetupApp(ViewImage):
@@ -2473,7 +2508,8 @@ class SetupApp(ViewImage):
             if isinstance(_w, tk.Label):
                 continue
             if 'circle_r' in _name:
-                _w.bind('<ButtonRelease-1>', self.process_sizes)
+                _w.bind('<ButtonRelease-1>',
+                        func=lambda _: self.process_sizes(caller='circle_r'))
             elif 'plm_' in _name:
                 _w.bind('<ButtonRelease-1>', self._need_to_click)
             else:  # is alpha, beta, noise_k, noise_iter, filter_k.
@@ -2557,8 +2593,9 @@ class SetupApp(ViewImage):
         for _name, _w in self.cbox.items():
             if isinstance(_w, tk.Label):
                 continue
-            if 'size_' in _name:
-                _w.bind('<<ComboboxSelected>>', func=self.process_sizes)
+            if _name == 'size_std':
+                _w.bind('<<ComboboxSelected>>',
+                        func=lambda _: self.process_sizes(caller='size_std'))
             else:  # is morphop, morphshape, filter, th_type, dt_type, dt_mask_size.
                 _w.bind('<<ComboboxSelected>>', func=self.preprocess)
 
@@ -2572,7 +2609,7 @@ class SetupApp(ViewImage):
         """
 
         self.size_std['px_entry'].config(textvariable=self.size_std['px_val'],
-                                         font=const.WIDGET_FONT,
+                                         # font=const.WIDGET_FONT,
                                          width=6)
         self.size_std['px_lbl'].config(text='Enter px diameter of size standard:',
                                        **const.LABEL_PARAMETERS)
@@ -2582,10 +2619,10 @@ class SetupApp(ViewImage):
         self.size_std['custom_lbl'].config(text="Enter custom standard's size:",
                                            **const.LABEL_PARAMETERS)
 
-        for _, _w in self.size_std.items():
+        for _name, _w in self.size_std.items():
             if isinstance(_w, tk.Entry):
-                _w.bind('<Return>', func=self.process_sizes)
-                _w.bind('<KP_Enter>', func=self.process_sizes)
+                _w.bind('<Return>', lambda _, n=_name: self.process_sizes(caller=n))
+                _w.bind('<KP_Enter>', lambda _, n=_name: self.process_sizes(caller=n))
 
     def _current_contours(self) -> list:
         """
@@ -2803,9 +2840,6 @@ class SetupApp(ViewImage):
         self.cbox['dt_mask_size'].current(1)  # '3' == cv2.DIST_MASK_3
         self.cbox['ws_connectivity'].current(1)  # '4'
         self.cbox['size_std'].current(0)  # 'None'
-
-        # Reset annotation color.
-        self.cbox_val['color'].set('blue')
 
         # Set/Reset Entry widgets.
         self.size_std['px_val'].set('1')
