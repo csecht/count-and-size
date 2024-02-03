@@ -801,8 +801,7 @@ class ViewImage(ProcessImage):
         self.info_txt = tk.StringVar()
         self.info_label = tk.Label(master=self, textvariable=self.info_txt)
 
-        # Set as startup default.
-        self.seg_algorithm = 'Watershed'
+        self.seg_algorithm: str = ''
 
     def open_input(self, toplevel) -> bool:
         """
@@ -836,7 +835,6 @@ class ViewImage(ProcessImage):
             self.cvimg['input'] = cv2.imread(self.input_file)
             self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
                                               code=cv2.COLOR_RGBA2GRAY)
-            self.metrics = manage.input_metrics(img=self.cvimg['input'])
         elif toplevel != self:
             # Was called from start window and user clicked "Cancel".
             utils.quit_gui(mainloop=self)
@@ -846,7 +844,10 @@ class ViewImage(ProcessImage):
 
         # Auto-set images' scale factor based on input image size.
         #  Can be later reset with keybindings in bind_scale_adjustment().
+        #  circle_r_slider ranges are a function of input image size.
+        self.metrics = manage.input_metrics(img=self.cvimg['input'])
         self.set_auto_scale_factor()
+        self.configure_circle_r_sliders()
 
         # Handle condition for when user selects to use saved settings.
         input_path = Path(self.input_file).parent
@@ -865,9 +866,6 @@ class ViewImage(ProcessImage):
 
         if self.use_saved_settings:
             self.import_settings()
-        else:  # user selected "No", or closed the messagebox window
-            self.set_auto_scale_factor()
-            self.configure_circle_r_sliders()
 
         return True
 
@@ -988,12 +986,8 @@ class ViewImage(ProcessImage):
         #  SetupApp() b/c it is called from open_input() as well as from
         #  config_sliders().
 
-        # Need to update input metrics to get current max_circle_r value.
-        self.metrics = manage.input_metrics(img=self.cvimg['input'])
-
         # Note: may need to adjust circle_r_min scaling with image size b/c
         #  large contours cannot be selected if circle_r_max is too small.
-        self.metrics = manage.input_metrics(img=self.cvimg['input'])
         min_circle_r = self.metrics['max_circle_r'] // 6
         max_circle_r = self.metrics['max_circle_r']
 
@@ -1625,6 +1619,8 @@ class ViewImage(ProcessImage):
         self.widget_control('off')
         self.time_start: float = time()
 
+        # Note that at startup, seg_algorithm is defined as 'Watershed':
+        #  in set_defaults(); after that, it is defined by the "Run..." buttons.
         if self.seg_algorithm == 'Watershed':
             self.watershed_segmentation(self.make_labeled_array())
             self.draw_ws_segments()
@@ -1973,7 +1969,7 @@ class SetupApp(ViewImage):
         start_win.title('Set start parameters')
 
         # ...fill in window header with input path and pixel dimensions,...
-        _h, _w = self.cvimg["gray"].shape
+        _h, _w = self.cvimg['gray'].shape
         window_header.config(text=f'Image: {self.input_file}\n'
                                   f'Image size, pixels (w x h): {_w}x{_h}')
 
@@ -2348,10 +2344,10 @@ class SetupApp(ViewImage):
         def _reset_to_default_settings():
             """Order of calls is important here."""
             self.slider_values.clear()
-            self.set_defaults()
             self.metrics = manage.input_metrics(img=self.cvimg['input'])
             self.set_auto_scale_factor()
             self.configure_circle_r_sliders()
+            self.set_defaults()
             self.widget_control('off')  # is turned 'on' in preprocess()
             self.preprocess()
 
@@ -2832,21 +2828,28 @@ class SetupApp(ViewImage):
         else:
             self.cbox['th_type'].current(0)  # 'cv2.THRESH_OTSU'
 
+        # Only at startup, does this seg_algorithm value have effect;
+        #   after that, when the 'Reset' button is used,
+        #   its value is defined by the "Run..." buttons.
+        self.seg_algorithm = 'Watershed'
+
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
         self.slider_val['beta'].set(0)
         self.slider_val['noise_k'].set(7)
         self.slider_val['noise_iter'].set(3)
         self.slider_val['filter_k'].set(5)
-        self.slider_val['plm_mindist'].set(40)
-        self.slider_val['plm_footprint'].set(3)
         self.slider_val['circle_r_min'].set(8)
         self.slider_val['circle_r_max'].set(300)
 
-        # Increase PLM min distance for larger files to reduce the number
-        #  of contours, thus decreasing initial processing time.
+        # Increase PLM values for larger files to reduce the number
+        #  of contours, thus decreasing startup/reset processing time.
         if self.metrics['img_area'] > 6 * 10e5:
-            self.slider_val['plm_mindist'].set(125)
+            self.slider_val['plm_mindist'].set(200)
+            self.slider_val['plm_footprint'].set(9)
+        else:
+            self.slider_val['plm_mindist'].set(40)
+            self.slider_val['plm_footprint'].set(3)
 
         # Set/Reset Combobox widgets.
         self.cbox['morphop'].current(0)  # 'cv2.MORPH_OPEN' == 2
@@ -2856,6 +2859,7 @@ class SetupApp(ViewImage):
         self.cbox['dt_mask_size'].current(1)  # '3' == cv2.DIST_MASK_3
         self.cbox['ws_connectivity'].current(1)  # '4'
         self.cbox['size_std'].current(0)  # 'None'
+        self.cbox_val['color'].set('blue')
 
         # Set/Reset Entry widgets.
         self.size_std['px_val'].set('1')
