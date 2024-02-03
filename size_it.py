@@ -987,18 +987,24 @@ class ViewImage(ProcessImage):
         # Note: this widget configuration method is here, instead of in
         #  SetupApp() b/c it is called from open_input() as well as from
         #  config_sliders().
+
+        # Need to update input metrics to get current max_circle_r value.
+        self.metrics = manage.input_metrics(img=self.cvimg['input'])
+
         # Note: may need to adjust circle_r_min scaling with image size b/c
         #  large contours cannot be selected if circle_r_max is too small.
-        circle_r_min = self.metrics['max_circle_r'] // 6
-        circle_r_max = self.metrics['max_circle_r']
+        self.metrics = manage.input_metrics(img=self.cvimg['input'])
+        min_circle_r = self.metrics['max_circle_r'] // 6
+        max_circle_r = self.metrics['max_circle_r']
+
         self.slider['circle_r_min'].configure(
-            from_=1, to=circle_r_min,
-            tickinterval=circle_r_min / 10,
+            from_=1, to=min_circle_r,
+            tickinterval=min_circle_r / 10,
             variable=self.slider_val['circle_r_min'],
             **const.SCALE_PARAMETERS)
         self.slider['circle_r_max'].configure(
-            from_=1, to=circle_r_max,
-            tickinterval=circle_r_max / 10,
+            from_=1, to=max_circle_r,
+            tickinterval=max_circle_r / 10,
             variable=self.slider_val['circle_r_max'],
             **const.SCALE_PARAMETERS)
 
@@ -1071,7 +1077,7 @@ class ViewImage(ProcessImage):
             for _, _w in self.cbox.items():
                 if isinstance(_w, tk.Label):
                     _w.configure(state=tk.NORMAL)
-                else:
+                else:  # is tk.Combobox
                     _w.configure(state='readonly')
             for _, _w in self.button.items():
                 _w.grid()
