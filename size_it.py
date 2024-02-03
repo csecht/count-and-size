@@ -1585,8 +1585,8 @@ class ViewImage(ProcessImage):
 
         # Var first_run is reset to False in process() at startup.
         if not self.first_run:
-            _info = ('\nPreprocessing completed.\n'
-                     'Select a "Run" button to process segments and object sizes\n\n\n')
+            _info = ('\n***Preprocessing completed***\n'
+                     'SELECT a "Run" button to complete processing and sizing.\n\n\n')
             self.show_info_message(info=_info, color='blue')
 
             # This update is needed to re-scale the input when
@@ -2312,34 +2312,23 @@ class SetupApp(ViewImage):
 
         def _new_input():
             """
-            Reads a new image file and applies current settings for
-            preprocessing.
+            Reads a new image file for preprocessing.
+            Calls open_input(), which prompts user for settings choice,
+            then calls preprocess().
+
             Returns: None
             """
             if self.open_input(toplevel=self):
                 self.update_image(tkimg_name='input',
                                   cvimg_array=self.cvimg['input'])
-                _info = '\n\nA new input image has been loaded. Processing...\n\n\n'
-                self.show_info_message(info=_info, color='blue')
-
             else:  # User canceled input selection or closed messagebox window.
                 _info = '\n\nNo new input file was selected.\n\n\n'
                 self.show_info_message(info=_info, color='vermilion')
-
                 self.delay_size_std_info_msg()
 
                 return
 
-            if self.use_saved_settings:
-                self.import_settings()
-
             self.preprocess()
-            self.process()
-            self.report_results()
-
-            _info = ('\n\nProcessing completed for the new input image.\n'
-                     f'{self.elapsed} processing seconds elapsed.\n\n')
-            self.show_info_message(info=_info, color='blue')
 
         def _reset_to_default_settings():
             """Order of calls is important here."""
