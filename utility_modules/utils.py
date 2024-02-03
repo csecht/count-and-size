@@ -53,14 +53,14 @@ def about_win(parent: tk.Toplevel) -> None:
     aboutwin.minsize(width=400, height=200)
     aboutwin.focus_set()
     abouttext = ScrolledText(master=aboutwin,
-                             width=60,
+                             width=62,
                              bg=const.MASTER_BG,  # light gray
                              relief='groove',
                              borderwidth=8,
                              padx=30, pady=10,
                              wrap=tk.WORD,
-                             # font=const.WIDGET_FONT,
-                             font=cv2.FONT_HERSHEY_PLAIN,
+                             font=const.WIDGET_FONT,
+                             # font=cv2.FONT_HERSHEY_PLAIN,
                              )
 
     # The text returned from manage.arguments is that used for the --about arg.

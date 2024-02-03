@@ -220,7 +220,7 @@ class ProcessImage(tk.Tk):
         Adjust contrast of the input self.cvimg['gray'] image.
         Updates contrast and brightness via alpha and beta sliders.
         Displays contrasted and redux noise images.
-        Called by process_ws_and_sizes(). Calls update_image().
+        Called by process(). Calls update_image().
 
         Returns:
             None
@@ -244,7 +244,7 @@ class ProcessImage(tk.Tk):
         """
         Reduce noise in the contrast adjust image erode and dilate actions
         of cv2.morphologyEx operations.
-        Called by process_ws_and_sizes(). Calls update_image().
+        Called by preprocess(). Calls update_image().
 
         Returns:
             None
@@ -297,7 +297,7 @@ class ProcessImage(tk.Tk):
         Applies a filter selection to blur the reduced noise image
         to prepare for threshold segmentation. Can also serve as a
         specialized noise reduction step.
-        Called from watershed_segmentation() and process_ws_and_sizes().
+        Called by preprocess().
         Calls update_image().
 
         Returns:
@@ -388,7 +388,7 @@ class ProcessImage(tk.Tk):
         Produces a threshold image from the filtered image. This image
         is used for masking in watershed_segmentation(). It is separate
         here so that its display can be updated independently of running
-        watershed_segmentation().
+        watershed_segmentation(). Called by preprocess().
         Returns:
             None
         """
@@ -440,7 +440,7 @@ class ProcessImage(tk.Tk):
         Finds peak local maximum as defined in skimage.feature. The
         array is used as the 'markers' or 'labels' arguments in
         segmentation methods.
-        Called as an argument from watershed_segmentation() or
+        Called as process() argument for watershed_segmentation() or
         randomwalk_segmentation().
 
         Returns: A labeled ndarray to use in one of the segmentation
@@ -1150,9 +1150,9 @@ class ViewImage(ProcessImage):
     def set_size_standard(self) -> None:
         """
         Assign a unit conversion factor to the observed pixel diameter
-        of the chosen size standard and calculate the number of significant
-        figure in any custom size entry.
-        Called from process_ws_and_sizes(), process_sizes(), __init__.
+        of the chosen size standard and calculate the number of
+        significant figures for preset or custom size entries.
+        Called from process(), process_sizes(), __init__.
 
         Returns: None
         """
@@ -1192,7 +1192,7 @@ class ViewImage(ProcessImage):
         draw an enclosing circle around contours, then display them
         on the input image. Objects are expected to be oblong so that
         circle diameter can represent the object's length.
-        Called by process_ws_and_sizes(), process_sizes().
+        Called by process(), process_sizes(), bind_annotation_styles().
         Calls update_image().
 
         Args:
@@ -1217,7 +1217,8 @@ class ViewImage(ProcessImage):
         c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
         c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
 
-        # Set coordinate point limits to find contours along a file border.
+        # Set limits for coordinate points to identify contours that
+        # are within 1 px of an image file border (edge).
         bottom_edge = self.cvimg['gray'].shape[0] - 1
         right_edge = self.cvimg['gray'].shape[1] - 1
 
@@ -1230,7 +1231,7 @@ class ViewImage(ProcessImage):
 
             # Exclude None elements.
             # Exclude contours not in the specified size range.
-            # Exclude contours that have a coordinate point intersecting the img edge.
+            # Exclude contours that have a coordinate point intersecting an img edge.
             #  ... those that touch top or left edge or are background.
             #  ... those that touch bottom or right edge.
             if _c is None:
@@ -1266,8 +1267,9 @@ class ViewImage(ProcessImage):
 
             # Need to have pixel diameters as integers. Because...
             #  When num_sigfig is 4, as is case for None:'1.001' in
-            #  const.SIZE_STANDARDS, then for px_val==1, objects <1000 px
-            #  diameter would display as pixel decimal fractions.
+            #  const.SIZE_STANDARDS, then for px_val==1, with lower
+            #  sig.fig., objects <1000 px diameter would display as
+            #  decimal fractions. So, round()...
             if (self.size_std['px_val'].get() == '1' and
                     self.cbox_val['size_std'].get() == 'None'):
                 size2display = str(round(float(size2display)))
@@ -1332,7 +1334,7 @@ class ViewImage(ProcessImage):
         else:  # user selected 'Cancel', which returns None, the default.
             return 0
 
-        # Grab current time to pass to export_segments() utils module.
+        # Grab current time to pass to utils.export_segments() module.
         #  This is done here, outside the for loop, to avoid having the
         #  export timestamp change (by one or two seconds) during processing.
         # The index count is also passed as a export_segments() argument.
@@ -1684,8 +1686,8 @@ class ViewImage(ProcessImage):
             _info = '\nNew object sizes calculated.\n\n\n\n'
             self.show_info_message(info=_info, color='blue')
         else:
-            print('Oops, an unrecognized process_sizes() argument was used:\n'
-                  f'caller={caller}')
+            print('Oops, an unrecognized process_sizes() caller argument\n'
+                  f'was used: caller={caller}')
 
         if self.seg_algorithm == 'Watershed':
             self.select_and_size_objects(contour_pointset=self.ws_basins)
@@ -1840,15 +1842,17 @@ class SetupApp(ViewImage):
 
         # Unicode arrow symbols: up \u2101, down \u2193
         if const.MY_OS == 'dar':
-            msg_txt = '← Can change later with shift-control-↑ & ↓  '
+            color_help = '← Can change later with shift-control-↑ & ↓  '
+            color_tip = 'shift-control-↑ & shift-control-↓'
         else:
-            msg_txt = '← Can change later with Ctrl-↑ & Ctrl-↓  '
+            color_help = '← Can change later with Ctrl-↑ & Ctrl-↓  '
+            color_tip = ' Ctrl-↑ & Ctrl-↓'
 
         color_label = tk.Label(master=start_win,
                                text='Annotation font color:',
                                **const.LABEL_PARAMETERS)
         color_msg_lbl = tk.Label(master=start_win,
-                                 text=msg_txt,
+                                 text=color_help,
                                  **const.LABEL_PARAMETERS)
         color_cbox = ttk.Combobox(master=start_win,
                                   values=list(const.COLORS_CV.keys()),
@@ -1903,19 +1907,26 @@ class SetupApp(ViewImage):
         # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
         # Unicode arrow symbols: left \u2190, right \u2192
         if const.MY_OS == 'dar':
-            tip_scaling_text = '     with shift-control-← & shift-control-→.'
+            tip_scaling_text = 'with shift-control-← & shift-control-→.'
         else:
-            tip_scaling_text = '     with Ctrl-← & Ctrl-→.'
+            tip_scaling_text = 'with Ctrl-← & Ctrl-→.'
 
         tips.add_command(label='• Images are automatically scaled to fit on')
         tips.add_command(label='     the screen. Scaling can be changed later')
-        tips.add_command(label=tip_scaling_text)
+        tips.add_command(label=f'     {tip_scaling_text}')
         tips.add_command(label='• Use a lighter font color with darker objects.')
+        tips.add_command(label='• Font and line color can be changed with')
+        tips.add_command(label=f'     {color_tip}.')
+        tips.add_command(label='• Font size can be changed with')
+        tips.add_command(label='     Ctrl-+ & Ctrl--(minus).')
+        tips.add_command(label='• Font and line thickness can be changed with')
+        tips.add_command(label='     Shift-Ctrl-+ & Shift-Ctrl--(minus).')
         tips.add_command(label='• Use the INVERSE threshold type for dark')
         tips.add_command(label='     objects on a light background.')
         tips.add_command(label='• Enter or Return key also starts processing.')
         tips.add_command(label="• More Tips are in the repository's README file.")
         tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.')
+
         help_menu.add_command(label='About',
                               command=lambda: utils.about_win(parent=start_win))
 
@@ -2803,7 +2814,6 @@ class SetupApp(ViewImage):
         # This condition is needed to evaluate user's choices at startup.
         if self.first_run and self.use_saved_settings:
             self.import_settings()
-            # self.use_saved_settings = False
             return
 
         if self.first_run:
