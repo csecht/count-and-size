@@ -1989,7 +1989,7 @@ class SetupApp(ViewImage):
         """
 
         # This calling sequence produces a slight delay (longer for larger files)
-        #  before anything is displayed, but assures that everything displays
+        #  before anything is displayed, but ensures that everything displays
         #  nearly simultaneously for a visually cleaner start.
         self.setup_image_windows()
         self.configure_main_window()
@@ -2005,9 +2005,8 @@ class SetupApp(ViewImage):
 
         # Run processing for the starting image prior to displaying images.
         # Call preprocess(), process(), and display_windows(), in this
-        #  sequence, for best performance. These methods are inherited
-        #  from  ViewImage(), while the other methods are members of
-        #  this SetupApp() class.
+        #  sequence, for best performance. preprocess() and process()
+        #  are inherited from  ViewImage().
         self.preprocess()
         self.process()
         self.display_windows()
