@@ -508,9 +508,9 @@ class ProcessImage(tk.Tk):
 
         ws_connectivity = int(self.cbox_val['ws_connectivity'].get())  # 1, 4 or 8.
 
-        # Note that the minus symbol with distances_img converts distance
-        #  transform into a threshold. Watershed can work without the
-        #  conversion, but does a better job identifying segments with it.
+        # Note that the minus symbol with the image argument self.cvimg['transformed']
+        #  converts the distance transform into a threshold. Watershed can work
+        #  without that conversion, but does a better job identifying segments with it.
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # Need watershed_line to show boundaries on displayed watershed contour_pointset.
@@ -593,11 +593,11 @@ class ProcessImage(tk.Tk):
 
         # Note that cvimg['segmented_objects'] is used for both watershed
         #  and random_walker images because both share the Label() grid for
-        #  img_label['segmented_objects'] in the tkimg_window['transformed'] window.
-        # NOTE: beta and tolerances were empirically determined during development
-        #  for best performance with sample images run on an Intel i9600k @ 4.8 GHz.
-        #  Default beta & tol values take ~8x longer to process for similar results.
-        # Need pyamg installed with mode='cg_mg'. 'cg_j' gives bad results.
+        #  img_label['segmented_objects'] window.
+        # NOTE: beta and tol values were empirically determined during development
+        #  for best performance using sample images run on an Intel i9600k @ 4.8 GHz.
+        #  Default beta & tol arguments take ~8x longer to process for similar results.
+        # Need pyamg installed with mode='cg_mg'. 'cg_j' works poorly with these args.
         self.cvimg['segmented_objects']: np.ndarray = random_walker(
             data=self.cvimg['thresholded'],
             labels=labeled_array,
@@ -866,6 +866,7 @@ class ViewImage(ProcessImage):
                        'No, use current settings.')
 
             self.use_saved_settings = messagebox.askyesno(
+                # parent=self.focus_get(),
                 title=f"Use saved settings with {Path(self.input_file).name}?",
                 detail=msg)
 
@@ -1963,8 +1964,8 @@ class SetupApp(ViewImage):
         # Take a break in configuring the window to grab the input.
         # For macOS: Need to have the filedialog be a child of
         #   start_win and need update() here.
-        self.update()
         self.open_input(toplevel=start_win)
+        self.update()
 
         # Finally, give start window its active title,...
         start_win.title('Set start parameters')
@@ -2768,7 +2769,7 @@ class SetupApp(ViewImage):
 
         def _increase_scale_factor() -> None:
             """
-            Limit upper factor to a 4x increase to maintain performance.
+            Limit upper factor to a 5x increase to maintain performance.
             """
             scale_factor: float = self.scale_factor.get()
             scale_factor *= 1.1
@@ -2778,7 +2779,7 @@ class SetupApp(ViewImage):
 
         def _decrease_scale_factor() -> None:
             """
-            Limit lower factor to a 1/4 decrease to maintain readability.
+            Limit lower factor to a 1/10 decrease to maintain readability.
             """
             scale_factor: float = self.scale_factor.get()
             scale_factor *= 0.9
