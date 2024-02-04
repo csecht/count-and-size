@@ -163,8 +163,8 @@ COLORS_TK = {
     'black': 'black',
     'white': 'white',
     'tk_white': '',  # system's default, conditional on MY_OS
-    'red': 'red1',
-    'green': 'green1',
+    'red': 'red1',  # not color-blind compatible
+    'green': 'green1',  # not color-blind compatible
 }
 
 STD_CONTOUR_COLOR = {'green': (0, 255, 0)}

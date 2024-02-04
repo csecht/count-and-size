@@ -109,12 +109,16 @@ class ProcessImage(tk.Tk):
     functions involved in segmenting objects from an image file.
 
     Class methods:
-    update_image
-    adjust_contrast
-    reduce_noise
-    filter_image
-    watershed_segmentation
-    draw_ws_segments
+        update_image
+        adjust_contrast
+        reduce_noise
+        filter_image
+        th_and_dist_trans
+        make_labeled_array
+        watershed_segmentation
+        draw_ws_segments
+        randomwalk_segmentation
+        draw_rw_segments
     """
 
     def __init__(self):
@@ -156,7 +160,9 @@ class ProcessImage(tk.Tk):
         #  retain the attribute reference and thus prevent garbage collection.
         #  Dict values will be defined for panels of PIL ImageTk.PhotoImage
         #  with Label images displayed in their respective tkimg_window Toplevel.
-        # The cvimg images are numpy arrays.
+        #  The cvimg images are numpy arrays.
+        # The Watershed and Random Walker items are capitalized b/c they
+        #  are also used for reporting the segmentation algorithm employed.
         self.tkimg: dict = {}
         self.cvimg: dict = {}
         image_names = ('input',
@@ -586,7 +592,7 @@ class ProcessImage(tk.Tk):
         """
 
         # Note that cvimg['segmented_objects'] is used for both watershed
-        #  and random walker images because both share the Label() grid for
+        #  and random_walker images because both share the Label() grid for
         #  img_label['segmented_objects'] in the tkimg_window['transformed'] window.
         # NOTE: beta and tolerances were empirically determined during development
         #  for best performance with sample images run on an Intel i9600k @ 4.8 GHz.
@@ -631,9 +637,8 @@ class ProcessImage(tk.Tk):
 
     def draw_rw_segments(self) -> None:
         """
-        Draw and display the random walker segments from
-        random_walker_segmentation().
-        Called from process_rw_and_sizes().
+        Draw and display the segments from randomwalk_segmentation().
+        Called from process().
         Calls update_image().
 
         Returns: None
@@ -650,7 +655,7 @@ class ProcessImage(tk.Tk):
         else:
             line_color = const.COLORS_CV[self.cbox_val['color'].get()]
 
-        # Note: this does not update until process_rw_and_sizes() is called.
+        # Note: this does not update until process() is called.
         #  It shares a window with the distance transform image, which
         #  updates with slider or combobox preprocessing changes.
         cv2.drawContours(image=self.cvimg['Random Walker'],
@@ -949,7 +954,7 @@ class ViewImage(ProcessImage):
 
         if (self.size_std['px_val'].get() == '1' and
                 self.cbox_val['size_std'].get() == 'None'):
-            app.after(ms=5555, func=_show_msg)
+            app.after(ms=6000, func=_show_msg)
 
     def show_info_message(self, info: str, color: str) -> None:
         """
@@ -959,15 +964,15 @@ class ViewImage(ProcessImage):
             info: The text string of the message to display.
             color: The font color string, either as a key in the
                    const.COLORS_TK dictionary or as a Tk compatible fg
-                   color string code, i.e. hex code.
+                   color string, i.e. hex code or X11 named color.
 
         Returns:
             None
         """
         self.info_txt.set(info)
 
-        # Need to handle case when color is defined as a dictionary key
-        #  or as a hex code.
+        # Need to handle cases when color is defined as a dictionary key,
+        #  hex code, or X11 named color.
         try:
             tk_color = const.COLORS_TK[color]
         except KeyError:
@@ -1611,8 +1616,6 @@ class ViewImage(ProcessImage):
             if self.cbox_val['size_std'].get() == 'Custom':
                 self.validate_custom_size_entry()
 
-        self.info_label.config(fg=const.COLORS_TK['blue'])
-
         _info = '\n\nRunning segmentation algorithm...\n\n\n'
         self.show_info_message(info=_info, color='blue')
 
@@ -1698,8 +1701,6 @@ class ViewImage(ProcessImage):
 
         self.report_results()
 
-        # Display the size standard instructions only when no size
-        #  standard values are entered.
         self.delay_size_std_info_msg()
 
 
@@ -2032,7 +2033,7 @@ class SetupApp(ViewImage):
 
         # Give user time to read the _info before resetting it to
         #  the previous info text.
-        app.after(ms=5555)
+        app.after(ms=6000)
         self.show_info_message(info=prev_txt, color=prev_fg)
 
     def setup_image_windows(self) -> None:
@@ -2421,16 +2422,18 @@ class SetupApp(ViewImage):
         Returns:
             None
         """
-        # Set minimum width for the enclosing Toplevel by setting a length
-        #  for a single Scale widget that is sufficient to fit everything
-        #  in the Frame given current padding parameters. Need to use only
-        #  for one Scale() in each Toplevel().
-        scale_len = int(self.screen_width * 0.25)
+        # Minimum width for any Toplevel window is set by the length
+        #  of the longest widget, whether that be a Label() or Scale().
+        #  So, for the main (app) window, set a Scale() length  sufficient
+        #  to fit everything in the Frame given current padding arguments.
+        #  Keep in mind that a long input file path in the report_frame
+        #   may be longer than this set scale_len in the selectors_frame.
+        scale_len = int(self.screen_width * 0.20)
 
-        # Scale widgets that are pre-random_walker (contrast, noise,
-        # filter and threshold) and size max/min are called with mouse
-        # button release.
-        # Peak-local-max params and select_and_size_objects() are called with Button.
+        # Scale() widgets for preprocessing (i.e., contrast, noise, filter,
+        #  and threshold) or size max/min are called by a mouse
+        #  button release. Peak-local-max and circle radius params are
+        #  used in process(), which is called by one of the "Run" buttons.
         self.slider['alpha_lbl'].configure(text='Contrast/gain/alpha:',
                                            **const.LABEL_PARAMETERS)
         self.slider['alpha'].configure(from_=0.0, to=4.0,
@@ -2500,12 +2503,12 @@ class SetupApp(ViewImage):
         # To avoid processing all the intermediate values between normal
         #  slider movements, bind sliders to call functions only on
         #  left button release.
-        # Most are bound to preprocess(); process() is initiated
-        #  only with a Button(). To speed program responsiveness when
+        # Most are bound to preprocess(); process() is called only with
+        #  a "Run" Button(). To speed program responsiveness when
         #  changing the size range, only the sizing and reporting methods
         #  are called on mouse button release.
         # Note that the isinstance() condition doesn't improve performance,
-        #  but is there for clarity's sake.
+        #  it just clarifies the bind intention.
         for _name, _w in self.slider.items():
             if isinstance(_w, tk.Label):
                 continue
@@ -2590,7 +2593,7 @@ class SetupApp(ViewImage):
                                      **const.COMBO_PARAMETERS)
 
         # Now bind functions to all Comboboxes.
-        # Note that the isinstance() Label condition isn't needed for
+        # Note that the isinstance() tk.Label condition isn't needed for
         # performance, it just clarifies the bind intention.
         for _name, _w in self.cbox.items():
             if isinstance(_w, tk.Label):
@@ -2611,7 +2614,6 @@ class SetupApp(ViewImage):
         """
 
         self.size_std['px_entry'].config(textvariable=self.size_std['px_val'],
-                                         # font=const.WIDGET_FONT,
                                          width=6)
         self.size_std['px_lbl'].config(text='Enter px diameter of size standard:',
                                        **const.LABEL_PARAMETERS)
