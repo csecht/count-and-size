@@ -347,18 +347,23 @@ def quit_gui(mainloop: tk.Tk) -> None:
 
     Returns: None
     """
-    print('\n*** User has quit the program ***')
 
-    try:
-        mainloop.update()
-        mainloop.after(200)
-        mainloop.destroy()
-        # Need explicit exit if for some reason a tk window isn't destroyed.
-        sys.exit(0)
-    # pylint: disable=broad-except
-    except Exception as unk:
-        print('An unknown error occurred:', unk)
-        sys.exit(0)
+    really_quit = messagebox.askyesno(
+        title="Confirm Exit",
+        detail='Are you sure you want to quit?')
+
+    if really_quit:
+        print('\n*** User has quit the program ***')
+        try:
+            mainloop.update()
+            mainloop.after(200)
+            mainloop.destroy()
+            # Need explicit exit if for some reason a tk window isn't destroyed.
+            sys.exit(0)
+        # pylint: disable=broad-except
+        except Exception as unk:
+            print('An unknown error occurred:', unk)
+            sys.exit(0)
 
 
 def no_objects_found_msg():
