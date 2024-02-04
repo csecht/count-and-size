@@ -348,7 +348,10 @@ def quit_gui(mainloop: tk.Tk) -> None:
     Returns: None
     """
 
+    # Need to place the message window in front of the window/widget
+    #  that currently has focus.
     really_quit = messagebox.askyesno(
+        parent=mainloop.focus_get(),
         title="Confirm Exit",
         detail='Are you sure you want to quit?')
 
