@@ -343,7 +343,7 @@ def quit_gui(mainloop: tk.Tk) -> None:
     """Safe and informative exit from the program.
 
     Args:
-        mainloop: The main tk.Tk() window running the mainloop.
+        mainloop: The main tk.Tk() Toplevel running the mainloop.
 
     Returns: None
     """
