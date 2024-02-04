@@ -2063,9 +2063,8 @@ class SetupApp(ViewImage):
             'sized': 'Selected & Sized objects',
         }
 
-        # Labels to display scaled images, which are updated using
-        #  .configure() for 'image=' in their respective processing methods
-        #  via ProcessImage.update_image().
+        # Labels to display scaled images are updated using .configure()
+        #  for 'image=' in their respective processing methods via ProcessImage.update_image().
         #  Labels are gridded in their respective tkimg_window in grid_img_labels().
         self.img_label = {
             'input': tk.Label(self.tkimg_window['input_contrasted']),
@@ -2121,8 +2120,8 @@ class SetupApp(ViewImage):
             None
         """
 
-        # Color in the main (self) window and give it a yellow border;
-        #   border highlightcolor changes to grey with loss of focus.
+        # Color-in the main (self) window and give it a yellow border;
+        #  border highlightcolor changes to grey with loss of focus.
         self.config(**const.WINDOW_PARAMETERS)
 
         # Default Frame() arguments work fine to display report text.
@@ -2774,7 +2773,7 @@ class SetupApp(ViewImage):
             """
             scale_factor: float = self.scale_factor.get()
             scale_factor *= 1.1
-            scale_factor = round(min(scale_factor, 4), 2)
+            scale_factor = round(min(scale_factor, 5), 2)
             self.scale_factor.set(scale_factor)
             _apply_new_scale()
 
@@ -2784,7 +2783,7 @@ class SetupApp(ViewImage):
             """
             scale_factor: float = self.scale_factor.get()
             scale_factor *= 0.9
-            scale_factor = round(max(scale_factor, 0.25), 2)
+            scale_factor = round(max(scale_factor, 0.10), 2)
             self.scale_factor.set(scale_factor)
             _apply_new_scale()
 
