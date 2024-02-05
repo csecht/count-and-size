@@ -808,7 +808,7 @@ class ViewImage(ProcessImage):
 
         self.seg_algorithm: str = ''
 
-    def open_input(self, toplevel) -> bool:
+    def open_input(self, toplevel: tk.Toplevel) -> bool:
         """
         Provides an open file dialog to select an initial or new input
         image file. Also sets a scale slider value for the displayed img.
@@ -832,21 +832,28 @@ class ViewImage(ProcessImage):
                        ('All', '*.*')],
         )
 
-        # When user selects an input, open it, and proceed, but if
-        #  user selects "Cancel", then quit when in start window, otherwise
-        #  simply close the filedialog (default action) because it was
+        # When user selects an input, check whether it can be used by OpenCV.
+        # If so, open it, and proceed. If user selects "Cancel" instead of
+        #  selecting a file, then quit if at the start window, otherwise
+        #  simply close the filedialog (default action) because this was
         #  called from the "New input" button in the mainloop (self) window.
-        if self.input_file:
-            self.cvimg['input'] = cv2.imread(self.input_file)
-            self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
-                                              code=cv2.COLOR_RGBA2GRAY)
-        elif toplevel != self:
-            # Was called from start window and user clicked "Cancel" or
-            #  closed window. A confirmation of "No" here would throw an error.
+        # Need to call quit_gui() without confirmation b/c a confirmation
+        #  dialog answer of "No"  throws an error when at startup; that is,
+        #  when the *toplevel* arg is start_win, not self.
+        try:
+            if self.input_file:
+                self.cvimg['input'] = cv2.imread(self.input_file)
+                self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
+                                                  code=cv2.COLOR_RGBA2GRAY)
+            elif toplevel != self:
+                utils.quit_gui(mainloop=self, confirm=False)
+            else:
+                return False
+        except cv2.error as cverr:
+            print(f'File {Path(self.input_file).name} cannot be used as input.\n'
+                  f'Try again with a different file. Quitting with error:\n',
+                  cverr)
             utils.quit_gui(mainloop=self, confirm=False)
-        else:
-            # Was called from report window (self) and user clicked "Cancel".
-            return False
 
         # Auto-set images' scale factor based on input image size.
         #  Can be later reset with keybindings in bind_scale_adjustment().
