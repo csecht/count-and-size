@@ -851,8 +851,8 @@ class ViewImage(ProcessImage):
                 return False
         except cv2.error as cverr:
             msg = f'File: {Path(self.input_file).name} cannot be used.'
-            print(f'{msg} Exiting with error:\n{cverr}')
             if self.first_run:
+                print(f'{msg} Exiting with error:\n{cverr}')
                 messagebox.showerror(
                     title="Bad input file",
                     message=msg + '\nRestart and try a different file.\nQuitting...')
