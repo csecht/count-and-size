@@ -838,8 +838,7 @@ class ViewImage(ProcessImage):
         #  simply close the filedialog (default action) because this was
         #  called from the "New input" button in the mainloop (self) window.
         # Need to call quit_gui() without confirmation b/c a confirmation
-        #  dialog answer of "No"  throws an error when at startup; that is,
-        #  when the *toplevel* arg is start_win, not self.
+        #  dialog answer of "No"  throws an error during file input.
         try:
             if self.input_file:
                 self.cvimg['input'] = cv2.imread(self.input_file)
@@ -850,9 +849,10 @@ class ViewImage(ProcessImage):
             else:
                 return False
         except cv2.error as cverr:
-            print(f'File {Path(self.input_file).name} cannot be used as input.\n'
-                  f'Try again with a different file. Quitting with error:\n',
-                  cverr)
+            msg = (f'File: {Path(self.input_file).name} cannot be used.\n'
+                   'Try another file.\nExiting program...')
+            print(f'{msg} with error:\n{cverr}')
+            messagebox.showerror(title="Bad input file", message=msg)
             utils.quit_gui(mainloop=self, confirm=False)
 
         # Auto-set images' scale factor based on input image size.
