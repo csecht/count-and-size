@@ -841,10 +841,11 @@ class ViewImage(ProcessImage):
             self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
                                               code=cv2.COLOR_RGBA2GRAY)
         elif toplevel != self:
-            # Was called from start window and user clicked "Cancel".
-            utils.quit_gui(mainloop=self)
+            # Was called from start window and user clicked "Cancel" or
+            #  closed window. A confirmation of "No" here would throw an error.
+            utils.quit_gui(mainloop=self, confirm=False)
         else:
-            # Was called from report window and user clicked "Cancel".
+            # Was called from report window (self) and user clicked "Cancel".
             return False
 
         # Auto-set images' scale factor based on input image size.
@@ -2803,12 +2804,14 @@ class SetupApp(ViewImage):
 
         # Default settings are optimized for sample1.jpg input.
 
-        # This condition is needed to evaluate user's choices at startup.
         if self.first_run and self.use_saved_settings:
             self.import_settings()
             return
 
+        # Watershed is the default at startup; after that, when the 'Reset'
+        # is used, seg_algorithm is defined by the "Run..." button commands.
         if self.first_run:
+            self.seg_algorithm = 'Watershed'
             if self.do_inverse_th.get():
                 self.cbox['th_type'].current(1)
                 self.cbox_val['th_type'].set('cv2.THRESH_OTSU_INVERSE')
@@ -2817,11 +2820,6 @@ class SetupApp(ViewImage):
                 self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
         else:
             self.cbox['th_type'].current(0)  # 'cv2.THRESH_OTSU'
-
-        # Only at startup, does this seg_algorithm value have effect;
-        #   after that, when the 'Reset' button is used,
-        #   its value is defined by the "Run..." buttons.
-        self.seg_algorithm = 'Watershed'
 
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
@@ -3109,7 +3107,7 @@ def run_checks() -> None:
     manage.arguments()
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     run_checks()
 

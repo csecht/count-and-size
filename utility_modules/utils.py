@@ -339,23 +339,20 @@ def count_sig_fig(entry_number: Union[int, float, str]) -> int:
     return len(sigfig_str.lstrip('0'))
 
 
-def quit_gui(mainloop: tk.Tk) -> None:
+def quit_gui(mainloop: tk.Tk, confirm=True) -> None:
     """Safe and informative exit from the program.
 
     Args:
-        mainloop: The main tk.Tk() Toplevel running the mainloop.
+        mainloop: The main tk.Tk() Toplevel running the mainloop that
+            needs to destroy() to exit the program.
+        confirm: An optional boolean. When True, evokes confirmation.
+            When False, quits without confirmation. Use False
+            when a confirmation answer of "No" might throw an exception.
 
     Returns: None
     """
 
-    # Need to place the message window in front of the window/widget
-    #  that currently has focus.
-    really_quit = messagebox.askyesno(
-        parent=mainloop.focus_get(),
-        title="Confirm Exit",
-        detail='Are you sure you want to quit?')
-
-    if really_quit:
+    def _do_quit():
         print('\n*** User has quit the program ***')
         try:
             mainloop.update()
@@ -367,6 +364,21 @@ def quit_gui(mainloop: tk.Tk) -> None:
         except Exception as unk:
             print('An unknown error occurred:', unk)
             sys.exit(0)
+
+    if confirm:
+        # Need use the parent parameter to place the message window in
+        #  front of the window or widget that has focus.
+        really_quit = messagebox.askyesno(
+            parent=mainloop.focus_get(),
+            title="Confirm Exit",
+            detail='Are you sure you want to quit?')
+
+        if really_quit:
+            _do_quit()
+        else:
+            return
+    else:
+        _do_quit()
 
 
 def no_objects_found_msg():
