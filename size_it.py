@@ -47,7 +47,7 @@ from datetime import datetime
 from json import loads
 from pathlib import Path
 from statistics import mean, median
-from typing import List
+from typing import Union
 from time import time
 
 # Third party imports.
@@ -808,20 +808,21 @@ class ViewImage(ProcessImage):
 
         self.seg_algorithm: str = ''
 
-    def open_input(self, toplevel: tk.Toplevel) -> bool:
+    def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
         """
         Provides an open file dialog to select an initial or new input
         image file. Also sets a scale slider value for the displayed img.
         Called from setup_start_window() or "New input" button.
         Args:
-            toplevel: The Toplevel window over which to place the dialog.
+            parent: The window or main app Class over which to place the file
+                dialog, e.g., start_win or self.
 
         Returns:
             True or False depending on whether input was selected.
 
         """
         self.input_file = filedialog.askopenfilename(
-            parent=toplevel,
+            parent=parent,
             title='Select input image',
             filetypes=[('JPG', '*.jpg'),
                        ('JPG', '*.jpeg'),
@@ -838,22 +839,29 @@ class ViewImage(ProcessImage):
         #  simply close the filedialog (default action) because this was
         #  called from the "New input" button in the mainloop (self) window.
         # Need to call quit_gui() without confirmation b/c a confirmation
-        #  dialog answer of "No"  throws an error during file input.
+        #  dialog answer of "No" throws an error during file input.
         try:
             if self.input_file:
                 self.cvimg['input'] = cv2.imread(self.input_file)
                 self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
                                                   code=cv2.COLOR_RGBA2GRAY)
-            elif toplevel != self:
+            elif parent != self:
                 utils.quit_gui(mainloop=self, confirm=False)
             else:
                 return False
         except cv2.error as cverr:
-            msg = (f'File: {Path(self.input_file).name} cannot be used.\n'
-                   'Try another file.\nExiting program...')
-            print(f'{msg} with error:\n{cverr}')
-            messagebox.showerror(title="Bad input file", message=msg)
-            utils.quit_gui(mainloop=self, confirm=False)
+            msg = f'File: {Path(self.input_file).name} cannot be used.'
+            print(f'{msg} Exiting with error:\n{cverr}')
+            if self.first_run:
+                messagebox.showerror(
+                    title="Bad input file",
+                    message=msg + '\nRestart and try a different file.\nQuitting...')
+                utils.quit_gui(mainloop=self, confirm=False)
+            else:
+                messagebox.showerror(
+                    title="Bad input file",
+                    message=msg + '\nUse "New input" to try another file.')
+                return False
 
         # Auto-set images' scale factor based on input image size.
         #  Can be later reset with keybindings in bind_scale_adjustment().
@@ -1219,7 +1227,7 @@ class ViewImage(ProcessImage):
 
         self.cvimg['sized'] = self.cvimg['input'].copy()
 
-        selected_sizes: List[float] = []
+        selected_sizes: list[float] = []
         preferred_color: tuple = const.COLORS_CV[self.cbox_val['color'].get()]
         font_scale: float = self.metrics['font_scale']
         line_thickness: int = self.metrics['line_thickness']
@@ -1972,7 +1980,7 @@ class SetupApp(ViewImage):
         # Take a break in configuring the window to grab the input.
         # For macOS: Need to have the filedialog be a child of
         #   start_win and need update() here.
-        self.open_input(toplevel=start_win)
+        self.open_input(parent=start_win)
         self.update()
 
         # Finally, give start window its active title,...
@@ -2326,7 +2334,7 @@ class SetupApp(ViewImage):
 
             Returns: None
             """
-            if self.open_input(toplevel=self):
+            if self.open_input(parent=self):
                 self.update_image(tkimg_name='input',
                                   cvimg_array=self.cvimg['input'])
             else:  # User canceled input selection or closed messagebox window.
