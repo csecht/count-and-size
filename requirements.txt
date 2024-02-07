@@ -3,19 +3,19 @@ Pillow
 numpy
 scikit-image
 scipy
+packaging
 psutil
 pyamg
 
-#opencv-python~=4.5.5.62
+#opencv-python~=4.8.1.78
 #Pillow~=10.0.0
-#numpy~=1.25.2
-#scikit-image~=0.21.0
-#scipy~=1.11.1
+#numpy~=1.26.2
+#scikit-image~=0.22.0
+#scipy~=1.11.4
 #psutil~=5.9.5
-#packaging~=23.0
+#packaging~=23.2
 #pyamg~=5.0.1
-# ^^ Development environment, as of June 2023, Linux Ubuntu 20.04, Windows 11, macOS 13.4
-# pyamg is used only with size_it_RW.py for run random_walker
+# ^^ Development environment, as of February 2024, Linux Ubuntu 22.04, Windows 11, macOS 13.4
 
 # Note that for PyCharm 2023, to get opencv documentation working, the interpreter
 #  needs to use opencv-python 4.5.5.62. Higher versions with PIP installation
