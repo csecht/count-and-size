@@ -33,13 +33,13 @@ WIDGET_FG
 # Copyright (C) 2023 C.S. Echt, under GNU General Public License'
 
 # Standard library import
-import sys
+from sys import platform
 
 # Third party import
 import cv2
 import numpy as np
 
-MY_OS: str = sys.platform[:3]
+MY_OS: str = platform[:3]
 
 STUB_ARRAY: np.ndarray = np.ones(shape=(5, 5), dtype='uint8')
 
