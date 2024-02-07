@@ -206,17 +206,17 @@ When running Random Walker segmentation, e.g., on the images/example/sample1.jpg
 ### Attributions
 All image files are from the author, C.S. Echt.
 
-### Pre-set size standards and diameters.
+### Pre-set size standards, diameters, and displayed significant figures.
 
-| Standard object | mm dia. | Notes                       |
-|-----------------|--------:|-----------------------------|
-| None            |     1.0 | Default, diameter is pixels |
-| Custom          |       0 | User enters a known size    |
-| Puck            |    76.2 | Standard 3 inch hockey puck |
-| Cent            |    19.0 |                             |
-| Nickel          |    21.2 |                             |
-| Dime            |    17.9 |                             |
-| Quarter         |    24.3 |                             |
-| Half Dollar     |    30.6 | a.k.a Kennedy half dollar   |
-| Sacagawea $     |    26.5 | Minted from 2000 to 2008    |
-| Eisenhower $    |    38.1 | Minted from 1971 to 1978    |
+| Standard object | mm dia. | Notes                       | s.f. |
+|-----------------|--------:|-----------------------------|------|
+| None            |   1.001 | Default, diameter is pixels |  4   |
+| Custom          |       0 | User enters a known size    | tbd  |
+| Puck            |    76.2 | Standard 3 inch hockey puck |  3   |
+| Cent            |    19.0 |                             |  3   |
+| Nickel          |    21.2 |                             |  3   |
+| Dime            |    17.9 |                             |  3   |
+| Quarter         |    24.3 |                             |  3   |
+| Half Dollar     |    30.6 | a.k.a Kennedy half dollar   |  3   |
+| Sacagawea $     |    26.5 | Minted from 2000 to 2008    |  3   |
+| Eisenhower $    |    38.1 | Minted from 1971 to 1978    |  3   |

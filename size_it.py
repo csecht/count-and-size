@@ -47,8 +47,8 @@ from datetime import datetime
 from json import loads
 from pathlib import Path
 from statistics import mean, median
-from typing import Union
 from time import time
+from typing import Union
 
 # Third party imports.
 # tkinter(Tk/Tcl) is included with most Python3 distributions,
@@ -814,8 +814,8 @@ class ViewImage(ProcessImage):
         image file. Also sets a scale slider value for the displayed img.
         Called from setup_start_window() or "New input" button.
         Args:
-            parent: The window or main app Class over which to place the file
-                dialog, e.g., start_win or self.
+            parent: The window or mainloop Class over which to place the
+                file dialog, e.g., start_win or self.
 
         Returns:
             True or False depending on whether input was selected.
@@ -847,7 +847,7 @@ class ViewImage(ProcessImage):
                                                   code=cv2.COLOR_RGBA2GRAY)
             elif parent != self:
                 utils.quit_gui(mainloop=self, confirm=False)
-            else:
+            else:  # no input and parent is self (app).
                 return False
         except cv2.error as cverr:
             msg = f'File: {Path(self.input_file).name} cannot be used.'
@@ -902,11 +902,11 @@ class ViewImage(ProcessImage):
         """
 
         # Note that the scale factor is not included in saved_settings.json.
-        _y, _x = self.metrics['gray_img'].shape
-        if _x >= _y:
-            estimated_scale = round((self.screen_width * 0.33) / _x, 2)
+        _h, _w = self.metrics['gray_img'].shape
+        if _w >= _h:
+            estimated_scale = round((self.screen_width * 0.33) / _w, 2)
         else:
-            estimated_scale = round((self.winfo_screenheight() * 0.66) / _y, 2)
+            estimated_scale = round((self.winfo_screenheight() * 0.66) / _h, 2)
 
         self.scale_factor.set(estimated_scale)
 
@@ -932,12 +932,12 @@ class ViewImage(ProcessImage):
                   f'{oserr}')
 
         # Set/Reset Scale widgets.
-        for _k in self.slider_val:
-            self.slider_val[_k].set(self.imported_settings[_k])
+        for _name in self.slider_val:
+            self.slider_val[_name].set(self.imported_settings[_name])
 
         # Set/Reset Combobox widgets.
-        for _k in self.cbox_val:
-            self.cbox_val[_k].set(self.imported_settings[_k])
+        for _name in self.cbox_val:
+            self.cbox_val[_name].set(self.imported_settings[_name])
 
         # Set the threshold selection Radiobutton in setup_start_window().
         self.do_inverse_th.set(self.imported_settings['do_inverse_th'])
@@ -2763,8 +2763,8 @@ class SetupApp(ViewImage):
                        'sized',
                        )
 
-        # Note that these string names must match the respective keys in
-        #  draw_ws_segments() and draw_rw_segments() methods.
+        # Note that these strings must match the respective cvimg keys
+        #  used in draw_ws_segments() and draw_rw_segments() methods.
         seg_name = 'Watershed' if self.seg_algorithm == 'Watershed' else 'Random Walker'
 
         def _apply_new_scale():
@@ -2823,8 +2823,8 @@ class SetupApp(ViewImage):
             self.import_settings()
             return
 
-        # Watershed is the default at startup; after that, when the 'Reset'
-        # is used, seg_algorithm is defined by the "Run..." button commands.
+        # Watershed is the default at startup; after that, when 'Reset'
+        # is used, seg_algorithm is defined by "Run..." button command.
         if self.first_run:
             self.seg_algorithm = 'Watershed'
             if self.do_inverse_th.get():
@@ -2855,14 +2855,14 @@ class SetupApp(ViewImage):
             self.slider_val['plm_footprint'].set(3)
 
         # Set/Reset Combobox widgets.
-        self.cbox['morphop'].current(0)  # 'cv2.MORPH_OPEN' == 2
-        self.cbox['morphshape'].current(2)  # 'cv2.MORPH_ELLIPSE' == 2
-        self.cbox['filter_type'].current(1)  # 'cv2.bilateralFilter'
-        self.cbox['dt_type'].current(1)  # 'cv2.DIST_L2' == 2
-        self.cbox['dt_mask_size'].current(1)  # '3' == cv2.DIST_MASK_3
-        self.cbox['ws_connectivity'].current(1)  # '4'
-        self.cbox['size_std'].current(0)  # 'None'
         self.cbox_val['color'].set('blue')
+        self.cbox_val['morphop'].set('cv2.MORPH_OPEN')  # cv2.MORPH_OPEN == 2
+        self.cbox_val['morphshape'].set('cv2.MORPH_ELLIPSE')  # cv2.MORPH_ELLIPSE == 2
+        self.cbox_val['filter_type'].set('cv2.bilateralFilter')
+        self.cbox_val['dt_type'].set('cv2.DIST_L2')  # cv2.DIST_L2 == 2
+        self.cbox_val['dt_mask_size'].set('3')  # '3' == cv2.DIST_MASK_3
+        self.cbox_val['ws_connectivity'].set('4')
+        self.cbox_val['size_std'].set('None')  # 'None'
 
         # Set/Reset Entry widgets.
         self.size_std['px_val'].set('1')
