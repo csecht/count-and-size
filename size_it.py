@@ -42,11 +42,11 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 # Copyright (C) 2024 C.S. Echt, under GNU General Public License
 
 # Standard library imports.
-import sys
 from datetime import datetime
 from json import loads
 from pathlib import Path
 from statistics import mean, median
+from sys import exit as sys_exit
 from time import time
 from typing import Union
 
@@ -67,7 +67,7 @@ try:
     from scipy import ndimage
 
 except (ImportError, ModuleNotFoundError) as import_err:
-    sys.exit(
+    sys_exit(
         '*** One or more required Python packages were not found'
         ' or need an update:\nOpenCV-Python, NumPy, scikit-image, SciPy, tkinter (Tk/Tcl).\n\n'
         'To install: from the current folder, run this command'
@@ -705,8 +705,8 @@ class ViewImage(ProcessImage):
         self.selectors_frame = tk.Frame()
         # self.configure(bg='green')  # for development.
 
-        # Note: The matching control variable attributes for the
-        #   following selector widgets are in ProcessImage __init__.
+        # The control variables with matching names for these Scale() and
+        #  Combobox() widgets are instance attributes in ProcessImage.
         self.slider = {
             'alpha': tk.Scale(master=self.selectors_frame),
             'alpha_lbl': tk.Label(master=self.selectors_frame),
@@ -762,7 +762,6 @@ class ViewImage(ProcessImage):
             'size_std': ttk.Combobox(master=self.selectors_frame),
         }
 
-        # User-entered pixel diameters of selected size standards.
         self.size_std = {
             'px_entry': tk.Entry(master=self.selectors_frame),
             'px_val': tk.StringVar(master=self.selectors_frame),
@@ -788,25 +787,24 @@ class ViewImage(ProcessImage):
         # Defined in setup_start_window() Radiobuttons.
         self.do_inverse_th = tk.BooleanVar()
 
-        self.input_file: str = ''
-
-        # Flag for user's choice of segment export type.
-        self.export_segment: bool = True
-        self.export_hull: bool = False
-
-        # Used to reset values that user may have tried to change during
-        #  prolonged processing times.
-        self.slider_values: list = []
-
-        self.report_txt: str = ''
-        self.imported_settings: dict = {}
-        self.use_saved_settings: bool = False
-
         # Info label is gridded in configure_main_window().
         self.info_txt = tk.StringVar()
         self.info_label = tk.Label(master=self, textvariable=self.info_txt)
 
+        # Flag user's choice of segment export types. Defined in
+        #  configure_buttons() _export_objects() Button cmd.
+        self.export_segment: bool = True
+        self.export_hull: bool = False
+
+        # Defined in widget_control() to reset values that user may have
+        #  tried to change during prolonged processing times.
+        self.slider_values: list = []
+
+        self.input_file: str = ''
+        self.use_saved_settings: bool = False
+        self.imported_settings: dict = {}
         self.seg_algorithm: str = ''
+        self.report_txt: str = ''
 
     def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
         """
@@ -2835,6 +2833,7 @@ class SetupApp(ViewImage):
                 self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
         else:
             self.cbox['th_type'].current(0)  # 'cv2.THRESH_OTSU'
+            self.cbox_val['color'].set('blue')
 
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
@@ -2855,7 +2854,6 @@ class SetupApp(ViewImage):
             self.slider_val['plm_footprint'].set(3)
 
         # Set/Reset Combobox widgets.
-        self.cbox_val['color'].set('blue')
         self.cbox_val['morphop'].set('cv2.MORPH_OPEN')  # cv2.MORPH_OPEN == 2
         self.cbox_val['morphshape'].set('cv2.MORPH_ELLIPSE')  # cv2.MORPH_ELLIPSE == 2
         self.cbox_val['filter_type'].set('cv2.bilateralFilter')
