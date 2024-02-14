@@ -127,18 +127,42 @@ def valid_path_to(input_path: str) -> Path:
     return valid_path
 
 
-def save_report_and_img(input_path: str,
+def export_settings_to_json(path2folder: str,
+                            settings2save: dict,
+                            called_by_cs=None) -> None:
+    """
+    Write selector widget values to a JSON file in the input image's
+    folder. The file can be used for importing the saved settings.
+    Overwrites any prior values, because the same file name is used.
+
+    Args:
+        called_by_cs: Default (None) is used by size_it.py. When arg is
+         present e.g, True, expected caller is size_it_cs.py.
+        path2folder: Full path name of the input file folder.
+        settings2save: All selector widget values, as a dictionary.
+    Returns: None
+    """
+
+    if called_by_cs:
+        path2folder = Path(path2folder, const.CS_SETTINGS_FILE_NAME)
+    else:  # is called by size_it.py.
+        path2folder = Path(path2folder, const.SETTINGS_FILE_NAME)
+
+    with open(path2folder, mode='wt', encoding='utf-8') as _fp:
+        _fp.write(dumps(settings2save))
+
+
+def save_report_and_img(path2input: str,
                         img2save: Union[np.ndarray, ImageTk.PhotoImage],
                         txt2save: str,
                         caller: str,
-                        settings2save=None,
                         ) -> None:
     """
     Write to file the current report of calculated image processing
     values. Save current result image or selected displayed image.
 
     Args:
-        input_path: The input image file path, as string.
+        path2input: The input image file path, as string.
         img2save: The current resulting image array; can be a np.ndarray
             from cv2 or an ImageTk.PhotoImage from tkinter/PIL
         txt2save: The current image processing report.
@@ -150,15 +174,6 @@ def save_report_and_img(input_path: str,
                     to a json file to save.
     Returns: None
     """
-
-    # Only the 'Export settings' button cmd uses the settings2save parameter.
-    #  In that case, save only json file argument (a settings dictionary).
-    #  Note that the json.dumps() function formats single quotes to double.
-    settings_path = Path(Path(input_path).parent/const.SETTINGS_FILE_NAME)
-    if settings2save:
-        with open(settings_path, mode='wt', encoding='utf-8') as _fp:
-            _fp.write(dumps(settings2save))
-        return
 
     curr_time = datetime.now().strftime('%Y%m%d%I%M%S')
     time2print = datetime.now().strftime('%Y/%m/%d %I:%M:%S%p')
@@ -172,13 +187,13 @@ def save_report_and_img(input_path: str,
     # the default being 3. The higher value does high compression of the
     # image resulting in a smaller file size but a longer compression time.
 
-    img_ext = Path(input_path).suffix
-    img_stem = Path(input_path).stem
-    img_folder = Path(input_path).parent
-    saved_report_name = f'{img_stem}_{caller}_Report.txt'
-    report_file_path = Path(f'{img_folder}/{saved_report_name}')
-    saved_img_name = f'{img_stem}_{caller}_{curr_time}{img_ext}'
-    image_file_path = f'{img_folder}/{saved_img_name}'
+    img_ext = Path(path2input).suffix
+    img_name = Path(path2input).stem
+    img_folder = Path(path2input).parent
+    saved_report_name = f'{img_name}_{caller}_Report.txt'
+    report_file_path = Path(img_folder, saved_report_name)
+    saved_img_name = f'{img_name}_{caller}_{curr_time}{img_ext}'
+    saved_img_path = f'{img_folder}/{saved_img_name}'
 
     if manage.arguments()['terminal']:
         data2save = (f'\n\nTime saved: {time2print}\n'
@@ -199,7 +214,7 @@ def save_report_and_img(input_path: str,
     # Contour images are np.ndarray direct from cv2 functions, while
     #   other images are those displayed as ImageTk.PhotoImage.
     if isinstance(img2save, np.ndarray):
-        cv2.imwrite(filename=image_file_path, img=img2save)
+        cv2.imwrite(filename=saved_img_path, img=img2save)
     elif isinstance(img2save, ImageTk.PhotoImage):
         # Need to get the ImageTK image into a format that can be saved to file.
         # source: https://stackoverflow.com/questions/45440746/
@@ -211,7 +226,7 @@ def save_report_and_img(input_path: str,
         if imgpil.mode in ("RGBA", "P"):
             imgpil = imgpil.convert("RGB")
 
-        imgpil.save(image_file_path)
+        imgpil.save(saved_img_path)
     else:
         print('The specified image needs to be a np.ndarray or ImageTk.PhotoImage ')
 
@@ -220,7 +235,7 @@ def save_report_and_img(input_path: str,
               f'{data2save}')
 
 
-def export_segments(input_path: str,
+def export_segments(path2folder: str,
                     img2exp: np.ndarray,
                     index: int,
                     timestamp: str) -> None:
@@ -231,7 +246,7 @@ def export_segments(input_path: str,
     Called from ViewImage.select_and_export_objects() from a Button() command.
 
     Args:
-        input_path: The input image file path, as string.
+        path2folder: The input image file path, as string.
         img2exp: An np.ndarray slice of a segmented (contoured) object,
                  from the input image, to be exported to file.
         index: The segmented contour index number.
@@ -240,9 +255,8 @@ def export_segments(input_path: str,
     Returns: None
     """
 
-    export_folder = Path(input_path).parent
     export_img_name = f'seg_{timestamp}_{index}.jpg'
-    export_file_path = f'{export_folder}/{export_img_name}'
+    export_file_path = f'{path2folder}/{export_img_name}'
 
     # Contour images are np.ndarray direct from cv2 functions.
     # For JPEG file format the supported parameter is cv2.IMWRITE_JPEG_QUALITY

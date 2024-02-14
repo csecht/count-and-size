@@ -143,8 +143,8 @@ class ProcessImage(tk.Tk):
 
         self.cbox_val = {
             # For textvariables in config_comboboxes()...
-            'morphop': tk.StringVar(),
-            'morphshape': tk.StringVar(),
+            'morph_op': tk.StringVar(),
+            'morph_shape': tk.StringVar(),
             'filter_type': tk.StringVar(),
             'th_type': tk.StringVar(),
             'dt_type': tk.StringVar(),
@@ -270,8 +270,8 @@ class ProcessImage(tk.Tk):
             return
 
         # Need integers for the cv function parameters.
-        morph_shape = const.CV_MORPH_SHAPE[self.cbox_val['morphshape'].get()]
-        morph_op = const.CV_MORPHOP[self.cbox_val['morphop'].get()]
+        morph_shape = const.CV_MORPH_SHAPE[self.cbox_val['morph_shape'].get()]
+        morph_op = const.CV_MORPH_OP[self.cbox_val['morph_op'].get()]
 
         # See: https://docs.opencv2.org/3.0-beta/modules/imgproc/doc/filtering.html
         #  on page, see: cv2.getStructuringElement(shape, ksize[, anchor])
@@ -460,7 +460,6 @@ class ProcessImage(tk.Tk):
         # Generate the markers as local maxima of the distance to the background.
         # see: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
-        # Generate the markers as local maxima of the distance to the background.
         # Don't use exclude_border; objects touching image border will be excluded
         #   in ViewImage.select_and_size_objects().
         local_max: ndimage = peak_local_max(image=self.cvimg['transformed'],
@@ -536,7 +535,7 @@ class ProcessImage(tk.Tk):
         # Convert image array from int32 to uint8 data type to find contour_pointset.
         # Conversion with cv2.convertScaleAbs(watershed_img) also works.
         # NOTE: Use method=cv2.CHAIN_APPROX_NONE when masking individual segments
-        #   in select_and_export_objects(). CHAIN_APPROX_NONE can work, but NONE is best?
+        #   in select_and_export_objects(). CHAIN_APPROX_SIMPLE can work, but NONE is best?
         self.ws_basins, _ = cv2.findContours(image=np.uint8(self.cvimg['segmented_objects']),
                                              mode=cv2.RETR_EXTERNAL,
                                              method=cv2.CHAIN_APPROX_NONE)
@@ -737,11 +736,11 @@ class ViewImage(ProcessImage):
         }
 
         self.cbox = {
-            'morphop': ttk.Combobox(master=self.selectors_frame),
-            'morphop_lbl': tk.Label(master=self.selectors_frame),
+            'morph_op': ttk.Combobox(master=self.selectors_frame),
+            'morph_op_lbl': tk.Label(master=self.selectors_frame),
 
-            'morphshape': ttk.Combobox(master=self.selectors_frame),
-            'morphshape_lbl': tk.Label(master=self.selectors_frame),
+            'morph_shape': ttk.Combobox(master=self.selectors_frame),
+            'morph_shape_lbl': tk.Label(master=self.selectors_frame),
 
             'filter_type': ttk.Combobox(master=self.selectors_frame),
             'filter_lbl': tk.Label(master=self.selectors_frame),
@@ -800,9 +799,17 @@ class ViewImage(ProcessImage):
         #  tried to change during prolonged processing times.
         self.slider_values: list = []
 
-        self.input_file: str = ''
+        self.input_file_path: str = ''
+        self.input_file_name: str = ''
+        self.input_folder_name: str = ''
+        self.input_folder_path: str = ''
+        self.input_ht: int = 0
+        self.input_w: int = 0
+
+        self.settings_file_path = Path('')
         self.use_saved_settings: bool = False
         self.imported_settings: dict = {}
+
         self.seg_algorithm: str = ''
         self.report_txt: str = ''
 
@@ -817,9 +824,8 @@ class ViewImage(ProcessImage):
 
         Returns:
             True or False depending on whether input was selected.
-
         """
-        self.input_file = filedialog.askopenfilename(
+        self.input_file_path = filedialog.askopenfilename(
             parent=parent,
             title='Select input image',
             filetypes=[('JPG', '*.jpg'),
@@ -838,17 +844,26 @@ class ViewImage(ProcessImage):
         #  called from the "New input" button in the mainloop (self) window.
         # Need to call quit_gui() without confirmation b/c a confirmation
         #  dialog answer of "No" throws an error during file input.
+
         try:
-            if self.input_file:
-                self.cvimg['input'] = cv2.imread(self.input_file)
+            if self.input_file_path:
+                self.cvimg['input'] = cv2.imread(self.input_file_path)
                 self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
                                                   code=cv2.COLOR_RGBA2GRAY)
+                self.input_ht = cv2.cvtColor(src=self.cvimg['input'],
+                                             code=cv2.COLOR_RGBA2GRAY).shape[0]
+                self.input_w = cv2.cvtColor(src=self.cvimg['input'],
+                                            code=cv2.COLOR_RGBA2GRAY).shape[1]
+                self.input_file_name = Path(self.input_file_path).name
+                self.input_folder_path = str(Path(self.input_file_path).parent)
+                self.input_folder_name = str(Path(self.input_file_path).parts[-2])
+                self.settings_file_path = Path(self.input_folder_path, const.SETTINGS_FILE_NAME)
             elif parent != self:
                 utils.quit_gui(mainloop=self, confirm=False)
             else:  # no input and parent is self (app).
                 return False
         except cv2.error as cverr:
-            msg = f'File: {Path(self.input_file).name} cannot be used.'
+            msg = f'File: {self.input_file_name} cannot be used.'
             if self.first_run:
                 print(f'{msg} Exiting with error:\n{cverr}')
                 messagebox.showerror(
@@ -867,27 +882,29 @@ class ViewImage(ProcessImage):
         self.metrics = manage.input_metrics(img=self.cvimg['input'])
         self.set_auto_scale_factor()
         self.configure_circle_r_sliders()
+        return True
 
-        # Handle condition for when user selects to use saved settings.
-        input_path = Path(self.input_file).parent
-        settings_path = Path(input_path / const.SETTINGS_FILE_NAME)
-        if settings_path.exists():
+    def check_for_saved_settings(self) -> None:
+        """
+        Following image file import, need to check whether user wants to
+        use saved settings. The JSON settings file is expected to be in
+        the input image's folder. Calls import_settings().
+        """
+        if self.settings_file_path.exists():
             if self.first_run:
-                msg = (f'Yes, use settings file in the folder: {input_path.parts[-1]}.\n'
+                msg = (f'Yes, use settings file in the folder: {self.input_folder_name}.\n'
                        'No, use default settings.')
             else:
-                msg = (f'Yes, use settings file in folder: {input_path.parts[-1]}.\n'
+                msg = (f'Yes, use settings file in folder: {self.input_folder_name}.\n'
                        'No, use current settings.')
 
             self.use_saved_settings = messagebox.askyesno(
                 # parent=self.focus_get(),
-                title=f"Use saved settings with {Path(self.input_file).name}?",
+                title=f"Use saved settings on file: {self.input_file_name}?",
                 detail=msg)
 
         if self.use_saved_settings:
             self.import_settings()
-
-        return True
 
     def set_auto_scale_factor(self) -> None:
         """
@@ -900,11 +917,10 @@ class ViewImage(ProcessImage):
         """
 
         # Note that the scale factor is not included in saved_settings.json.
-        _h, _w = self.metrics['gray_img'].shape
-        if _w >= _h:
-            estimated_scale = round((self.screen_width * 0.33) / _w, 2)
+        if self.input_w >= self.input_ht:
+            estimated_scale = round((self.screen_width * 0.33) / self.input_w, 2)
         else:
-            estimated_scale = round((self.winfo_screenheight() * 0.66) / _h, 2)
+            estimated_scale = round((self.winfo_screenheight() * 0.66) / self.input_ht, 2)
 
         self.scale_factor.set(estimated_scale)
 
@@ -915,11 +931,8 @@ class ViewImage(ProcessImage):
         except the scale_factor for window image size.
         """
 
-        input_folder = Path(self.input_file).parent
-        settings_file = Path(input_folder / const.SETTINGS_FILE_NAME)
-
         try:
-            with open(settings_file, mode='rt', encoding='utf-8') as _fp:
+            with open(self.settings_file_path, mode='rt', encoding='utf-8') as _fp:
                 settings_json = _fp.read()
                 self.imported_settings: dict = loads(settings_json)
         except FileNotFoundError as fnf:
@@ -1038,16 +1051,15 @@ class ViewImage(ProcessImage):
         click_info = (f'The displayed {image_name} image was saved at'
                       f' {self.scale_factor.get()} scale.')
 
-        utils.save_report_and_img(input_path=self.input_file,
+        utils.save_report_and_img(path2input=self.input_file_path,
                                   img2save=tkimg,
                                   txt2save=click_info,
                                   caller=image_name)
 
         # Provide user with a notice that a file was created and
         #  give user time to read the message before resetting it.
-        input_folder = Path(self.input_file).parent
-        _info = (f'\nThe result image, "{image_name}", was saved to:\n'
-                 f'{input_folder}\n'
+        _info = (f'\nThe result image, "{image_name}", was saved to\n'
+                 f'the input image folder: {self.input_folder_name}\n'
                  f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
         self.show_info_message(info=_info, color='black')
 
@@ -1193,7 +1205,7 @@ class ViewImage(ProcessImage):
             self.size_std['custom_lbl'].grid()
             self.validate_custom_size_entry()
 
-        else:  # is one of the preset size standards
+        else:  # is one of the preset size standards or 'None'.
             self.size_std['custom_entry'].grid_remove()
             self.size_std['custom_lbl'].grid_remove()
             self.size_std['custom_val'].set('0.0')
@@ -1455,7 +1467,7 @@ class ViewImage(ProcessImage):
                 else:  # is 'roi', so export segment's enlarged bounding box.
                     export_chosen = roi
 
-                utils.export_segments(input_path=self.input_file,
+                utils.export_segments(path2folder=self.input_folder_path,
                                       img2exp=export_chosen,
                                       index=roi_idx,
                                       timestamp=time_now)
@@ -1476,12 +1488,11 @@ class ViewImage(ProcessImage):
         """
 
         # Note: recall that *_val dictionaries are inherited from ProcessImage().
-        px_h, px_w = self.cvimg['gray'].shape
         alpha: float = self.slider_val['alpha'].get()
         beta: int = self.slider_val['beta'].get()
         noise_iter: int = self.slider_val['noise_iter'].get()
-        morph_op: str = self.cbox_val['morphop'].get()
-        morph_shape: str = self.cbox_val['morphshape'].get()
+        morph_op: str = self.cbox_val['morph_op'].get()
+        morph_shape: str = self.cbox_val['morph_shape'].get()
         filter_type: str = self.cbox_val['filter_type'].get()
         th_type: str = self.cbox_val['th_type'].get()
         circle_r_min: int = self.slider_val['circle_r_min'].get()
@@ -1550,8 +1561,8 @@ class ViewImage(ProcessImage):
         divider = "═" * 20  # divider's unicode_escape: u'\u2550\'
 
         self.report_txt = (
-            f'\nImage: {self.input_file}\n'
-            f'Image size, pixels (w x h): {px_w}x{px_h}\n'
+            f'\nImage: {self.input_file_path}\n'
+            f'Image size, pixels (w x h): {self.input_w}x{self.input_ht}\n'
             f'{divider}\n'
             f'{"Contrast:".ljust(space)}convertScaleAbs alpha={alpha}, beta={beta}\n'
             f'{"Noise reduction:".ljust(space)}cv2.getStructuringElement ksize={noise_k},\n'
@@ -1979,15 +1990,15 @@ class SetupApp(ViewImage):
         # For macOS: Need to have the filedialog be a child of
         #   start_win and need update() here.
         self.open_input(parent=start_win)
+        self.check_for_saved_settings()
         self.update()
 
         # Finally, give start window its active title,...
         start_win.title('Set start parameters')
 
-        # ...fill in window header with input path and pixel dimensions,...
-        _h, _w = self.cvimg['gray'].shape
-        window_header.config(text=f'Image: {self.input_file}\n'
-                                  f'Image size, pixels (w x h): {_w}x{_h}')
+        # ...fill in window header with full input path and pixel dimensions,...
+        window_header.config(text=f'Image: {self.input_file_path}\n'
+                                  f'Image size, pixels (w x h): {self.input_w}x{self.input_ht}')
 
         # ...and make all widgets active.
         color_label.config(state=tk.NORMAL)
@@ -2178,15 +2189,6 @@ class SetupApp(ViewImage):
                                bg=const.MASTER_BG,
                                fg='black')
 
-        # Note: with rowspan=5, there must be 5 return characters in
-        #  each info string to prevent shifts of frame row spacing.
-        #  5 because that seems to be needed to cover the combined
-        #  height of the last three rows (2, 3, 4) with buttons.
-        #  Sticky is 'east' to prevent horizontal shifting when, during
-        #  segmentation processing, all buttons in col 0 are removed.
-        self.info_label.grid(column=1, row=2, rowspan=5,
-                             padx=(0, 20), sticky=tk.E)
-
         # Note: the main window (mainloop, self, app) is deiconified in
         #  display_windows() after all image windows so that, at startup,
         #  it stacks on top.
@@ -2214,8 +2216,8 @@ class SetupApp(ViewImage):
             'alpha': self.slider_val['alpha'].get(),
             'beta': self.slider_val['beta'].get(),
             'noise_iter': self.slider_val['noise_iter'].get(),
-            'morphop': self.cbox_val['morphop'].get(),
-            'morphshape': self.cbox_val['morphshape'].get(),
+            'morph_op': self.cbox_val['morph_op'].get(),
+            'morph_shape': self.cbox_val['morph_shape'].get(),
             'filter_type': self.cbox_val['filter_type'].get(),
             'th_type': self.cbox_val['th_type'].get(),
             'do_inverse_th': self.do_inverse_th.get(),
@@ -2250,8 +2252,6 @@ class SetupApp(ViewImage):
         """
         manage.ttk_styles(mainloop=self)
 
-        input_folder = Path(self.input_file).parent
-
         # These inner functions are used for Button commands.
         def _run_watershed():
             self.seg_algorithm = 'Watershed'
@@ -2272,14 +2272,14 @@ class SetupApp(ViewImage):
             """
             _sizes = ', '.join(str(i) for i in self.sorted_size_list)
             utils.save_report_and_img(
-                input_path=self.input_file,
+                path2input=self.input_file_path,
                 img2save=self.cvimg['sized'],
                 txt2save=self.report_txt + f'\n{_sizes}',
                 caller=utils.program_name(),
             )
 
-            _info = ('\n\nSettings report and result image have been saved to:\n'
-                     f'{input_folder}\n\n')
+            _info = ('\n\nSettings report and result image was saved to\n'
+                     f'the input image folder: {self.input_folder_name}\n\n')
             self.show_info_message(info=_info, color='blue')
 
         def _export_settings():
@@ -2288,20 +2288,14 @@ class SetupApp(ViewImage):
             handled as a special case in utils.save_report_and_img().
             """
 
-            settings_path = f'{input_folder}/{const.SETTINGS_FILE_NAME}'
-            settings_dict = self._settings_dict()
-            utils.save_report_and_img(
-                input_path=settings_path,
-                img2save=const.STUB_ARRAY,
-                txt2save='',
-                caller='',
-                settings2save=settings_dict,
-            )
+            utils.export_settings_to_json(
+                path2folder=self.input_folder_path,
+                settings2save=self._settings_dict())
 
-            _info = ('\nSettings values have been exported to:\n'
-                     f'{settings_path}\n'
-                     'and are available to use with "New input" or\n'
-                     'at startup. Previous settings file is overwritten.\n')
+            _info = ('\nSettings have been exported to folder:\n'
+                     f'{self.input_folder_name}\n'
+                     'and are available to use with "New input" or at\n'
+                     'startup. Previous settings file was overwritten.\n')
             self.show_info_message(info=_info, color='blue')
 
         def _export_objects():
@@ -2321,7 +2315,7 @@ class SetupApp(ViewImage):
 
             _num = self.select_and_export_objects()
             _info = (f'\n\n{_num} selected objects were individually exported to:\n'
-                     f'{input_folder}\n\n')
+                     f'{self.input_folder_name}\n\n')
             self.show_info_message(info=_info, color='blue')
 
         def _new_input():
@@ -2333,6 +2327,7 @@ class SetupApp(ViewImage):
             Returns: None
             """
             if self.open_input(parent=self):
+                self.check_for_saved_settings()
                 self.update_image(tkimg_name='input',
                                   cvimg_array=self.cvimg['input'])
             else:  # User canceled input selection or closed messagebox window.
@@ -2548,16 +2543,16 @@ class SetupApp(ViewImage):
         width_correction = 2 if const.MY_OS == 'win' else 0  # is Linux or macOS
 
         # Combobox styles are set in manage.ttk_styles(), called in configure_buttons().
-        self.cbox['morphop_lbl'].config(text='Reduce noise, morphology operator:',
+        self.cbox['morph_op_lbl'].config(text='Reduce noise, morphology operator:',
                                         **const.LABEL_PARAMETERS)
-        self.cbox['morphop'].config(textvariable=self.cbox_val['morphop'],
+        self.cbox['morph_op'].config(textvariable=self.cbox_val['morph_op'],
                                     width=18 + width_correction,
-                                    values=list(const.CV_MORPHOP.keys()),
+                                    values=list(const.CV_MORPH_OP.keys()),
                                     **const.COMBO_PARAMETERS)
 
-        self.cbox['morphshape_lbl'].config(text='... shape:',
+        self.cbox['morph_shape_lbl'].config(text='... shape:',
                                            **const.LABEL_PARAMETERS)
-        self.cbox['morphshape'].config(textvariable=self.cbox_val['morphshape'],
+        self.cbox['morph_shape'].config(textvariable=self.cbox_val['morph_shape'],
                                        width=16 + width_correction,
                                        values=list(const.CV_MORPH_SHAPE.keys()),
                                        **const.COMBO_PARAMETERS)
@@ -2614,7 +2609,7 @@ class SetupApp(ViewImage):
             if _name == 'size_std':
                 _w.bind('<<ComboboxSelected>>',
                         func=lambda _: self.process_sizes(caller='size_std'))
-            else:  # is morphop, morphshape, filter, th_type, dt_type, dt_mask_size.
+            else:  # is morph_op, morph_shape, filter, th_type, dt_type, dt_mask_size.
                 _w.bind('<<ComboboxSelected>>', func=self.preprocess)
 
     def config_entries(self) -> None:
@@ -2854,13 +2849,13 @@ class SetupApp(ViewImage):
             self.slider_val['plm_footprint'].set(3)
 
         # Set/Reset Combobox widgets.
-        self.cbox_val['morphop'].set('cv2.MORPH_OPEN')  # cv2.MORPH_OPEN == 2
-        self.cbox_val['morphshape'].set('cv2.MORPH_ELLIPSE')  # cv2.MORPH_ELLIPSE == 2
+        self.cbox_val['morph_op'].set('cv2.MORPH_OPEN')  # cv2.MORPH_OPEN == 2
+        self.cbox_val['morph_shape'].set('cv2.MORPH_ELLIPSE')  # cv2.MORPH_ELLIPSE == 2
         self.cbox_val['filter_type'].set('cv2.bilateralFilter')
         self.cbox_val['dt_type'].set('cv2.DIST_L2')  # cv2.DIST_L2 == 2
         self.cbox_val['dt_mask_size'].set('3')  # '3' == cv2.DIST_MASK_3
         self.cbox_val['ws_connectivity'].set('4')
-        self.cbox_val['size_std'].set('None')  # 'None'
+        self.cbox_val['size_std'].set('None')
 
         # Set/Reset Entry widgets.
         self.size_std['px_val'].set('1')
@@ -2901,6 +2896,16 @@ class SetupApp(ViewImage):
             pady=(0, 2),
             sticky=tk.W)
 
+        # Lable() widget is in the main window (self).
+        # Note: with rowspan=5, there must be 5 return characters in
+        #  each info string to prevent shifts of frame row spacing.
+        #  5 because that seems to be needed to cover the combined
+        #  height of the last three rows (2, 3, 4) with buttons.
+        #  Sticky is 'east' to prevent horizontal shifting when, during
+        #  segmentation processing, all buttons in col 0 are removed.
+        self.info_label.grid(column=1, row=2, rowspan=5,
+                             padx=(0, 20), sticky=tk.E)
+
         # Widgets gridded in the self.selectors_frame Frame.
         # Sorted by row number:
         self.slider['alpha_lbl'].grid(column=0, row=0, **east_grid_params)
@@ -2909,12 +2914,12 @@ class SetupApp(ViewImage):
         self.slider['beta_lbl'].grid(column=0, row=1, **east_grid_params)
         self.slider['beta'].grid(column=1, row=1, **slider_grid_params)
 
-        self.cbox['morphop_lbl'].grid(column=0, row=2, **east_grid_params)
-        self.cbox['morphop'].grid(column=1, row=2, **west_grid_params)
+        self.cbox['morph_op_lbl'].grid(column=0, row=2, **east_grid_params)
+        self.cbox['morph_op'].grid(column=1, row=2, **west_grid_params)
 
         # Note: Put morph shape on same row as morph op.
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['morphshape'].grid(column=1, row=2, **east_grid_params)
+        self.cbox['morph_shape'].grid(column=1, row=2, **east_grid_params)
 
         self.slider['noise_k_lbl'].grid(column=0, row=4, **east_grid_params)
         self.slider['noise_k'].grid(column=1, row=4, **slider_grid_params)
@@ -2975,7 +2980,7 @@ class SetupApp(ViewImage):
 
         # Now grid widgets with relative padx values based on widths of
         #  their corresponding partner widgets. Needed across platforms.
-        morphshape_padx = (0, self.cbox['morphshape'].winfo_reqwidth() + 10)
+        morph_shape_padx = (0, self.cbox['morph_shape'].winfo_reqwidth() + 10)
         thtype_padx = (0, self.cbox['th_type'].winfo_reqwidth() + 10)
         mask_lbl_padx = (self.cbox['dt_mask_size_lbl'].winfo_reqwidth() + 120, 0)
         ws_connectivity_padx = (0, self.cbox['ws_connectivity'].winfo_reqwidth() + 10)
@@ -2985,9 +2990,9 @@ class SetupApp(ViewImage):
         save_results_w: int = self.button['save_results'].winfo_reqwidth()
         process_rw_padx = (self.button['process_ws'].winfo_reqwidth() + 15, 0)
 
-        self.cbox['morphshape_lbl'].grid(column=1, row=2,
-                                         padx=morphshape_padx,
-                                         **east_params_relative)
+        self.cbox['morph_shape_lbl'].grid(column=1, row=2,
+                                          padx=morph_shape_padx,
+                                          **east_params_relative)
 
         self.cbox['th_type_lbl'].grid(column=1, row=6,
                                       padx=thtype_padx,
