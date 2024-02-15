@@ -9,7 +9,7 @@ CONTOUR_MODE
 CV_BORDER
 CV_FILTER
 CV_MORPH_SHAPE
-CV_MORPHOP
+CV_MORPH_OP
 DARK_BG
 DISTANCE_TRANS_TYPE
 DRAG_GRAY
@@ -41,9 +41,13 @@ import numpy as np
 
 MY_OS: str = platform[:3]
 
-STUB_ARRAY: np.ndarray = np.ones(shape=(5, 5), dtype='uint8')
+# The stub is a white square set in a black square to make it obvious when
+#  the code has a bug.
+STUB_ARRAY: np.ndarray = cv2.rectangle(np.zeros(shape=(200, 200), dtype="uint8"),
+                                       (50, 50), (150, 150), 255, -1)
 
 SETTINGS_FILE_NAME = 'saved_settings.json'
+CS_SETTINGS_FILE_NAME = 'saved_cs_settings.json'
 
 # Set ranges for trackbars used to adjust contrast and brightness for
 #  the cv2.convertScaleAbs method.
@@ -76,7 +80,7 @@ THRESH_TYPE = {
     'cv2.THRESH_TRIANGLE_INVERSE': 17,
 }
 
-CV_MORPHOP = {
+CV_MORPH_OP = {
     'cv2.MORPH_OPEN': 2,
     'cv2.MORPH_CLOSE': 3,
     # 'cv2.MORPH_GRADIENT': 4,
@@ -167,7 +171,18 @@ COLORS_TK = {
     'green': 'green1',  # not color-blind compatible
 }
 
-STD_CONTOUR_COLOR = {'green': (0, 255, 0)}
+# Used with size_it_cs.py for color screens (mattes).
+MATTE_COLOR = {
+    'green1': (np.array([36, 25, 25]), np.array([70, 255, 255])),
+    'green2': (np.array([36, 27, 27]), np.array([84, 255, 255])),
+    'green3': (np.array([50, 20, 20]), np.array([100, 255, 255])),
+    'blue1': (np.array([102, 140, 100]), np.array([120, 255, 255])),
+    'blue2': (np.array([80, 140, 100]), np.array([120, 255, 255])),
+    'white1': (np.array([0, 0, 200]), np.array([0, 0, 255])),
+    'white2': (np.array([0, 0, 200]), np.array([125, 60, 255])),
+    'black1': (np.array([0, 0, 0]), np.array([255, 120, 80])),
+    'black2': (np.array([0, 0, 0]), np.array([255, 120, 140])),
+}
 
 # https://vovkos.github.io/doxyrest-showcase/opencv/sphinx_rtd_theme/enum_cv_HersheyFonts.html
 # 	cv::HersheyFonts {
