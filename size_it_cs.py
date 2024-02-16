@@ -128,7 +128,7 @@ class ProcessImage(tk.Tk):
             'morph_shape': tk.StringVar(),
             'size_std': tk.StringVar(),
             # For setup_start_window()...
-            'line_color': tk.StringVar(),
+            'annotation_color': tk.StringVar(),
             'matte_color': tk.StringVar(),
         }
 
@@ -278,10 +278,10 @@ class ProcessImage(tk.Tk):
 
         # Need to prevent black contours because they won't show on the
         #  black mask objects.
-        if self.cbox_val['line_color'].get() in 'black, dark blue':
+        if self.cbox_val['annotation_color'].get() in 'black, dark blue':
             line_color = const.COLORS_CV['orange']
         else:
-            line_color = const.COLORS_CV[self.cbox_val['line_color'].get()]
+            line_color = const.COLORS_CV[self.cbox_val['annotation_color'].get()]
 
         cv2.drawContours(image=self.cvimg['matte_objects'],
                          contours=self.matte_contours,
@@ -302,8 +302,6 @@ class ViewImage(ProcessImage):
     A suite of methods to display cv segments based on selected settings
     and parameters that are in ProcessImage() methods.
     Methods:
-    open_input
-    check_for_saved_settings
     set_auto_scale_factor
     import_settings
     delay_size_std_info_msg
@@ -408,98 +406,6 @@ class ViewImage(ProcessImage):
         self.imported_settings: dict = {}
 
         self.report_txt: str = ''
-
-    def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
-        """
-        Provides an open file dialog to select an initial or new input
-        image file. Also sets a scale slider value for the displayed img.
-        Called from setup_start_window() or "New input" button.
-        Args:
-            parent: The window or mainloop Class over which to place the
-                file dialog, e.g., start_win or self.
-
-        Returns:
-            True or False depending on whether input was selected.
-
-        """
-        self.input_file_path = filedialog.askopenfilename(
-            parent=parent,
-            title='Select input image',
-            filetypes=[('JPG', '*.jpg'),
-                       ('JPG', '*.jpeg'),
-                       ('JPG', '*.JPG'),  # used for iPhone images
-                       ('PNG', '*.png'),
-                       ('TIFF', '*.tiff'),
-                       ('TIFF', '*.tif'),
-                       ('All', '*.*')],
-        )
-
-        # When user selects an input, check whether it can be used by OpenCV.
-        # If so, open it, and proceed. If user selects "Cancel" instead of
-        #  selecting a file, then quit if at the start window, otherwise
-        #  simply close the filedialog (default action) because this was
-        #  called from the "New input" button in the mainloop (self) window.
-        # Need to call quit_gui() without confirmation b/c a confirmation
-        #  dialog answer of "No" throws an error during file input.
-
-        try:
-            if self.input_file_path:
-                self.cvimg['input'] = cv2.imread(self.input_file_path)
-                self.input_ht = cv2.cvtColor(src=self.cvimg['input'],
-                                             code=cv2.COLOR_RGBA2GRAY).shape[0]
-                self.input_w = cv2.cvtColor(src=self.cvimg['input'],
-                                            code=cv2.COLOR_RGBA2GRAY).shape[1]
-                self.input_file_name = Path(self.input_file_path).name
-                self.input_folder_path = str(Path(self.input_file_path).parent)
-                self.input_folder_name = str(Path(self.input_file_path).parts[-2])
-                self.settings_file_path = Path(self.input_folder_path, const.CS_SETTINGS_FILE_NAME)
-            elif parent != self:
-                utils.quit_gui(mainloop=self, confirm=False)
-            else:  # no input and parent is self (app).
-                return False
-        except cv2.error as cverr:
-            msg = f'File: {self.input_file_name} cannot be used.'
-            if self.first_run:
-                print(f'{msg} Exiting with error:\n{cverr}')
-                messagebox.showerror(
-                    title="Bad input file",
-                    message=msg + '\nRestart and try a different file.\nQuitting...')
-                utils.quit_gui(mainloop=self, confirm=False)
-            else:
-                messagebox.showerror(
-                    title="Bad input file",
-                    message=msg + '\nUse "New input" to try another file.')
-                return False
-
-        # Auto-set images' scale factor based on input image size.
-        #  Can be later reset with keybindings in bind_scale_adjustment().
-        #  circle_r_slider ranges are a function of input image size.
-        self.metrics = manage.input_metrics(img=self.cvimg['input'])
-        self.set_auto_scale_factor()
-        self.configure_circle_r_sliders()
-        return True
-
-    def check_for_saved_settings(self) -> None:
-        """
-        Following image file import, need to check whether user wants to
-        use saved settings. The JSON settings file is expected to be in
-        the input image's folder. Calls import_settings().
-        """
-        if self.settings_file_path.exists():
-            if self.first_run:
-                msg = (f'Yes, use settings file in the folder: {self.input_folder_name}.\n'
-                       'No, use default settings.')
-            else:
-                msg = (f'Yes, use settings file in folder: {self.input_folder_name}.\n'
-                       'No, use current settings.')
-
-            self.use_saved_settings = messagebox.askyesno(
-                # parent=self.focus_get(),
-                title=f"Use saved settings on file: {self.input_file_name}?",
-                detail=msg)
-
-        if self.use_saved_settings:
-            self.import_settings()
 
     def set_auto_scale_factor(self) -> None:
         """
@@ -806,7 +712,7 @@ class ViewImage(ProcessImage):
         self.cvimg['sized'] = self.cvimg['input'].copy()
 
         selected_sizes: list[float] = []
-        preferred_color: tuple = const.COLORS_CV[self.cbox_val['line_color'].get()]
+        annotation_color: tuple = const.COLORS_CV[self.cbox_val['annotation_color'].get()]
         font_scale: float = self.metrics['font_scale']
         line_thickness: int = self.metrics['line_thickness']
 
@@ -890,7 +796,7 @@ class ViewImage(ProcessImage):
             cv2.circle(img=self.cvimg['sized'],
                        center=(round(_x), round(_y)),
                        radius=round(_r),
-                       color=preferred_color,
+                       color=annotation_color,
                        thickness=line_thickness,
                        lineType=cv2.LINE_AA,
                        )
@@ -899,7 +805,7 @@ class ViewImage(ProcessImage):
                         org=(round(_x - offset_x), round(_y + baseline)),
                         fontFace=const.FONT_TYPE,
                         fontScale=font_scale,
-                        color=preferred_color,
+                        color=annotation_color,
                         thickness=line_thickness,
                         lineType=cv2.LINE_AA,
                         )
@@ -1144,9 +1050,10 @@ class ViewImage(ProcessImage):
             self.validate_px_size_entry()
             if self.cbox_val['size_std'].get() == 'Custom':
                 self.validate_custom_size_entry()
-        else:
-            # Need to populate main matte cbox with start window selection.
-            self.cbox['matte_color'].set(self.cbox_val['matte_color'].get())
+        # else:
+        #     # Need to populate color comboboxes with start window selections.
+        #     self.cbox['matte_color'].set(self.cbox_val['matte_color'].get())
+        #     self.cbox['annotation_color'].set(self.cbox_val['annotation_color'].get())
 
         _info = '\n\nFinding objects...\n\n\n'
         self.show_info_message(info=_info, color='blue')
@@ -1162,15 +1069,10 @@ class ViewImage(ProcessImage):
         self.report_results()
         self.widget_control('on')
 
-        # Here, at the end of the processing pipeline, is where the
-        #  first_run flag is set to False.
         setting_type = 'Saved' if self.use_saved_settings else 'Default'
         if self.first_run:
-            self.first_run = False
-            self.use_saved_settings = False
-
-            _info = (f'\nInitial processing time elapsed: {self.elapsed}\n'
-                     f'{setting_type} settings were used.\n\n\n')
+            _info = (f'\n\nInitial processing time elapsed: {self.elapsed}\n'
+                     f'{setting_type} settings were used.\n\n')
             self.show_info_message(info=_info, color='black')
 
         else:
@@ -1228,18 +1130,28 @@ class SetupApp(ViewImage):
     The mainloop Class that configures windows and widgets.
     Methods:
     setup_main_window
+    open_input
+    check_for_saved_settings
+    call_start
     setup_start_window
+    add_menu_bar
     start_now
     _delete_window_message
     setup_image_windows
     configure_main_window
     _settings_dict
+    save_results
+    new_input
+    apply_default_settings
+    export_settings
+    export_objects
     configure_buttons
     config_sliders
     config_comboboxes
     config_entries
     bind_annotation_styles
     bind_scale_adjustment
+    set_color_defaults
     set_defaults
     grid_widgets
     grid_img_labels
@@ -1253,6 +1165,8 @@ class SetupApp(ViewImage):
         #   tk.Toplevel as values; don't want tk windows created here.
         self.tkimg_window: dict = {}
         self.window_title: dict = {}
+
+        self.start_process_btn_txt = tk.StringVar()
 
         # This order of events, when coordinated with the calls in
         #  start_now(), allow macOS implementation to flow well.
@@ -1293,6 +1207,125 @@ class SetupApp(ViewImage):
         self.bind('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
+        c_key = 'Command' if const.MY_OS == 'dar' else 'Control'  # is 'lin' or 'win'.
+        self.bind(f'<{f"{c_key}"}-r>', func=lambda _: self.process())
+        self.bind(f'<{f"{c_key}"}-s>', func=lambda _: self.save_results())
+        self.bind(f'<{f"{c_key}"}-n>', func=lambda _: self.new_input())
+        self.bind(f'<{f"{c_key}"}-d>', func=lambda _: self.apply_default_settings())
+
+        self.add_menu_bar(self)
+
+    def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
+        """
+        Provides an open file dialog to select an initial or new input
+        image file. Also sets a scale slider value for the displayed img.
+        Called from setup_start_window() or "New input" button.
+        Args:
+            parent: The window or mainloop Class over which to place the
+                file dialog, e.g., start_win or self.
+
+        Returns:
+            True or False depending on whether input was selected.
+
+        """
+        self.input_file_path = filedialog.askopenfilename(
+            parent=parent,
+            title='Select input image',
+            filetypes=[('JPG', '*.jpg'),
+                       ('JPG', '*.jpeg'),
+                       ('JPG', '*.JPG'),  # used for iPhone images
+                       ('PNG', '*.png'),
+                       ('TIFF', '*.tiff'),
+                       ('TIFF', '*.tif'),
+                       ('All', '*.*')],
+        )
+
+        # When user selects an input, check whether it can be used by OpenCV.
+        # If so, open it, and proceed. If user selects "Cancel" instead of
+        #  selecting a file, then quit if at the start window, otherwise
+        #  simply close the filedialog (default action) because this was
+        #  called from the "New input" button in the mainloop (self) window.
+        # Need to call quit_gui() without confirmation b/c a confirmation
+        #  dialog answer of "No" throws an error during file input.
+
+        try:
+            if self.input_file_path:
+                self.cvimg['input'] = cv2.imread(self.input_file_path)
+                self.input_ht = cv2.cvtColor(src=self.cvimg['input'],
+                                             code=cv2.COLOR_RGBA2GRAY).shape[0]
+                self.input_w = cv2.cvtColor(src=self.cvimg['input'],
+                                            code=cv2.COLOR_RGBA2GRAY).shape[1]
+                self.input_file_name = Path(self.input_file_path).name
+                self.input_folder_path = str(Path(self.input_file_path).parent)
+                self.input_folder_name = str(Path(self.input_file_path).parts[-2])
+                self.settings_file_path = Path(self.input_folder_path, const.CS_SETTINGS_FILE_NAME)
+            elif parent != self:
+                utils.quit_gui(mainloop=self, confirm=False)
+            else:  # no input and parent is self (app).
+                return False
+        except cv2.error as cverr:
+            msg = f'File: {self.input_file_name} cannot be used.'
+            if self.first_run:
+                print(f'{msg} Exiting with error:\n{cverr}')
+                messagebox.showerror(
+                    title="Bad input file",
+                    message=msg + '\nRestart and try a different file.\nQuitting...')
+                utils.quit_gui(mainloop=self, confirm=False)
+            else:
+                messagebox.showerror(
+                    title="Bad input file",
+                    message=msg + '\nUse "New input" to try another file.')
+                return False
+
+        # Auto-set images' scale factor based on input image size.
+        #  Can be later reset with keybindings in bind_scale_adjustment().
+        #  circle_r_slider ranges are a function of input image size.
+        self.metrics = manage.input_metrics(img=self.cvimg['input'])
+        self.set_auto_scale_factor()
+        self.configure_circle_r_sliders()
+        return True
+
+    def check_for_saved_settings(self) -> None:
+        """
+        Following image file import, need to check whether user wants to
+        use saved settings. The JSON settings file is expected to be in
+        the input image's folder. Calls import_settings().
+        """
+        if self.settings_file_path.exists():
+            if self.first_run:
+                msg = (f'Yes, use settings file in the folder: {self.input_folder_name}.\n'
+                       'No, use default settings.')
+            else:
+                msg = (f'Yes, use settings file in folder: {self.input_folder_name}.\n'
+                       'No, use current settings.')
+
+            self.use_saved_settings = messagebox.askyesno(
+                # parent=self.focus_get(),
+                title=f"Use saved settings on file: {self.input_file_name}?",
+                detail=msg)
+
+        if self.use_saved_settings:
+            self.import_settings()
+
+    def call_start(self, parent) -> None:
+        """
+        Call the suite of methods to get things going, then destroy the
+        start window.
+        Called from setup_start_window() as button and bind commands.
+
+        Args:
+            parent: The named toplevel window object, e.g., start_win
+        Returns: None.
+        """
+
+        if isinstance(parent, tk.Toplevel):  # is start window
+            # Use a spinning cursor to indicate that something is happening
+            #  because larger images may take a while to process and show.
+            self.start_process_btn_txt.set('Processing started, wait...')
+            parent.config(cursor='watch')
+            self.start_now()
+            parent.destroy()
+
     def setup_start_window(self) -> None:
         """
         Set up a basic Toplevel, then prompt for an input file, then
@@ -1308,32 +1341,14 @@ class SetupApp(ViewImage):
         # Need style of the ttk.Button to match main window button style.
         manage.ttk_styles(mainloop=self)
 
-        process_btn_txt = tk.StringVar(value='Process now')
-
-        def _call_start(event=None) -> None:
-            """Remove this start window, then call the suite of methods
-            to get things going. For larger images, show new toplevel
-            info msg and change process_now_button text to a wait msg.
-            Called from process_now_button and Return/Enter keys.
-            Args:
-                event: The implicit key action event, when used.
-            Returns:
-                 *event* as a formality; is functionally None.
-            """
-            # Use a spinning cursor to indicate that something is happening
-            #  because larger images may take a while to process and show.
-            process_btn_txt.set('Processing started, wait...')
-            start_win.config(cursor='watch')
-            self.start_now()
-            start_win.destroy()
-
-            return event
+        self.start_process_btn_txt.set('Process now')
 
         # Window basics:
         # Open with a temporary, instructional title.
         start_win = tk.Toplevel()
         start_win.title('First, select an input image file')
-        start_win.wm_resizable(width=False, height=False)
+        start_win.wm_resizable(width=True, height=False)
+        start_win.wm_minsize(width=500, height=100)
         start_win.config(relief='raised',
                          bg=const.DARK_BG,
                          # bg=const.COLORS_TK['sky blue'],  # for development
@@ -1350,8 +1365,8 @@ class SetupApp(ViewImage):
 
         start_win.bind('<Escape>', lambda _: utils.quit_gui(mainloop=self))
         start_win.bind('<Control-q>', lambda _: utils.quit_gui(mainloop=self))
-        start_win.bind('<Return>', func=_call_start)
-        start_win.bind('<KP_Enter>', func=_call_start)
+        start_win.bind('<Return>', func=lambda _: self.call_start(start_win))
+        start_win.bind('<KP_Enter>', func=lambda _: self.call_start(start_win))
 
         # Window widgets:
         # Provide a placeholder window header for input file info.
@@ -1360,27 +1375,17 @@ class SetupApp(ViewImage):
             text='Image: waiting to be selected...\nSize: TBD',
             **const.LABEL_PARAMETERS)
 
-        # Unicode arrow symbols: up \u2101, down \u2193
-        if const.MY_OS == 'dar':
-            color_help = '← Can change later with shift-control-↑ & ↓  '
-            color_tip = 'shift-control-↑ & shift-control-↓'
-        else:
-            color_help = '← Can change later with Ctrl-↑ & Ctrl-↓  '
-            color_tip = ' Ctrl-↑ & Ctrl-↓'
+        self.add_menu_bar(start_win)
 
         color_label = tk.Label(master=start_win,
                                text='Annotation font color:',
                                **const.LABEL_PARAMETERS)
-        color_msg_lbl = tk.Label(master=start_win,
-                                 text=color_help,
-                                 **const.LABEL_PARAMETERS)
         color_cbox = ttk.Combobox(master=start_win,
                                   values=list(const.COLORS_CV.keys()),
-                                  textvariable=self.cbox_val['line_color'],
+                                  textvariable=self.cbox_val['annotation_color'],
                                   width=11,
                                   height=14,
                                   **const.COMBO_PARAMETERS)
-        color_cbox.current(0)  # blue
 
         matte_label = tk.Label(master=start_win,
                                text='Matte color:',
@@ -1391,59 +1396,14 @@ class SetupApp(ViewImage):
                                   width=11,
                                   height=14,
                                   **const.COMBO_PARAMETERS)
-        matte_cbox.current(0)  # green1
 
         process_now_button = ttk.Button(master=start_win,
-                                        textvariable=process_btn_txt,
+                                        textvariable=self.start_process_btn_txt,
                                         style='My.TButton',
                                         width=0,
-                                        command=_call_start)
+                                        command=lambda: self.call_start(start_win))
 
-        # Create menu instance and add pull-down menus.
-        menubar = tk.Menu(master=start_win, )
-        start_win.config(menu=menubar)
-
-        os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
-        file = tk.Menu(master=self.master, tearoff=0)
-        menubar.add_cascade(label=utils.program_name(), menu=file)
-        file.add_command(label='Process now',
-                         command=_call_start,
-                         accelerator='Return')  # macOS doesn't recognize 'Enter'
-        file.add_command(label='Quit',
-                         command=lambda: utils.quit_gui(self),
-                         # macOS doesn't recognize 'Command+Q' as an accelerator
-                         #   b/c cannot override that system's native Command-Q,
-                         accelerator=f'{os_accelerator}+Q')
-
-        help_menu = tk.Menu(master=start_win, tearoff=0)
-        tips = tk.Menu(master=start_win, tearoff=0)
-        menubar.add_cascade(label='Help', menu=help_menu)
-        help_menu.add_cascade(label='Tips...', menu=tips)
-
-        # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
-        # Unicode arrow symbols: left \u2190, right \u2192
-        if const.MY_OS == 'dar':
-            tip_scaling_text = 'with shift-control-← & shift-control-→.'
-        else:
-            tip_scaling_text = 'with Ctrl-← & Ctrl-→.'
-
-        tips.add_command(label='• Images are automatically scaled to fit on')
-        tips.add_command(label='     the screen. Scaling can be changed later')
-        tips.add_command(label=f'     {tip_scaling_text}')
-        tips.add_command(label='• Use a lighter font color with darker objects.')
-        tips.add_command(label='• Font and line color can be changed with')
-        tips.add_command(label=f'     {color_tip}.')
-        tips.add_command(label='• Font size can be changed with')
-        tips.add_command(label='     Ctrl-+ & Ctrl--(minus).')
-        tips.add_command(label='• Font and line thickness can be changed with')
-        tips.add_command(label='     Shift-Ctrl-+ & Shift-Ctrl--(minus).')
-        tips.add_command(label='• Matte color can be changed in the main window.')
-        tips.add_command(label='• Enter or Return key also starts processing.')
-        tips.add_command(label="• More Tips are in the repository's README file.")
-        tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.')
-
-        help_menu.add_command(label='About',
-                              command=lambda: utils.about_win(parent=start_win))
+        self.set_color_defaults()
 
         # Grid start win widgets; sorted by row.
         padding = dict(padx=5, pady=5)
@@ -1456,26 +1416,17 @@ class SetupApp(ViewImage):
         matte_label.grid(row=3, column=0, **padding, sticky=tk.E)
         matte_cbox.grid(row=3, column=1, **padding, sticky=tk.W)
 
-        # Best to use cross-platform relative padding of color msg label,
-        #  which is placed to the right of the color combobox.
-        start_win.update()
-        color_padx = (color_cbox.winfo_reqwidth() + 10, 0)
-        color_msg_lbl.grid(row=2, column=1,
-                           padx=color_padx, pady=5, sticky=tk.W)
-
         process_now_button.grid(row=3, column=1, **padding, sticky=tk.E)
 
         # Gray-out widget labels until an input file is selected.
         # The settings widgets themselves will be inactive while the
         #  filedialog window is open.
         color_label.config(state=tk.DISABLED)
-        color_msg_lbl.config(state=tk.DISABLED)
         matte_label.config(state=tk.DISABLED)
 
         # Take a break in configuring the window to grab the input.
         # For macOS: Need to have the filedialog be a child of
         #   start_win and need update() here.
-
         self.open_input(parent=start_win)
         self.check_for_saved_settings()
         self.update()
@@ -1489,8 +1440,87 @@ class SetupApp(ViewImage):
 
         # ...and make all widgets active.
         color_label.config(state=tk.NORMAL)
-        color_msg_lbl.config(state=tk.NORMAL)
         matte_label.config(state=tk.NORMAL)
+
+    def add_menu_bar(self, parent: Union[tk.Toplevel, 'SetupApp']) -> None:
+        """
+        Create menu instance and add pull-down menus.
+        Args:
+            parent:
+
+        Returns: None
+        """
+
+        # Unicode arrow symbols: left \u2190, right \u2192
+        # Unicode arrow symbols: up \u2101, down \u2193
+        if const.MY_OS == 'dar':
+            color_tip = 'shift-control-↑ & shift-control-↓'
+            tip_scaling_text = 'with shift-control-← & shift-control-→.'
+        else:
+            color_tip = ' Ctrl-↑ & Ctrl-↓'
+            tip_scaling_text = 'with Ctrl-← & Ctrl-→.'
+
+        menubar = tk.Menu(master=parent, )
+        parent.config(menu=menubar)
+
+        os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
+        file = tk.Menu(master=self.master, tearoff=0)
+        menubar.add_cascade(label=utils.program_name(), menu=file)
+        # Only need start command for the start window menu.
+        if isinstance(parent, tk.Toplevel):
+            file.add_command(label='Process now',
+                             command=lambda: self.call_start(parent),
+                             accelerator='Return')  # macOS doesn't recognize 'Enter'
+
+        elif isinstance(parent, SetupApp):
+            # Accelerators use key binds from setup_main_window().
+            file.add_command(label='Run Process',
+                             command=self.process,
+                             accelerator=f'{os_accelerator}+R')
+            file.add_command(label='Save results',
+                             command=self.save_results,
+                             accelerator=f'{os_accelerator}+S')
+            file.add_command(label='Export objects individually...',
+                             command=self.export_objects)
+            file.add_command(label='New input...',
+                             command=self.new_input,
+                             accelerator=f'{os_accelerator}+N')
+            file.add_command(label='Export current settings',
+                             command=self.export_settings)
+            file.add_command(label='Apply default settings',
+                             command=self.apply_default_settings,
+                             accelerator=f'{os_accelerator}+D')
+
+        file.add_command(label='Quit',
+                         command=lambda: utils.quit_gui(self),
+                         # macOS doesn't recognize 'Command+Q' as an accelerator
+                         #   b/c cannot override that system's native Command-Q,
+                         accelerator=f'{os_accelerator}+Q')
+
+        help_menu = tk.Menu(master=parent, tearoff=0)
+        tips = tk.Menu(master=parent, tearoff=0)
+        menubar.add_cascade(label='Help', menu=help_menu)
+        help_menu.add_cascade(label='Tips...', menu=tips)
+
+        # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
+        tips.add_command(label='• Images are automatically scaled to fit on')
+        tips.add_command(label='     the screen. Scaling can be changed later')
+        tips.add_command(label=f'     {tip_scaling_text}')
+        tips.add_command(label='• Use a lighter font color with darker objects.')
+        tips.add_command(label='• Font and line color can be changed with')
+        tips.add_command(label=f'     {color_tip}.')
+        tips.add_command(label='• Font size can be changed with')
+        tips.add_command(label='     Ctrl-+(plus) & Ctrl--(minus).')
+        tips.add_command(label='• Font and line thickness can be changed with')
+        tips.add_command(label='     Shift-Ctrl-+(plus) & Shift-Ctrl--(minus).')
+        tips.add_command(label='• Matte color can be changed in a main window pull-down.')
+        tips.add_command(label='• Right-click to save an image at its display (scaled) size.')
+        tips.add_command(label='     Shift-Right-click to save the image at full size.')
+        tips.add_command(label="• More Tips are in the repository's README file.")
+        tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.')
+
+        help_menu.add_command(label='About',
+                              command=lambda: utils.about_win(parent=parent))
 
     def start_now(self) -> None:
         """
@@ -1512,17 +1542,19 @@ class SetupApp(ViewImage):
         self.config_entries()
         self.bind_annotation_styles()
         self.bind_scale_adjustment()
-        self.set_defaults()
+        if not self.use_saved_settings:
+            self.set_defaults()
+            # else, are using settings imported at initial open_input().
         self.grid_widgets()
         self.grid_img_labels()
         self.set_size_standard()
 
         # Run processing for the starting image prior to displaying images.
-        # Call preprocess(), process(), and display_windows(), in this
-        #  sequence, for best performance. preprocess() and process()
-        #  are inherited from  ViewImage().
+        # Call process(), and display_windows(), in this sequence, for
+        #  best performance. process() is inherited from ViewImage().
         self.process()
         self.display_windows()
+        self.first_run = False
 
     def _delete_window_message(self) -> None:
         """
@@ -1692,13 +1724,105 @@ class SetupApp(ViewImage):
             # 'scale': self.scale_factor.get(),
             'px_val': self.size_std['px_val'].get(),
             'custom_val': self.size_std['custom_val'].get(),
-            'line_color': self.cbox_val['line_color'].get(),
+            'annotation_color': self.cbox_val['annotation_color'].get(),
             'font_scale': self.metrics['font_scale'],
             'line_thickness': self.metrics['line_thickness'],
             'matte_color': self.cbox_val['matte_color'].get(),
         }
 
         return settings_dict
+
+    def save_results(self):
+        """
+        Save annotated sized image and its Report text with
+        individual object sizes appended.
+        """
+        _sizes = ', '.join(str(i) for i in self.sorted_size_list)
+        utils.save_report_and_img(
+            path2input=self.input_file_path,
+            img2save=self.cvimg['sized'],
+            txt2save=self.report_txt + f'\n{_sizes}',
+            caller=utils.program_name(),
+        )
+
+        _info = ('\n\nSettings report and result image were saved to\n'
+                 f'the input image folder: {self.input_folder_name}\n\n')
+        self.show_info_message(info=_info, color='blue')
+
+    def new_input(self):
+        """
+        Reads a new image file for preprocessing.
+        Calls open_input(), which prompts user for settings choice,
+        then calls preprocess().
+
+        Returns: None
+        """
+        if self.open_input(parent=self):
+            self.check_for_saved_settings()
+            self.update_image(tkimg_name='input',
+                              cvimg_array=self.cvimg['input'])
+        else:  # User canceled input selection or closed messagebox window.
+            _info = '\n\nNo new input file was selected.\n\n\n'
+            self.show_info_message(info=_info, color='vermilion')
+            self.delay_size_std_info_msg()
+
+            return
+
+        self.process()
+
+    def apply_default_settings(self):
+        """Order of calls is important here."""
+        self.slider_values.clear()
+        self.metrics = manage.input_metrics(img=self.cvimg['input'])
+        self.set_auto_scale_factor()
+        self.configure_circle_r_sliders()
+        self.set_defaults()
+        self.widget_control('off')  # is turned 'on' in process()
+        self.process()
+
+        _info = ('\nSettings have been reset to their defaults.\n'
+                 'Check and adjust them if needed, then...\n'
+                 'Select a "Run" button to finalize updating the\n'
+                 'report and image results.\n')
+        self.show_info_message(info=_info, color='blue')
+
+    def export_settings(self):
+        """
+        Save only the settings dictionary, as a json file. It is
+        handled as a special case in utils.save_report_and_img().
+        """
+
+        utils.export_settings_to_json(
+            path2folder=self.input_folder_path,
+            settings2save=self._settings_dict(),
+            called_by_cs=True)
+
+        _info = ('\nSettings have been exported to folder:\n'
+                 f'{self.input_folder_name}\n'
+                 'and are available to use with "New input" or at\n'
+                 'startup. Previous settings file was overwritten.\n')
+        self.show_info_message(info=_info, color='blue')
+
+    def export_objects(self):
+        self.export_segment = messagebox.askyesnocancel(
+            title="Export only objects' segmented areas?",
+            detail='Yes, ...with a white background.\n'
+                   'No, include area around object\n'
+                   '     ...with image\'s background.\n'
+                   'Cancel: Export nothing and return.')
+
+        if self.export_segment:
+            self.export_hull = messagebox.askyesno(
+                title='Fill in partially segmented objects?',
+                detail='Yes, try to include more object area;\n'
+                       '     may include some image background.\n'
+                       'No, export just segments, on white.\n')
+
+        _num = self.select_and_export_objects(self.matte_contours)
+        _info = (f'\n{_num} selected objects were individually\n'
+                 f' exported to the input image folder:\n'
+                 f'{self.input_folder_name}\n\n')
+        self.show_info_message(info=_info, color='blue')
 
     def configure_buttons(self) -> None:
         """
@@ -1709,100 +1833,6 @@ class SetupApp(ViewImage):
             None
         """
         manage.ttk_styles(mainloop=self)
-
-        # These inner functions are used for Button commands.
-
-        def _save_results():
-            """
-            Save annotated sized image and its Report text with
-            individual object sizes appended.
-            """
-            _sizes = ', '.join(str(i) for i in self.sorted_size_list)
-            utils.save_report_and_img(
-                path2input=self.input_file_path,
-                img2save=self.cvimg['sized'],
-                txt2save=self.report_txt + f'\n{_sizes}',
-                caller=utils.program_name(),
-            )
-
-            _info = ('\n\nSettings report and result image was saved to\n'
-                     f'the input image folder: {self.input_folder_name}\n\n')
-            self.show_info_message(info=_info, color='blue')
-
-        def _export_settings():
-            """
-            Save only the settings dictionary, as a json file. It is
-            handled as a special case in utils.save_report_and_img().
-            """
-
-            utils.export_settings_to_json(
-                path2folder=self.input_folder_path,
-                settings2save=self._settings_dict(),
-                called_by_cs=True)
-
-            _info = ('\nSettings have been exported to folder:\n'
-                     f'{self.input_folder_name}\n'
-                     'and are available to use with "New input" or at\n'
-                     'startup. Previous settings file was overwritten.\n')
-            self.show_info_message(info=_info, color='blue')
-
-        def _export_objects():
-            self.export_segment = messagebox.askyesnocancel(
-                title="Export only objects' segmented areas?",
-                detail='Yes, ...with a white background.\n'
-                       'No, include area around object\n'
-                       '     ...with image\'s background.\n'
-                       'Cancel: Export nothing and return.')
-
-            if self.export_segment:
-                self.export_hull = messagebox.askyesno(
-                    title='Fill in partially segmented objects?',
-                    detail='Yes, try to include more object area;\n'
-                           '     may include some image background.\n'
-                           'No, export just segments, on white.\n')
-
-            _num = self.select_and_export_objects(self.matte_contours)
-            _info = (f'\n{_num} selected objects were individually\n'
-                     f' exported to the input image folder:\n'
-                     f'{self.input_folder_name}\n\n')
-            self.show_info_message(info=_info, color='blue')
-
-        def _new_input():
-            """
-            Reads a new image file for preprocessing.
-            Calls open_input(), which prompts user for settings choice,
-            then calls preprocess().
-
-            Returns: None
-            """
-            if self.open_input(parent=self):
-                self.check_for_saved_settings()
-                self.update_image(tkimg_name='input',
-                                  cvimg_array=self.cvimg['input'])
-            else:  # User canceled input selection or closed messagebox window.
-                _info = '\n\nNo new input file was selected.\n\n\n'
-                self.show_info_message(info=_info, color='vermilion')
-                self.delay_size_std_info_msg()
-
-                return
-
-            self.process()
-
-        def _reset_to_default_settings():
-            """Order of calls is important here."""
-            self.slider_values.clear()
-            self.metrics = manage.input_metrics(img=self.cvimg['input'])
-            self.set_auto_scale_factor()
-            self.configure_circle_r_sliders()
-            self.set_defaults()
-            self.widget_control('off')  # is turned 'on' in process()
-            self.process()
-
-            _info = ('\nSettings have been reset to their defaults.\n'
-                     'Check and adjust them if needed, then...\n'
-                     'Select a "Run" button to finalize updating the\n'
-                     'report and image results.\n')
-            self.show_info_message(info=_info, color='blue')
 
         # Configure all items in the dictionary of ttk buttons.
         button_params = dict(
@@ -1819,27 +1849,27 @@ class SetupApp(ViewImage):
 
         self.button['save_results'].config(
             text='Save results',
-            command=_save_results,
+            command=self.save_results,
             **button_params)
 
         self.button['export_settings'].config(
             text='Export settings',
-            command=_export_settings,
+            command=self.export_settings,
             **button_params)
 
         self.button['new_input'].config(
             text='New input',
-            command=_new_input,
+            command=self.new_input,
             **button_params)
 
         self.button['export_objects'].config(
             text='Export objects',
-            command=_export_objects,
+            command=self.export_objects,
             **button_params)
 
         self.button['reset'].config(
             text='Reset',
-            command=_reset_to_default_settings,
+            command=self.apply_default_settings,
             **button_params)
 
     def config_sliders(self) -> None:
@@ -1991,8 +2021,7 @@ class SetupApp(ViewImage):
         """
         Set key bindings to change font size, color, and line thickness
         of annotations in the 'sized' cv2 image.
-        Called after at startup and after any segmentation algorithm call
-        from process().
+        Called at startup.
 
         Returns: None
         """
@@ -2039,27 +2068,25 @@ class SetupApp(ViewImage):
         colors = list(const.COLORS_CV.keys())
 
         def _next_font_color() -> None:
-            current_color: str = self.cbox_val['line_color'].get()
+            current_color: str = self.cbox_val['annotation_color'].get()
             current_index = colors.index(current_color)
             # Need to stop increasing idx at the end of colors list.
             if current_index == len(colors) - 1:
                 next_color = colors[len(colors) - 1]
             else:
                 next_color = colors[current_index + 1]
-            self.cbox_val['line_color'].set(next_color)
-            # print('Annotation font is now:', next_color)
+            self.cbox_val['annotation_color'].set(next_color)
             self.select_and_size_objects(contour_pointset=self.matte_contours)
             _display_annotation_action('Font color', f'{next_color}')
 
         def _preceding_font_color() -> None:
-            current_color: str = self.cbox_val['line_color'].get()
+            current_color: str = self.cbox_val['annotation_color'].get()
             current_index = colors.index(current_color)
             # Need to stop decreasing idx at the beginning of colors list.
             if current_index == 0:
                 current_index = 1
             preceding_color = colors[current_index - 1]
-            self.cbox_val['line_color'].set(preceding_color)
-            print('Annotation font is now :', preceding_color)
+            self.cbox_val['annotation_color'].set(preceding_color)
             self.select_and_size_objects(contour_pointset=self.matte_contours)
             _display_annotation_action('Font color', f'{preceding_color}')
 
@@ -2129,35 +2156,50 @@ class SetupApp(ViewImage):
         self.bind_all('<Control-Right>', lambda _: _increase_scale_factor())
         self.bind_all('<Control-Left>', lambda _: _decrease_scale_factor())
 
+    def set_color_defaults(self):
+        """
+        Special case to set values for the matte and annotation color
+        widgets used in both start and main windows.
+        Called from set_start_window() and set_defaults().
+
+        Returns: None
+        """
+
+        # use_saved_settings is set in check_for_saved_settings(),
+        #  which is called each time open_input() is run.
+        # This is where use_saved_settings is reset to False.
+        if self.first_run and self.use_saved_settings:
+            self.import_settings()
+            self.use_saved_settings = False
+            return
+
+        self.cbox_val['matte_color'].set('green2')
+        self.cbox_val['annotation_color'].set('yellow')
+
     def set_defaults(self) -> None:
         """
         Sets and resets selector widgets and keybind scaling functions
         for image sizes and annotations. Evaluates selection of using
         saved or default settings.
 
-        Called from __init__ and "Reset" button.
+        Called from start_now() and apply_default_settings().
         Returns:
             None
         """
 
-        # Default settings are optimized for sample1.jpg input.
-
-        if self.first_run and self.use_saved_settings:
-            self.import_settings()
-            return
+        # Default settings are optimized for sample6.jpg input.
 
         # Set/Reset Scale widgets.
         self.slider_val['noise_k'].set(3)
         self.slider_val['noise_iter'].set(1)
-        self.slider_val['circle_r_min'].set(20)
-        self.slider_val['circle_r_max'].set(600)
+        self.slider_val['circle_r_min'].set(int(self.input_w / 100))
+        self.slider_val['circle_r_max'].set(int(self.input_w / 5))
 
         # Set/Reset Combobox widgets.
-        self.cbox_val['morph_op'].set('cv2.MORPH_HITMISS')  # cv2.MORPH_OPEN == 2
-        self.cbox_val['morph_shape'].set('cv2.MORPH_CROSS')  # cv2.MORPH_ELLIPSE == 2
+        self.cbox_val['morph_op'].set('cv2.MORPH_HITMISS')  # cv2.MORPH_HITMISS == 7
+        self.cbox_val['morph_shape'].set('cv2.MORPH_CROSS')  # cv2.MORPH_CROSS == 1
         self.cbox_val['size_std'].set('None')
-        self.cbox_val['matte_color'].set('green1')
-        self.cbox_val['line_color'].set('blue')
+        self.set_color_defaults()
 
         # Set/Reset Entry widgets.
         self.size_std['px_val'].set('1')
