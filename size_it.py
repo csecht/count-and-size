@@ -151,7 +151,7 @@ class ProcessImage(tk.Tk):
             'ws_connectivity': tk.StringVar(),
             'size_std': tk.StringVar(),
             # For color_cbox textvariable in setup_start_window()...
-            'line_color': tk.StringVar(),
+            'annotation_color': tk.StringVar(),
         }
 
         # Arrays of images to be processed. When used within a method,
@@ -557,10 +557,10 @@ class ProcessImage(tk.Tk):
 
         # Need to prevent black contours because they won't show on the
         #  black background of the watershed_img image.
-        if self.cbox_val['line_color'].get() == 'black':
+        if self.cbox_val['annotation_color'].get() == 'black':
             line_color = const.COLORS_CV['blue']
         else:
-            line_color = const.COLORS_CV[self.cbox_val['line_color'].get()]
+            line_color = const.COLORS_CV[self.cbox_val['annotation_color'].get()]
 
         cv2.drawContours(image=self.cvimg['Watershed'],
                          contours=self.ws_basins,
@@ -648,10 +648,10 @@ class ProcessImage(tk.Tk):
 
         # Need to prevent white or black contours because they
         #  won't show on the white background with black segments.
-        if self.cbox_val['line_color'].get() in 'white, black':
+        if self.cbox_val['annotation_color'].get() in 'white, black':
             line_color: tuple = const.COLORS_CV['blue']
         else:
-            line_color = const.COLORS_CV[self.cbox_val['line_color'].get()]
+            line_color = const.COLORS_CV[self.cbox_val['annotation_color'].get()]
 
         # Note: this does not update until process() is called.
         #  It shares a window with the distance transform image, which
@@ -1254,7 +1254,7 @@ class ViewImage(ProcessImage):
         self.cvimg['sized'] = self.cvimg['input'].copy()
 
         selected_sizes: list[float] = []
-        preferred_color: tuple = const.COLORS_CV[self.cbox_val['line_color'].get()]
+        annotation_color: tuple = const.COLORS_CV[self.cbox_val['annotation_color'].get()]
         font_scale: float = self.metrics['font_scale']
         line_thickness: int = self.metrics['line_thickness']
 
@@ -1338,7 +1338,7 @@ class ViewImage(ProcessImage):
             cv2.circle(img=self.cvimg['sized'],
                        center=(round(_x), round(_y)),
                        radius=round(_r),
-                       color=preferred_color,
+                       color=annotation_color,
                        thickness=line_thickness,
                        lineType=cv2.LINE_AA,
                        )
@@ -1347,7 +1347,7 @@ class ViewImage(ProcessImage):
                         org=(round(_x - offset_x), round(_y + baseline)),
                         fontFace=const.FONT_TYPE,
                         fontScale=font_scale,
-                        color=preferred_color,
+                        color=annotation_color,
                         thickness=line_thickness,
                         lineType=cv2.LINE_AA,
                         )
@@ -1630,7 +1630,6 @@ class ViewImage(ProcessImage):
         self.set_size_standard()
         self.report_results()
 
-        # Var first_run is reset to False in process() at startup.
         if not self.first_run:
             _info = ('\n***Preprocessing completed***\n'
                      'SELECT a "Run" button to complete processing and sizing.\n\n\n')
@@ -1684,13 +1683,9 @@ class ViewImage(ProcessImage):
         #  first_run flag is set to False.
         setting_type = 'Saved' if self.use_saved_settings else 'Default'
         if self.first_run:
-            self.first_run = False
-            self.use_saved_settings = False
-
             _info = (f'\nInitial processing time elapsed: {self.elapsed}\n'
                      f'{setting_type} settings were used.\n\n\n')
             self.show_info_message(info=_info, color='black')
-
         else:
             _info = (f'\n{self.seg_algorithm} segmentation completed and sizes calculated.\n'
                      f'{self.elapsed} processing seconds elapsed.\n\n\n')
@@ -1900,7 +1895,7 @@ class SetupApp(ViewImage):
                                  **const.LABEL_PARAMETERS)
         color_cbox = ttk.Combobox(master=start_win,
                                   values=list(const.COLORS_CV.keys()),
-                                  textvariable=self.cbox_val['line_color'],
+                                  textvariable=self.cbox_val['annotation_color'],
                                   width=11,
                                   height=14,
                                   **const.COMBO_PARAMETERS)
@@ -2051,6 +2046,7 @@ class SetupApp(ViewImage):
         self.preprocess()
         self.process()
         self.display_windows()
+        self.first_run = False
 
     def _delete_window_message(self) -> None:
         """
@@ -2249,7 +2245,7 @@ class SetupApp(ViewImage):
             # 'scale': self.scale_factor.get(),
             'px_val': self.size_std['px_val'].get(),
             'custom_val': self.size_std['custom_val'].get(),
-            'line_color': self.cbox_val['line_color'].get(),
+            'annotation_color': self.cbox_val['annotation_color'].get(),
             'font_scale': self.metrics['font_scale'],
             'line_thickness': self.metrics['line_thickness'],
             'seg_algorithm': self.seg_algorithm,
@@ -2716,25 +2712,25 @@ class SetupApp(ViewImage):
         colors = list(const.COLORS_CV.keys())
 
         def _next_font_color() -> None:
-            current_color: str = self.cbox_val['line_color'].get()
+            current_color: str = self.cbox_val['annotation_color'].get()
             current_index = colors.index(current_color)
             # Need to stop increasing idx at the end of colors list.
             if current_index == len(colors) - 1:
                 next_color = colors[len(colors) - 1]
             else:
                 next_color = colors[current_index + 1]
-            self.cbox_val['line_color'].set(next_color)
+            self.cbox_val['annotation_color'].set(next_color)
             self.select_and_size_objects(contour_pointset=self._current_contours())
             _display_annotation_action('Font color', f'{next_color}')
 
         def _preceding_font_color() -> None:
-            current_color: str = self.cbox_val['line_color'].get()
+            current_color: str = self.cbox_val['annotation_color'].get()
             current_index = colors.index(current_color)
             # Need to stop decreasing idx at the beginning of colors list.
             if current_index == 0:
                 current_index = 1
             preceding_color = colors[current_index - 1]
-            self.cbox_val['line_color'].set(preceding_color)
+            self.cbox_val['annotation_color'].set(preceding_color)
             self.select_and_size_objects(contour_pointset=self._current_contours())
             _display_annotation_action('Font color', f'{preceding_color}')
 
@@ -2837,6 +2833,7 @@ class SetupApp(ViewImage):
 
         if self.first_run and self.use_saved_settings:
             self.import_settings()
+            self.use_saved_settings = False
             return
 
         # Watershed is the default at startup; after that, when 'Reset'
@@ -2851,7 +2848,7 @@ class SetupApp(ViewImage):
                 self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
         else:
             self.cbox['th_type'].current(0)  # 'cv2.THRESH_OTSU'
-            self.cbox_val['line_color'].set('blue')
+            self.cbox_val['annotation_color'].set('blue')
 
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
@@ -2859,8 +2856,8 @@ class SetupApp(ViewImage):
         self.slider_val['noise_k'].set(7)
         self.slider_val['noise_iter'].set(3)
         self.slider_val['filter_k'].set(5)
-        self.slider_val['circle_r_min'].set(8)
-        self.slider_val['circle_r_max'].set(300)
+        self.slider_val['circle_r_min'].set(int(self.input_w / 100))
+        self.slider_val['circle_r_max'].set(int(self.input_w / 5))
 
         # Increase PLM values for larger files to reduce the number
         #  of contours, thus decreasing startup/reset processing time.
