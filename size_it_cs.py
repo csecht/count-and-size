@@ -1139,7 +1139,6 @@ class SetupApp(ViewImage):
     _delete_window_message
     setup_image_windows
     configure_main_window
-    _settings_dict
     save_results
     new_input
     apply_default_settings
@@ -1702,15 +1701,74 @@ class SetupApp(ViewImage):
         #  display_windows() after all image windows so that, at startup,
         #  it stacks on top.
 
-    def _settings_dict(self) -> dict:
+    def save_results(self):
         """
-        Creates a dictionary is used for the 'Export settings' button
-        cmd to save all current settings to a json file. The dict keys
-        must match those in slider_val, cbox, cbox_val, and size_std
-        dictionaries.
-        Called only from configure_buttons._export_settings().
+        Save annotated sized image and its Report text with
+        individual object sizes appended.
+        Calls utils.save_report_and_img(), show_info_message().
+        Called from keybinding, menu, and button commands.
+        """
+        _sizes = ', '.join(str(i) for i in self.sorted_size_list)
+        utils.save_report_and_img(
+            path2input=self.input_file_path,
+            img2save=self.cvimg['sized'],
+            txt2save=self.report_txt + f'\n{_sizes}',
+            caller=utils.program_name(),
+        )
 
-        Returns: A dictionary of all settings values.
+        _info = ('\n\nSettings report and result image were saved to\n'
+                 f'the input image folder: {self.input_folder_name}\n\n')
+        self.show_info_message(info=_info, color='blue')
+
+    def new_input(self):
+        """
+        Reads a new image file for preprocessing.
+        Calls open_input(), show_info_message().
+        Called from keybinding, menu, and button commands.
+
+        Returns: None
+        """
+        if self.open_input(parent=self):
+            self.check_for_saved_settings()
+            self.update_image(tkimg_name='input',
+                              cvimg_array=self.cvimg['input'])
+        else:  # User canceled input selection or closed messagebox window.
+            _info = '\n\nNo new input file was selected.\n\n\n'
+            self.show_info_message(info=_info, color='vermilion')
+            self.delay_size_std_info_msg()
+
+            return
+
+        self.process()
+
+    def apply_default_settings(self):
+        """
+        Resets settings values and processes images.
+        Calls set_auto_scale_factor(), set_defaults(), process(), and
+        show_info_message().
+        Called from keybinding, menu, and button commands.
+        """
+
+        # Order of calls is important here.
+        self.slider_values.clear()
+        self.metrics = manage.input_metrics(img=self.cvimg['input'])
+        self.set_auto_scale_factor()
+        self.configure_circle_r_sliders()
+        self.set_defaults()
+        self.widget_control('off')  # is turned 'on' in process()
+        self.process()
+
+        _info = ('\nSettings have been reset to their defaults.\n'
+                 'Check and adjust them if needed, then...\n'
+                 'Select a "Run" button to finalize updating the\n'
+                 'report and image results.\n')
+        self.show_info_message(info=_info, color='blue')
+
+    def export_settings(self):
+        """
+        Saves a dictionary of current settings a JSON file.
+        Calls utils.export_settings_to_json(), show_info_message().
+        Called from menu and button commands.
         """
 
         settings_dict = {
@@ -1730,71 +1788,9 @@ class SetupApp(ViewImage):
             'matte_color': self.cbox_val['matte_color'].get(),
         }
 
-        return settings_dict
-
-    def save_results(self):
-        """
-        Save annotated sized image and its Report text with
-        individual object sizes appended.
-        """
-        _sizes = ', '.join(str(i) for i in self.sorted_size_list)
-        utils.save_report_and_img(
-            path2input=self.input_file_path,
-            img2save=self.cvimg['sized'],
-            txt2save=self.report_txt + f'\n{_sizes}',
-            caller=utils.program_name(),
-        )
-
-        _info = ('\n\nSettings report and result image were saved to\n'
-                 f'the input image folder: {self.input_folder_name}\n\n')
-        self.show_info_message(info=_info, color='blue')
-
-    def new_input(self):
-        """
-        Reads a new image file for preprocessing.
-        Calls open_input(), which prompts user for settings choice,
-        then calls preprocess().
-
-        Returns: None
-        """
-        if self.open_input(parent=self):
-            self.check_for_saved_settings()
-            self.update_image(tkimg_name='input',
-                              cvimg_array=self.cvimg['input'])
-        else:  # User canceled input selection or closed messagebox window.
-            _info = '\n\nNo new input file was selected.\n\n\n'
-            self.show_info_message(info=_info, color='vermilion')
-            self.delay_size_std_info_msg()
-
-            return
-
-        self.process()
-
-    def apply_default_settings(self):
-        """Order of calls is important here."""
-        self.slider_values.clear()
-        self.metrics = manage.input_metrics(img=self.cvimg['input'])
-        self.set_auto_scale_factor()
-        self.configure_circle_r_sliders()
-        self.set_defaults()
-        self.widget_control('off')  # is turned 'on' in process()
-        self.process()
-
-        _info = ('\nSettings have been reset to their defaults.\n'
-                 'Check and adjust them if needed, then...\n'
-                 'Select a "Run" button to finalize updating the\n'
-                 'report and image results.\n')
-        self.show_info_message(info=_info, color='blue')
-
-    def export_settings(self):
-        """
-        Save only the settings dictionary, as a json file. It is
-        handled as a special case in utils.save_report_and_img().
-        """
-
         utils.export_settings_to_json(
             path2folder=self.input_folder_path,
-            settings2save=self._settings_dict(),
+            settings2save=settings_dict,
             called_by_cs=True)
 
         _info = ('\nSettings have been exported to folder:\n'
@@ -1804,6 +1800,12 @@ class SetupApp(ViewImage):
         self.show_info_message(info=_info, color='blue')
 
     def export_objects(self):
+        """
+        Provides messagebox options to export to files each selected
+        object. Calls select_and_export_objects(), show_info_message().
+        Called from menu and button commands.
+        """
+
         self.export_segment = messagebox.askyesnocancel(
             title="Export only objects' segmented areas?",
             detail='Yes, ...with a white background.\n'
