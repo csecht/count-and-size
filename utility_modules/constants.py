@@ -171,11 +171,12 @@ COLORS_TK = {
     'green': 'green1',  # not color-blind compatible
 }
 
-# Used with size_it_cs.py for color screens (mattes).
+# Used with size_it_cs.py, color screens (mattes) for cv2.COLOR_BGR2HSV.
 MATTE_COLOR = {
     'green1': (np.array([36, 25, 25]), np.array([70, 255, 255])),
     'green2': (np.array([36, 27, 27]), np.array([84, 255, 255])),
     'green3': (np.array([50, 20, 20]), np.array([100, 255, 255])),
+    'green4': (np.array([52, 20, 55]), np.array([105, 255, 255])),
     'blue1': (np.array([102, 140, 100]), np.array([120, 255, 255])),
     'blue2': (np.array([80, 140, 100]), np.array([120, 255, 255])),
     'white1': (np.array([0, 0, 200]), np.array([0, 0, 255])),
