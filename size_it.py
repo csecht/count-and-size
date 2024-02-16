@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-A tkinter GUI for OpenCV processing of an image to obtain sizes, means,
-and ranges of objects in a sample population. The distance transform,
-watershed, and random walker algorithms are used interactively by setting
-their parameter values with slide bars and pull-down menus. Related
-image processing factors like contrast, brightness, noise reduction,
-and filtering are also adjusted interactively, with live updating of the
-resulting images.
+A tkinter GUI, size_it.py, for OpenCV processing of an image to obtain
+sizes, means, and ranges of objects in a sample population. The distance
+ transform, watershed, and random walker algorithms are used interactively
+ by setting their parameter values with slide bars and pull-down menus.
+Related image preprocessing factors like contrast, brightness, noise
+reduction, and filtering are also adjusted interactively, with live
+updating of the resulting images.
 
 A report is provided of parameter settings, object count, individual
 object sizes, and sample size mean and range, along with an annotated
@@ -20,16 +20,15 @@ python3 -m size_it
 python3 -m size_it --terminal
 Windows systems may need to substitute 'python3' with 'py' or 'python'.
 
-Note that from the initial "Set starting parameters" window, the file,
-scaling cannot be changed after the "Process now" button is clicked.
-Once image processing begins, if the scale setting is not to your
-liking, just quit, restart, and choose different values.
+Displayed imaged can be scaled with key commands to help arrange windows
+on the screen.
 
 Image preprocessing functions do live updates as most settings are changed.
 For some slider settings however, when prompted, click the
 "Run..." button to initiate the final processing step.
 
 Save settings report and the annotated image with the "Save" button.
+Identified objects can be saved to individual image files.
 
 Quit program with Esc key, Ctrl-Q key, the close window icon of the
 report window, or from command line with Ctrl-C.
@@ -152,7 +151,7 @@ class ProcessImage(tk.Tk):
             'ws_connectivity': tk.StringVar(),
             'size_std': tk.StringVar(),
             # For color_cbox textvariable in setup_start_window()...
-            'color': tk.StringVar(),
+            'line_color': tk.StringVar(),
         }
 
         # Arrays of images to be processed. When used within a method,
@@ -558,10 +557,10 @@ class ProcessImage(tk.Tk):
 
         # Need to prevent black contours because they won't show on the
         #  black background of the watershed_img image.
-        if self.cbox_val['color'].get() == 'black':
+        if self.cbox_val['line_color'].get() == 'black':
             line_color = const.COLORS_CV['blue']
         else:
-            line_color = const.COLORS_CV[self.cbox_val['color'].get()]
+            line_color = const.COLORS_CV[self.cbox_val['line_color'].get()]
 
         cv2.drawContours(image=self.cvimg['Watershed'],
                          contours=self.ws_basins,
@@ -649,10 +648,10 @@ class ProcessImage(tk.Tk):
 
         # Need to prevent white or black contours because they
         #  won't show on the white background with black segments.
-        if self.cbox_val['color'].get() in 'white, black':
+        if self.cbox_val['line_color'].get() in 'white, black':
             line_color: tuple = const.COLORS_CV['blue']
         else:
-            line_color = const.COLORS_CV[self.cbox_val['color'].get()]
+            line_color = const.COLORS_CV[self.cbox_val['line_color'].get()]
 
         # Note: this does not update until process() is called.
         #  It shares a window with the distance transform image, which
@@ -682,7 +681,8 @@ class ViewImage(ProcessImage):
         delay_size_std_info_msg
         show_info_message
         configure_circle_r_sliders
-        _on_click_save_img
+        _on_click_save_tkimg
+        _on_click_save_cvimg
         widget_control
         validate_px_size_entry
         validate_custom_size_entry
@@ -1035,7 +1035,7 @@ class ViewImage(ProcessImage):
             variable=self.slider_val['circle_r_max'],
             **const.SCALE_PARAMETERS)
 
-    def _on_click_save_img(self, image_name: str) -> None:
+    def _on_click_save_tkimg(self, image_name: str) -> None:
         """
         Save a window image (Label) that was rt-clicked.
         Called only from display_windows() for keybindings.
@@ -1062,6 +1062,22 @@ class ViewImage(ProcessImage):
                  f'the input image folder: {self.input_folder_name}\n'
                  f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
         self.show_info_message(info=_info, color='black')
+
+    def _on_click_save_cvimg(self, image_name: str) -> None:
+        cvimg = self.cvimg[image_name]
+
+        click_info = (f'\nThe displayed {image_name} image was saved to\n'
+                      f'the input image folder: {self.input_folder_name}\n'
+                      'with a timestamp and original pixel dimensions.\n\n')
+
+        utils.save_report_and_img(path2input=self.input_file_path,
+                                  img2save=cvimg,
+                                  txt2save=click_info,
+                                  caller=image_name)
+
+        # Provide user with a notice that a file was created and
+        #  give user time to read the message before resetting it.
+        self.show_info_message(info=click_info, color='black')
 
     def widget_control(self, action: str) -> None:
         """
@@ -1238,7 +1254,7 @@ class ViewImage(ProcessImage):
         self.cvimg['sized'] = self.cvimg['input'].copy()
 
         selected_sizes: list[float] = []
-        preferred_color: tuple = const.COLORS_CV[self.cbox_val['color'].get()]
+        preferred_color: tuple = const.COLORS_CV[self.cbox_val['line_color'].get()]
         font_scale: float = self.metrics['font_scale']
         line_thickness: int = self.metrics['line_thickness']
 
@@ -1726,7 +1742,6 @@ class ViewImage(ProcessImage):
             self.select_and_size_objects(contour_pointset=self.rw_contours)
 
         self.report_results()
-
         self.delay_size_std_info_msg()
 
 
@@ -1885,7 +1900,7 @@ class SetupApp(ViewImage):
                                  **const.LABEL_PARAMETERS)
         color_cbox = ttk.Combobox(master=start_win,
                                   values=list(const.COLORS_CV.keys()),
-                                  textvariable=self.cbox_val['color'],
+                                  textvariable=self.cbox_val['line_color'],
                                   width=11,
                                   height=14,
                                   **const.COMBO_PARAMETERS)
@@ -2234,7 +2249,7 @@ class SetupApp(ViewImage):
             # 'scale': self.scale_factor.get(),
             'px_val': self.size_std['px_val'].get(),
             'custom_val': self.size_std['custom_val'].get(),
-            'color': self.cbox_val['color'].get(),
+            'line_color': self.cbox_val['line_color'].get(),
             'font_scale': self.metrics['font_scale'],
             'line_thickness': self.metrics['line_thickness'],
             'seg_algorithm': self.seg_algorithm,
@@ -2659,6 +2674,10 @@ class SetupApp(ViewImage):
 
         Returns: None
         """
+        def _display_annotation_action(action: str, value: str):
+            _info = (f'\n\nA new annotation style was applied.\n'
+                     f'{action} was changed to {value}.\n\n')
+            self.show_info_message(info=_info, color='black')
 
         def _increase_font_size() -> None:
             """Limit upper font size scale to a 5x increase."""
@@ -2667,6 +2686,7 @@ class SetupApp(ViewImage):
             font_scale = round(min(font_scale, 5), 2)
             self.metrics['font_scale'] = font_scale
             self.select_and_size_objects(contour_pointset=self._current_contours())
+            _display_annotation_action('Font scale', f'{font_scale}')
 
         def _decrease_font_size() -> None:
             """Limit lower font size scale to a 1/5 decrease."""
@@ -2675,6 +2695,7 @@ class SetupApp(ViewImage):
             font_scale = round(max(font_scale, 0.20), 2)
             self.metrics['font_scale'] = font_scale
             self.select_and_size_objects(contour_pointset=self._current_contours())
+            _display_annotation_action('Font scale', f'{font_scale}')
 
         def _increase_line_thickness() -> None:
             """Limit upper thickness to 10."""
@@ -2682,6 +2703,7 @@ class SetupApp(ViewImage):
             line_thickness += 1
             self.metrics['line_thickness'] = min(line_thickness, 10)
             self.select_and_size_objects(contour_pointset=self._current_contours())
+            _display_annotation_action('Line thickness', f'{line_thickness}')
 
         def _decrease_line_thickness() -> None:
             """Limit lower thickness to 1."""
@@ -2689,31 +2711,32 @@ class SetupApp(ViewImage):
             line_thickness -= 1
             self.metrics['line_thickness'] = max(line_thickness, 1)
             self.select_and_size_objects(contour_pointset=self._current_contours())
+            _display_annotation_action('Line thickness', f'{line_thickness}')
 
         colors = list(const.COLORS_CV.keys())
 
         def _next_font_color() -> None:
-            current_color: str = self.cbox_val['color'].get()
+            current_color: str = self.cbox_val['line_color'].get()
             current_index = colors.index(current_color)
             # Need to stop increasing idx at the end of colors list.
             if current_index == len(colors) - 1:
                 next_color = colors[len(colors) - 1]
             else:
                 next_color = colors[current_index + 1]
-            self.cbox_val['color'].set(next_color)
-            print('Annotation font is now:', next_color)
+            self.cbox_val['line_color'].set(next_color)
             self.select_and_size_objects(contour_pointset=self._current_contours())
+            _display_annotation_action('Font color', f'{next_color}')
 
         def _preceding_font_color() -> None:
-            current_color: str = self.cbox_val['color'].get()
+            current_color: str = self.cbox_val['line_color'].get()
             current_index = colors.index(current_color)
             # Need to stop decreasing idx at the beginning of colors list.
             if current_index == 0:
                 current_index = 1
             preceding_color = colors[current_index - 1]
-            self.cbox_val['color'].set(preceding_color)
-            print('Annotation font is now :', preceding_color)
+            self.cbox_val['line_color'].set(preceding_color)
             self.select_and_size_objects(contour_pointset=self._current_contours())
+            _display_annotation_action('Font color', f'{preceding_color}')
 
         # Bindings are needed only for the settings and sized img windows,
         #  but is simpler to use bind_all() which does not depend on widget focus.
@@ -2828,7 +2851,7 @@ class SetupApp(ViewImage):
                 self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
         else:
             self.cbox['th_type'].current(0)  # 'cv2.THRESH_OTSU'
-            self.cbox_val['color'].set('blue')
+            self.cbox_val['line_color'].set('blue')
 
         # Set/Reset Scale widgets.
         self.slider_val['alpha'].set(1.0)
@@ -2896,7 +2919,7 @@ class SetupApp(ViewImage):
             pady=(0, 2),
             sticky=tk.W)
 
-        # Lable() widget is in the main window (self).
+        # Label() widget is in the main window (self).
         # Note: with rowspan=5, there must be 5 return characters in
         #  each info string to prevent shifts of frame row spacing.
         #  5 because that seems to be needed to cover the combined
@@ -3089,17 +3112,16 @@ class SetupApp(ViewImage):
         self.update_image(tkimg_name='input',
                           cvimg_array=self.cvimg['input'])
 
-        # macOS right mouse button has a different ID.
+        # Right click will save displayed tk image to file, at current scale.
+        # Shift right click saves (processed) cv image at full (original) scale.
+        # macOS right mouse button has a different event ID.
         rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
-
-        # Do not specify the image array in this binding, but instead
-        #  specify in _on_click_save_img() method so that the current image
-        #  is saved. Bind to a lambda function, not to a direct call.
+        shift_rt_click = '<Shift-Button-3>' if const.MY_OS in 'lin, win' else '<Shift-Button-2>'
         for name, label in self.img_label.items():
             label.bind(rt_click,
-                       lambda _, n=name: self._on_click_save_img(image_name=n))
-
-        # Update to ensure that the label images are current.
+                       lambda _, n=name: self._on_click_save_tkimg(image_name=n))
+            label.bind(shift_rt_click,
+                       lambda _, n=name: self._on_click_save_cvimg(image_name=n))
         self.update()
 
         # Now is time to show the mainloop (self) report window that
