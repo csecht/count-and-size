@@ -12,7 +12,7 @@
 * [Tips](#Tips)
 * [Known Issues](#Known-Issues)
 * [Attributions](#Attributions)
-* [Table of size standards](#Pre-set-size-standards-and-diameters)
+* [Tables of constants](#Tables)
 
 ### Overview:
 
@@ -182,7 +182,7 @@ The simplest approach is if your camera has a built-it lens correction option. i
 
 For other correction methods, you will need to first calibrate the distortion across your image field by analysing a number of identical size standards arrayed over the field, with one placed at the center.
 
-The most accurate approach is to pre-process your input image to correct for your specific camera lens. A photo editing program can be used to adjust the input image before analyzing it with `size_it`.  For example, with the iPhone 11 images mentioned above, and using the Linux program GIMP, there is a function under Filter > Distort > Lens distortion. A setting for 'main' of 10 and 'zoom' of -4, then exporting as a jpeg file, does an adequate job of providing the expected mean size while limiting size errors among individual objects. You will just need to play around with different apps and correction settings that work best for your needs.
+The most accurate approach is to pre-process your input image to correct for your specific camera lens. A photo editing program can be used to adjust the input image before analyzing it with `size_it` or `size_it_cs`.  For example, with the iPhone 11 images mentioned above, and using the Linux program GIMP, there is a function under Filter > Distort > Lens distortion. A setting for 'main' of 10 and 'zoom' of -4, then exporting as a jpeg file, does an adequate job of providing the expected mean size while limiting size errors among individual objects. You will just need to play around with different apps and correction settings that work best for your needs.
 
 The other approach is a bit of a hack that does not require image pre-correction. For your calibration array input image, enter the pixel size and type (pre-set or custom)  of the size standard that's in the center to find mean size of all arrayed standards on your stage. Then find the positions of those that match the calculated mean value. For all subsequent analyses, you simply place your standard at one of those proxy positions and run sizing analysis as usual; that standard's pixel diameter will be representative of the average distortion correction needed across the field of view. This approach is adequate when all you need to correct for is the sample mean and median. However, there will still be a slight range of size errors among individual objects compared to using the pre-correction approach described above.
 
@@ -210,7 +210,9 @@ When running Random Walker segmentation, e.g., on the images/example/sample1.jpg
 ### Attributions
 All image files are from the author, C.S. Echt.
 
-### Pre-set size standards, diameters, and displayed significant figures.
+### Tables
+
+#### Pre-set size standards, diameters, and displayed significant figures.
 
 | Standard object | mm dia. | Notes                       | s.f. |
 |-----------------|--------:|-----------------------------|------|
@@ -225,7 +227,7 @@ All image files are from the author, C.S. Echt.
 | Sacagawea $     |    26.5 | Minted from 2000 to 2008    |  3   |
 | Eisenhower $    |    38.1 | Minted from 1971 to 1978    |  3   |
 
-###  Value ranges used in `size-it_cs.py` for color screen mattes.
+####  Value ranges used in `size-it_cs.py` for color screen mattes.
 | Matte color | Lower           | Upper           |
 |-------------|-----------------|-----------------|
 | green1      | (36, 25, 25)    | (70, 255, 255)  |
