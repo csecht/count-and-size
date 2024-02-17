@@ -155,6 +155,8 @@ class ProcessImage(tk.Tk):
 
         # metrics dict is populated in ViewImage.open_input().
         self.metrics: dict = {}
+        self.line_thickness: int = 0
+        self.font_scale: float = 0
 
         self.matte_contours: list = []
         self.sorted_size_list: list = []
@@ -274,11 +276,11 @@ class ProcessImage(tk.Tk):
                                                    code=cv2.COLOR_GRAY2BGR)
 
         # Need a thicker line on larger images that are scaled down.
-        line_thickness = self.metrics['line_thickness'] * 2
+        # self.line_thickness = self.line_thickness * 2
 
-        # Need to prevent black contours because they won't show on the
-        #  black mask objects.
-        if self.cbox_val['annotation_color'].get() in 'black, dark blue':
+        # Need to avoid contours colors that cannot be distinguished from
+        #  a black or white background.
+        if self.cbox_val['annotation_color'].get() in 'white, black, dark blue':
             line_color = const.COLORS_CV['orange']
         else:
             line_color = const.COLORS_CV[self.cbox_val['annotation_color'].get()]
@@ -287,7 +289,7 @@ class ProcessImage(tk.Tk):
                          contours=self.matte_contours,
                          contourIdx=-1,  # do all contours
                          color=line_color,
-                         thickness=line_thickness,
+                         thickness=self.line_thickness,
                          lineType=cv2.LINE_AA)
 
         self.update_image(tkimg_name='matte_objects',
@@ -316,7 +318,7 @@ class ViewImage(ProcessImage):
     select_and_size_objects
     select_and_export_objects
     report_results
-    process
+    process_matte
     process_sizes
     """
 
@@ -385,11 +387,6 @@ class ViewImage(ProcessImage):
         self.info_txt = tk.StringVar()
         self.info_label = tk.Label(master=self, textvariable=self.info_txt)
 
-        # Flag user's choice of segment export types. Defined in
-        #  configure_buttons() _export_objects() Button cmd.
-        self.export_segment: bool = True
-        self.export_hull: bool = False
-
         # Defined in widget_control() to reset values that user may have
         #  tried to change during prolonged processing times.
         self.slider_values: list = []
@@ -405,6 +402,7 @@ class ViewImage(ProcessImage):
         self.use_saved_settings: bool = False
         self.imported_settings: dict = {}
 
+        self.num_obj_selected: int = 0
         self.report_txt: str = ''
 
     def set_auto_scale_factor(self) -> None:
@@ -451,8 +449,8 @@ class ViewImage(ProcessImage):
         for _name in self.cbox_val:
             self.cbox_val[_name].set(self.imported_settings[_name])
 
-        self.metrics['font_scale'] = self.imported_settings['font_scale']
-        self.metrics['line_thickness'] = self.imported_settings['line_thickness']
+        self.font_scale = self.imported_settings['font_scale']
+        self.line_thickness = self.imported_settings['line_thickness']
 
         self.size_std['px_val'].set(self.imported_settings['px_val'])
         self.size_std['custom_val'].set(self.imported_settings['custom_val'])
@@ -462,7 +460,7 @@ class ViewImage(ProcessImage):
         When no size standard values ar entered, after a few seconds,
         display the size standard instructions in the mainloop (app)
         window. Internal function calls show_info_message().
-        Called from process(), process_sizes(), and
+        Called from process_matte(), process_sizes(), and
         configure_buttons._new_input().
 
         Returns: None
@@ -659,7 +657,7 @@ class ViewImage(ProcessImage):
         Assign a unit conversion factor to the observed pixel diameter
         of the chosen size standard and calculate the number of
         significant figures for preset or custom size entries.
-        Called from process(), process_sizes(), __init__.
+        Called from process_matte(), process_sizes(), __init__.
 
         Returns: None
         """
@@ -699,7 +697,7 @@ class ViewImage(ProcessImage):
         draw an enclosing circle around contours, then display them
         on the input image. Objects are expected to be oblong so that
         circle diameter can represent the object's length.
-        Called by process(), process_sizes(), bind_annotation_styles().
+        Called by process_matte(), process_sizes(), bind_annotation_styles().
         Calls update_image().
 
         Args:
@@ -713,8 +711,6 @@ class ViewImage(ProcessImage):
 
         selected_sizes: list[float] = []
         annotation_color: tuple = const.COLORS_CV[self.cbox_val['annotation_color'].get()]
-        font_scale: float = self.metrics['font_scale']
-        line_thickness: int = self.metrics['line_thickness']
 
         # The size range slider values are radii pixels. This is done b/c:
         #  1) Displayed values have fewer digits, so a cleaner slide bar.
@@ -727,6 +723,8 @@ class ViewImage(ProcessImage):
         # are within 1 px of an image file border (edge).
         bottom_edge = self.input_ht - 1
         right_edge = self.input_w - 1
+
+        self.num_obj_selected = 0
 
         if not contour_pointset:
             utils.no_objects_found_msg()
@@ -757,6 +755,8 @@ class ViewImage(ProcessImage):
             if flag:
                 flag = False
                 continue
+
+            self.num_obj_selected += 1
 
             # Draw a circle enclosing the contour, measure its diameter,
             #  and save each object_size measurement to the selected_sizes
@@ -789,24 +789,24 @@ class ViewImage(ProcessImage):
             ((txt_width, _), baseline) = cv2.getTextSize(
                 text=size2display,
                 fontFace=const.FONT_TYPE,
-                fontScale=font_scale,
-                thickness=line_thickness)
+                fontScale=self.font_scale,
+                thickness=self.line_thickness)
             offset_x = txt_width / 2
 
             cv2.circle(img=self.cvimg['sized'],
                        center=(round(_x), round(_y)),
                        radius=round(_r),
                        color=annotation_color,
-                       thickness=line_thickness,
+                       thickness=self.line_thickness,
                        lineType=cv2.LINE_AA,
                        )
             cv2.putText(img=self.cvimg['sized'],
                         text=size2display,
                         org=(round(_x - offset_x), round(_y + baseline)),
                         fontFace=const.FONT_TYPE,
-                        fontScale=font_scale,
+                        fontScale=self.font_scale,
                         color=annotation_color,
-                        thickness=line_thickness,
+                        thickness=self.line_thickness,
                         lineType=cv2.LINE_AA,
                         )
 
@@ -820,7 +820,7 @@ class ViewImage(ProcessImage):
         self.update_image(tkimg_name='sized',
                           cvimg_array=self.cvimg['sized'])
 
-    def select_and_export_objects(self, contour_pointset: list) -> int:
+    def select_and_export_objects(self, contour_pointset: list) -> None:
         """
         Takes a list of contour segments, selects, masks and extracts
         each, to a bounding rectangle, for export of ROI to file.
@@ -833,16 +833,6 @@ class ViewImage(ProcessImage):
 
         Returns: Integer count of exported objects.
         """
-
-        # Evaluate user's messagebox askyesnocancel answer, from configure_buttons().
-        if self.export_segment:
-            # Export masked selected object segments.
-            export_this = 'result'
-        elif self.export_segment is False:
-            # Export enlarged bounding rectangles around segments.
-            export_this = 'roi'
-        else:  # user selected 'Cancel', which returns None, the default.
-            return 0
 
         # Grab current time to pass to utils.export_segments() module.
         #  This is done here, outside the for loop, to avoid having the
@@ -868,7 +858,7 @@ class ViewImage(ProcessImage):
             #   ...those that touch top or left edge or are background.
             #   ...those that touch bottom or right edge.
             if _c is None:
-                return 0
+                return
             if not c_area_max > cv2.contourArea(_c) >= c_area_min:
                 continue
             if {0, 1}.intersection(set(_c.ravel())):
@@ -906,21 +896,15 @@ class ViewImage(ProcessImage):
                                               code=cv2.COLOR_BGR2GRAY))
             roi_mask = mask[y_slice, x_slice]
 
-            if self.export_hull:
-                hull = cv2.convexHull(_c)
-                chosen_contours = [hull]
-            else:  # is False, user selected "No".
-                chosen_contours = [_c]
-
             cv2.drawContours(image=mask,
-                             contours=chosen_contours,
+                             contours=[_c],
                              contourIdx=-1,
                              color=(255, 255, 255),
                              thickness=cv2.FILLED)
 
             # Note: this contour step provides a cleaner border around the segment.
             cv2.drawContours(image=mask,
-                             contours=chosen_contours,
+                             contours=[_c],
                              contourIdx=-1,
                              color=(0, 0, 0),
                              thickness=4)
@@ -934,28 +918,24 @@ class ViewImage(ProcessImage):
             if result is not None:
                 result[roi_mask == 0] = 255
 
-                if export_this == 'result':
-                    # Export just the object segment.
-                    export_chosen = result
-                else:  # is 'roi', so export segment's enlarged bounding box.
-                    export_chosen = roi
-
                 utils.export_segments(path2folder=self.input_folder_path,
-                                      img2exp=export_chosen,
+                                      img2exp=result,
                                       index=roi_idx,
                                       timestamp=time_now)
             else:
-                print(f'There was a problem with segment # {roi_idx},'
-                      ' so it was not exported.')
-
-        return roi_idx
+                # Need to pause between messages in case there are multiple
+                #  problems in the contour pointset.
+                _info = (f'\n\nThere was a problem with segment # {roi_idx},\n'
+                         'so it was not exported.\n\n')
+                self.show_info_message(info=_info, color='vermilion')
+                app.after(500)
 
     def report_results(self) -> None:
         """
         Write the current settings and cv metrics in a Text widget of
         the report_frame. Same text is printed in Terminal from "Save"
         button.
-        Called from process(), process_sizes(), __init__.
+        Called from process_matte(), process_sizes(), __init__.
         Returns:
             None
         """
@@ -1037,7 +1017,7 @@ class ViewImage(ProcessImage):
         utils.display_report(frame=self.report_frame,
                              report=self.report_txt)
 
-    def process(self) -> None:
+    def process_matte(self) -> None:
         """
         Runs image segmentation processing methods from ProcessImage(),
         plus methods for annotation style, sizing, and reporting.
@@ -1050,10 +1030,6 @@ class ViewImage(ProcessImage):
             self.validate_px_size_entry()
             if self.cbox_val['size_std'].get() == 'Custom':
                 self.validate_custom_size_entry()
-        # else:
-        #     # Need to populate color comboboxes with start window selections.
-        #     self.cbox['matte_color'].set(self.cbox_val['matte_color'].get())
-        #     self.cbox['annotation_color'].set(self.cbox_val['annotation_color'].get())
 
         _info = '\n\nFinding objects...\n\n\n'
         self.show_info_message(info=_info, color='blue')
@@ -1167,11 +1143,6 @@ class SetupApp(ViewImage):
 
         self.start_process_btn_txt = tk.StringVar()
 
-        # This order of events, when coordinated with the calls in
-        #  start_now(), allow macOS implementation to flow well.
-        self.setup_main_window()
-        self.setup_start_window()
-
     def setup_main_window(self):
         """
         For clarity, remove from view the Tk mainloop window created
@@ -1207,7 +1178,7 @@ class SetupApp(ViewImage):
         # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
 
         c_key = 'Command' if const.MY_OS == 'dar' else 'Control'  # is 'lin' or 'win'.
-        self.bind(f'<{f"{c_key}"}-r>', func=lambda _: self.process())
+        self.bind(f'<{f"{c_key}"}-m>', func=lambda _: self.process_matte())
         self.bind(f'<{f"{c_key}"}-s>', func=lambda _: self.save_results())
         self.bind(f'<{f"{c_key}"}-n>', func=lambda _: self.new_input())
         self.bind(f'<{f"{c_key}"}-d>', func=lambda _: self.apply_default_settings())
@@ -1280,6 +1251,8 @@ class SetupApp(ViewImage):
         #  Can be later reset with keybindings in bind_scale_adjustment().
         #  circle_r_slider ranges are a function of input image size.
         self.metrics = manage.input_metrics(img=self.cvimg['input'])
+        self.line_thickness = self.metrics['line_thickness']
+        self.font_scale = self.metrics['font_scale']
         self.set_auto_scale_factor()
         self.configure_circle_r_sliders()
         return True
@@ -1292,16 +1265,17 @@ class SetupApp(ViewImage):
         """
         if self.settings_file_path.exists():
             if self.first_run:
-                msg = (f'Yes, use settings file in the folder: {self.input_folder_name}.\n'
-                       'No, use default settings.')
+                choice = ('Yes, from JSON file in\n'
+                          f'   folder: {self.input_folder_name}.\n'
+                          'No, use default settings.')
             else:
-                msg = (f'Yes, use settings file in folder: {self.input_folder_name}.\n'
-                       'No, use current settings.')
+                choice = ('Yes, from JSON file in\n'
+                          f'   folder: {self.input_folder_name}.\n'
+                          'No, use current settings.')
 
             self.use_saved_settings = messagebox.askyesno(
-                # parent=self.focus_get(),
-                title=f"Use saved settings on file: {self.input_file_name}?",
-                detail=msg)
+                title=f"Use saved settings?",
+                detail=choice)
 
         if self.use_saved_settings:
             self.import_settings()
@@ -1473,9 +1447,9 @@ class SetupApp(ViewImage):
 
         elif isinstance(parent, SetupApp):
             # Accelerators use key binds from setup_main_window().
-            file.add_command(label='Run Process',
-                             command=self.process,
-                             accelerator=f'{os_accelerator}+R')
+            file.add_command(label='Process matte segments',
+                             command=self.process_matte,
+                             accelerator=f'{os_accelerator}+M')
             file.add_command(label='Save results',
                              command=self.save_results,
                              accelerator=f'{os_accelerator}+S')
@@ -1549,9 +1523,9 @@ class SetupApp(ViewImage):
         self.set_size_standard()
 
         # Run processing for the starting image prior to displaying images.
-        # Call process(), and display_windows(), in this sequence, for
-        #  best performance. process() is inherited from ViewImage().
-        self.process()
+        # Call process_matte(), and display_windows(), in this sequence, for
+        #  best performance. process_matte() is inherited from ViewImage().
+        self.process_matte()
         self.display_windows()
         self.first_run = False
 
@@ -1692,7 +1666,7 @@ class SetupApp(ViewImage):
 
         # Width should fit any text expected without causing WINDOW shifting.
         self.info_label.config(font=const.WIDGET_FONT,
-                               width=50, # width should fit any text expected without
+                               width=50,  # width should fit any text expected without
                                justify='right',
                                bg=const.MASTER_BG,  # use 'pink' for development
                                fg='black')
@@ -1700,324 +1674,6 @@ class SetupApp(ViewImage):
         # Note: the main window (mainloop, self, app) is deiconified in
         #  display_windows() after all image windows so that, at startup,
         #  it stacks on top.
-
-    def save_results(self):
-        """
-        Save annotated sized image and its Report text with
-        individual object sizes appended.
-        Calls utils.save_report_and_img(), show_info_message().
-        Called from keybinding, menu, and button commands.
-        """
-        _sizes = ', '.join(str(i) for i in self.sorted_size_list)
-        utils.save_report_and_img(
-            path2input=self.input_file_path,
-            img2save=self.cvimg['sized'],
-            txt2save=self.report_txt + f'\n{_sizes}',
-            caller=utils.program_name(),
-        )
-
-        _info = ('\n\nSettings report and result image were saved to\n'
-                 f'the input image folder: {self.input_folder_name}\n\n')
-        self.show_info_message(info=_info, color='blue')
-
-    def new_input(self):
-        """
-        Reads a new image file for preprocessing.
-        Calls open_input(), show_info_message().
-        Called from keybinding, menu, and button commands.
-
-        Returns: None
-        """
-        if self.open_input(parent=self):
-            self.check_for_saved_settings()
-            self.update_image(tkimg_name='input',
-                              cvimg_array=self.cvimg['input'])
-        else:  # User canceled input selection or closed messagebox window.
-            _info = '\n\nNo new input file was selected.\n\n\n'
-            self.show_info_message(info=_info, color='vermilion')
-            self.delay_size_std_info_msg()
-
-            return
-
-        self.process()
-
-    def apply_default_settings(self):
-        """
-        Resets settings values and processes images.
-        Calls set_auto_scale_factor(), set_defaults(), process(), and
-        show_info_message().
-        Called from keybinding, menu, and button commands.
-        """
-
-        # Order of calls is important here.
-        self.slider_values.clear()
-        self.metrics = manage.input_metrics(img=self.cvimg['input'])
-        self.set_auto_scale_factor()
-        self.configure_circle_r_sliders()
-        self.set_defaults()
-        self.widget_control('off')  # is turned 'on' in process()
-        self.process()
-
-        _info = ('\nSettings have been reset to their defaults.\n'
-                 'Check and adjust them if needed, then...\n'
-                 'Select a "Run" button to finalize updating the\n'
-                 'report and image results.\n')
-        self.show_info_message(info=_info, color='blue')
-
-    def export_settings(self):
-        """
-        Saves a dictionary of current settings a JSON file.
-        Calls utils.export_settings_to_json(), show_info_message().
-        Called from menu and button commands.
-        """
-
-        settings_dict = {
-            'noise_iter': self.slider_val['noise_iter'].get(),
-            'morph_op': self.cbox_val['morph_op'].get(),
-            'morph_shape': self.cbox_val['morph_shape'].get(),
-            'circle_r_min': self.slider_val['circle_r_min'].get(),
-            'circle_r_max': self.slider_val['circle_r_max'].get(),
-            'noise_k': self.slider_val['noise_k'].get(),
-            'size_std': self.cbox_val['size_std'].get(),
-            # 'scale': self.scale_factor.get(),
-            'px_val': self.size_std['px_val'].get(),
-            'custom_val': self.size_std['custom_val'].get(),
-            'annotation_color': self.cbox_val['annotation_color'].get(),
-            'font_scale': self.metrics['font_scale'],
-            'line_thickness': self.metrics['line_thickness'],
-            'matte_color': self.cbox_val['matte_color'].get(),
-        }
-
-        utils.export_settings_to_json(
-            path2folder=self.input_folder_path,
-            settings2save=settings_dict,
-            called_by_cs=True)
-
-        _info = ('\nSettings have been exported to folder:\n'
-                 f'{self.input_folder_name}\n'
-                 'and are available to use with "New input" or at\n'
-                 'startup. Previous settings file was overwritten.\n')
-        self.show_info_message(info=_info, color='blue')
-
-    def export_objects(self):
-        """
-        Provides messagebox options to export to files each selected
-        object. Calls select_and_export_objects(), show_info_message().
-        Called from menu and button commands.
-        """
-
-        self.export_segment = messagebox.askyesnocancel(
-            title="Export only objects' segmented areas?",
-            detail='Yes, ...with a white background.\n'
-                   'No, include area around object\n'
-                   '     ...with image\'s background.\n'
-                   'Cancel: Export nothing and return.')
-
-        if self.export_segment:
-            self.export_hull = messagebox.askyesno(
-                title='Fill in partially segmented objects?',
-                detail='Yes, try to include more object area;\n'
-                       '     may include some image background.\n'
-                       'No, export just segments, on white.\n')
-
-        _num = self.select_and_export_objects(self.matte_contours)
-        _info = (f'\n{_num} selected objects were individually\n'
-                 f' exported to the input image folder:\n'
-                 f'{self.input_folder_name}\n\n')
-        self.show_info_message(info=_info, color='blue')
-
-    def configure_buttons(self) -> None:
-        """
-        Assign and grid Buttons in the settings (mainloop, self) window.
-        Called from __init__.
-
-        Returns:
-            None
-        """
-        manage.ttk_styles(mainloop=self)
-
-        # Configure all items in the dictionary of ttk buttons.
-        button_params = dict(
-            width=0,
-            style='My.TButton',
-        )
-
-        self.button['process_matte'].config(
-            text='Process Color Matte',
-            command=self.process,
-            width=18,
-            style='My.TButton',
-        )
-
-        self.button['save_results'].config(
-            text='Save results',
-            command=self.save_results,
-            **button_params)
-
-        self.button['export_settings'].config(
-            text='Export settings',
-            command=self.export_settings,
-            **button_params)
-
-        self.button['new_input'].config(
-            text='New input',
-            command=self.new_input,
-            **button_params)
-
-        self.button['export_objects'].config(
-            text='Export objects',
-            command=self.export_objects,
-            **button_params)
-
-        self.button['reset'].config(
-            text='Reset',
-            command=self.apply_default_settings,
-            **button_params)
-
-    def config_sliders(self) -> None:
-        """
-        Configure arguments and mouse button bindings for all Scale
-        widgets in the settings (mainloop, self) window.
-        Called from __init__.
-
-        Returns:
-            None
-        """
-        # Minimum width for any Toplevel window is set by the length
-        #  of the longest widget, whether that be a Label() or Scale().
-        #  So, for the main (app) window, set a Scale() length  sufficient
-        #  to fit everything in the Frame given current padding arguments.
-        #  Keep in mind that a long input file path in the report_frame
-        #   may be longer than this set scale_len in the selectors_frame.
-        scale_len = int(self.screen_width * 0.20)
-
-        # Scale() widgets for preprocessing (i.e., contrast, noise, filter,
-        #  and threshold) or size max/min are called by a mouse
-        #  button release. Peak-local-max and circle radius params are
-        #  used in process(), which is called by one of the "Run" buttons.
-
-        self.slider['noise_k_lbl'].configure(text='Reduce noise, kernel size\n'
-                                                  '(only odd integers used):',
-                                             **const.LABEL_PARAMETERS)
-        self.slider['noise_k'].configure(from_=1, to=51,
-                                         tickinterval=5,
-                                         variable=self.slider_val['noise_k'],
-                                         **const.SCALE_PARAMETERS)
-
-        self.slider['noise_iter_lbl'].configure(text='Reduce noise, iterations\n'
-                                                     '(0 may extend processing time):',
-                                                **const.LABEL_PARAMETERS)
-
-        self.slider['noise_iter'].configure(from_=0, to=5,
-                                            tickinterval=1,
-                                            variable=self.slider_val['noise_iter'],
-                                            **const.SCALE_PARAMETERS)
-
-        self.slider['circle_r_min_lbl'].configure(text='Circled radius size\n'
-                                                       'minimum pixels:',
-                                                  **const.LABEL_PARAMETERS)
-        self.slider['circle_r_max_lbl'].configure(text='Circled radius size\n'
-                                                       'maximum pixels:',
-                                                  **const.LABEL_PARAMETERS)
-
-        self.configure_circle_r_sliders()
-
-        # To avoid processing all the intermediate values between normal
-        #  slider movements, bind sliders to call functions only on
-        #  left button release.
-        # Most are bound to preprocess(); process() is called only with
-        #  a "Run" Button(). To speed program responsiveness when
-        #  changing the size range, only the sizing and reporting methods
-        #  are called on mouse button release.
-        # Note that the isinstance() condition doesn't improve performance,
-        #  it just clarifies the bind intention.
-        for _name, _w in self.slider.items():
-            if isinstance(_w, tk.Label):
-                continue
-            if 'circle_r' in _name:
-                _w.bind('<ButtonRelease-1>',
-                        func=lambda _: self.process_sizes(caller='circle_r'))
-            else:  # is noise_k or noise_iter
-                _w.bind('<ButtonRelease-1>', func=lambda _: self.process())
-
-    def config_comboboxes(self) -> None:
-        """
-        Configure arguments and mouse button bindings for all Comboboxes
-        in the settings (mainloop, self) window.
-        Called from __init__.
-
-        Returns:
-             None
-        """
-
-        # Different Combobox widths are needed to account for font widths
-        #  and padding in different systems.
-        width_correction = 2 if const.MY_OS == 'win' else 0  # is Linux or macOS
-
-        # Combobox styles are set in manage.ttk_styles(), called in configure_buttons().
-        self.cbox['morph_op_lbl'].config(text='Reduce noise, morphology operator:',
-                                         **const.LABEL_PARAMETERS)
-        self.cbox['morph_op'].config(textvariable=self.cbox_val['morph_op'],
-                                     width=18 + width_correction,
-                                     values=list(const.CV_MORPH_OP.keys()),
-                                     **const.COMBO_PARAMETERS)
-
-        self.cbox['morph_shape_lbl'].config(text='... shape:',
-                                            **const.LABEL_PARAMETERS)
-        self.cbox['morph_shape'].config(textvariable=self.cbox_val['morph_shape'],
-                                        width=16 + width_correction,
-                                        values=list(const.CV_MORPH_SHAPE.keys()),
-                                        **const.COMBO_PARAMETERS)
-
-        self.cbox['size_std_lbl'].config(text='Select the standard used:',
-                                         **const.LABEL_PARAMETERS)
-        self.cbox['size_std'].config(textvariable=self.cbox_val['size_std'],
-                                     width=12 + width_correction,
-                                     values=list(const.SIZE_STANDARDS.keys()),
-                                     **const.COMBO_PARAMETERS)
-
-        self.cbox['matte_lbl'].config(text='Select a matte color:',
-                                      **const.LABEL_PARAMETERS)
-        self.cbox['matte_color'].config(textvariable=self.cbox_val['matte_color'],
-                                        width=10 + width_correction,
-                                        values=list(const.MATTE_COLOR.keys()),
-                                        **const.COMBO_PARAMETERS)
-
-        # Now bind functions to all Comboboxes.
-        # Note that the isinstance() tk.Label condition isn't needed for
-        # performance, it just clarifies the bind intention.
-        for _name, _w in self.cbox.items():
-            if isinstance(_w, tk.Label):
-                continue
-            if _name == 'size_std':
-                _w.bind('<<ComboboxSelected>>',
-                        func=lambda _: self.process_sizes(caller='size_std'))
-            else:  # is morph_op or morph_shape
-                _w.bind('<<ComboboxSelected>>', func=lambda _: self.process())
-
-    def config_entries(self) -> None:
-        """
-        Configure arguments and mouse button bindings for Entry widgets
-        in the settings (mainloop, self) window.
-        Called from __init__.
-
-        Returns: None
-        """
-
-        self.size_std['px_entry'].config(textvariable=self.size_std['px_val'],
-                                         width=6)
-        self.size_std['px_lbl'].config(text='Enter px diameter of size standard:',
-                                       **const.LABEL_PARAMETERS)
-
-        self.size_std['custom_entry'].config(textvariable=self.size_std['custom_val'],
-                                             width=8)
-        self.size_std['custom_lbl'].config(text="Enter custom standard's size:",
-                                           **const.LABEL_PARAMETERS)
-
-        for _name, _w in self.size_std.items():
-            if isinstance(_w, tk.Entry):
-                _w.bind('<Return>', lambda _, n=_name: self.process_sizes(caller=n))
-                _w.bind('<KP_Enter>', lambda _, n=_name: self.process_sizes(caller=n))
 
     def bind_annotation_styles(self) -> None:
         """
@@ -2035,37 +1691,31 @@ class SetupApp(ViewImage):
 
         def _increase_font_size() -> None:
             """Limit upper font size scale to a 5x increase."""
-            font_scale: float = self.metrics['font_scale']
-            font_scale *= 1.1
-            font_scale = round(min(font_scale, 5), 2)
-            self.metrics['font_scale'] = font_scale
+            self.font_scale *= 1.1
+            self.font_scale = round(min(self.font_scale, 5), 2)
             self.select_and_size_objects(contour_pointset=self.matte_contours)
-            _display_annotation_action('Font scale', f'{font_scale}')
+            _display_annotation_action('Font scale', f'{self.font_scale}')
 
         def _decrease_font_size() -> None:
             """Limit lower font size scale to a 1/5 decrease."""
-            font_scale: float = self.metrics['font_scale']
-            font_scale *= 0.9
-            font_scale = round(max(font_scale, 0.20), 2)
-            self.metrics['font_scale'] = font_scale
+            self.font_scale *= 0.9
+            self.font_scale = round(max(self.font_scale, 0.20), 2)
             self.select_and_size_objects(contour_pointset=self.matte_contours)
-            _display_annotation_action('Font scale', f'{font_scale}')
+            _display_annotation_action('Font scale', f'{self.font_scale}')
 
         def _increase_line_thickness() -> None:
             """Limit upper thickness to 15."""
-            line_thickness: int = self.metrics['line_thickness']
-            line_thickness += 1
-            self.metrics['line_thickness'] = min(line_thickness, 15)
+            self.line_thickness += 1
+            self.line_thickness = min(self.line_thickness, 15)
             self.select_and_size_objects(contour_pointset=self.matte_contours)
-            _display_annotation_action('Line thickness', f'{line_thickness}')
+            _display_annotation_action('Line thickness', f'{self.line_thickness}')
 
         def _decrease_line_thickness() -> None:
             """Limit lower thickness to 1."""
-            line_thickness: int = self.metrics['line_thickness']
-            line_thickness -= 1
-            self.metrics['line_thickness'] = max(line_thickness, 1)
+            self.line_thickness -= 1
+            self.line_thickness = max(self.line_thickness, 1)
             self.select_and_size_objects(contour_pointset=self.matte_contours)
-            _display_annotation_action('Line thickness', f'{line_thickness}')
+            _display_annotation_action('Line thickness', f'{self.line_thickness}')
 
         colors = list(const.COLORS_CV.keys())
 
@@ -2157,6 +1807,313 @@ class SetupApp(ViewImage):
 
         self.bind_all('<Control-Right>', lambda _: _increase_scale_factor())
         self.bind_all('<Control-Left>', lambda _: _decrease_scale_factor())
+
+    def save_results(self):
+        """
+        Save annotated sized image and its Report text with
+        individual object sizes appended.
+        Calls utils.save_report_and_img(), show_info_message().
+        Called from keybinding, menu, and button commands.
+        """
+        _sizes = ', '.join(str(i) for i in self.sorted_size_list)
+        utils.save_report_and_img(
+            path2input=self.input_file_path,
+            img2save=self.cvimg['sized'],
+            txt2save=self.report_txt + f'\n{_sizes}',
+            caller=utils.program_name(),
+        )
+
+        _info = ('\n\nSettings report and result image were saved to\n'
+                 f'the input image folder: {self.input_folder_name}\n\n')
+        self.show_info_message(info=_info, color='blue')
+
+    def new_input(self):
+        """
+        Reads a new image file for preprocessing.
+        Calls open_input(), show_info_message().
+        Called from keybinding, menu, and button commands.
+
+        Returns: None
+        """
+        if self.open_input(parent=self):
+            self.check_for_saved_settings()
+            self.update_image(tkimg_name='input',
+                              cvimg_array=self.cvimg['input'])
+        else:  # User canceled input selection or closed messagebox window.
+            _info = '\n\nNo new input file was selected.\n\n\n'
+            self.show_info_message(info=_info, color='vermilion')
+            self.delay_size_std_info_msg()
+
+            return
+
+        self.process_matte()
+
+    def export_settings(self):
+        """
+        Saves a dictionary of current settings a JSON file.
+        Calls utils.export_settings_to_json(), show_info_message().
+        Called from menu and button commands.
+        """
+
+        settings_dict = {
+            'noise_iter': self.slider_val['noise_iter'].get(),
+            'morph_op': self.cbox_val['morph_op'].get(),
+            'morph_shape': self.cbox_val['morph_shape'].get(),
+            'circle_r_min': self.slider_val['circle_r_min'].get(),
+            'circle_r_max': self.slider_val['circle_r_max'].get(),
+            'noise_k': self.slider_val['noise_k'].get(),
+            'size_std': self.cbox_val['size_std'].get(),
+            # 'scale': self.scale_factor.get(),
+            'px_val': self.size_std['px_val'].get(),
+            'custom_val': self.size_std['custom_val'].get(),
+            'annotation_color': self.cbox_val['annotation_color'].get(),
+            'font_scale': self.font_scale,
+            'line_thickness': self.line_thickness,
+            'matte_color': self.cbox_val['matte_color'].get(),
+        }
+
+        utils.export_settings_to_json(
+            path2folder=self.input_folder_path,
+            settings2save=settings_dict,
+            called_by_cs=True)
+
+        _info = ('\nSettings have been exported to folder:\n'
+                 f'{self.input_folder_name}\n'
+                 'and are available to use with "New input" or at\n'
+                 'startup. Previous settings file was overwritten.\n')
+        self.show_info_message(info=_info, color='blue')
+
+    def export_objects(self):
+        """
+        Provides messagebox confirmation to export each selected object.
+        Calls select_and_export_objects(), show_info_message().
+        Called from menu and button commands.
+        """
+        export_segment = messagebox.askokcancel(
+            title="Export all selected objects?",
+            detail=f'OK: Write {self.num_obj_selected} image files to\n'
+                   f'     input folder: {self.input_folder_name}.\n'
+                   'Cancel: Export nothing and return.')
+
+        if export_segment:
+            self.select_and_export_objects(self.matte_contours)
+
+            _info = (f'\n{self.num_obj_selected} selected objects were individually\n'
+                     f' exported to the input image folder:\n'
+                     f'{self.input_folder_name}\n\n')
+            self.show_info_message(info=_info, color='blue')
+
+    def configure_buttons(self) -> None:
+        """
+        Assign and grid Buttons in the settings (mainloop, self) window.
+        Called from __init__.
+
+        Returns:
+            None
+        """
+        manage.ttk_styles(mainloop=self)
+
+        # Configure all items in the dictionary of ttk buttons.
+        button_params = dict(
+            width=0,
+            style='My.TButton',
+        )
+
+        self.button['process_matte'].config(
+            text='Process matte segments',
+            command=self.process_matte,
+            width=18,
+            style='My.TButton',
+        )
+
+        self.button['save_results'].config(
+            text='Save results',
+            command=self.save_results,
+            **button_params)
+
+        self.button['export_settings'].config(
+            text='Export settings',
+            command=self.export_settings,
+            **button_params)
+
+        self.button['new_input'].config(
+            text='New input',
+            command=self.new_input,
+            **button_params)
+
+        self.button['export_objects'].config(
+            text='Export objects',
+            command=self.export_objects,
+            **button_params)
+
+        self.button['reset'].config(
+            text='Reset',
+            command=self.apply_default_settings,
+            **button_params)
+
+    def config_sliders(self) -> None:
+        """
+        Configure arguments and mouse button bindings for all Scale
+        widgets in the settings (mainloop, self) window.
+        Called from __init__.
+
+        Returns:
+            None
+        """
+        # Minimum width for any Toplevel window is set by the length
+        #  of the longest widget, whether that be a Label() or Scale().
+        #  So, for the main (app) window, set a Scale() length  sufficient
+        #  to fit everything in the Frame given current padding arguments.
+        #  Keep in mind that a long input file path in the report_frame
+        #   may be longer than this set scale_len in the selectors_frame.
+        scale_len = int(self.screen_width * 0.20)
+
+        # Scale() widgets for preprocessing (i.e., contrast, noise, filter,
+        #  and threshold) or size max/min are called by a mouse
+        #  button release. Peak-local-max and circle radius params are
+        #  used in process_matte(), which is called by one of the "Run" buttons.
+
+        self.slider['noise_k_lbl'].configure(text='Reduce noise, kernel size\n'
+                                                  '(only odd integers used):',
+                                             **const.LABEL_PARAMETERS)
+        self.slider['noise_k'].configure(from_=1, to=51,
+                                         tickinterval=5,
+                                         variable=self.slider_val['noise_k'],
+                                         **const.SCALE_PARAMETERS)
+
+        self.slider['noise_iter_lbl'].configure(text='Reduce noise, iterations\n'
+                                                     '(0 may extend processing time):',
+                                                **const.LABEL_PARAMETERS)
+
+        self.slider['noise_iter'].configure(from_=0, to=5,
+                                            tickinterval=1,
+                                            variable=self.slider_val['noise_iter'],
+                                            **const.SCALE_PARAMETERS)
+
+        self.slider['circle_r_min_lbl'].configure(text='Circled radius size\n'
+                                                       'minimum pixels:',
+                                                  **const.LABEL_PARAMETERS)
+        self.slider['circle_r_max_lbl'].configure(text='Circled radius size\n'
+                                                       'maximum pixels:',
+                                                  **const.LABEL_PARAMETERS)
+
+        self.configure_circle_r_sliders()
+
+        # To avoid processing all the intermediate values between normal
+        #  slider movements, bind sliders to call functions only on
+        #  left button release.
+        # Note that the isinstance() condition doesn't improve performance,
+        #  it just clarifies the bind intention.
+        for _name, _w in self.slider.items():
+            if isinstance(_w, tk.Label):
+                continue
+            if 'circle_r' in _name:
+                _w.bind('<ButtonRelease-1>',
+                        func=lambda _: self.process_sizes(caller='circle_r'))
+            else:  # is noise_k or noise_iter
+                _w.bind('<ButtonRelease-1>', func=lambda _: self.process_matte())
+
+    def config_comboboxes(self) -> None:
+        """
+        Configure arguments and mouse button bindings for all Comboboxes
+        in the settings (mainloop, self) window.
+        Called from __init__.
+
+        Returns:
+             None
+        """
+
+        # Different Combobox widths are needed to account for font widths
+        #  and padding in different systems.
+        width_correction = 2 if const.MY_OS == 'win' else 0  # is Linux or macOS
+
+        # Combobox styles are set in manage.ttk_styles(), called in configure_buttons().
+        self.cbox['morph_op_lbl'].config(text='Reduce noise, morphology operator:',
+                                         **const.LABEL_PARAMETERS)
+        self.cbox['morph_op'].config(textvariable=self.cbox_val['morph_op'],
+                                     width=18 + width_correction,
+                                     values=list(const.CV_MORPH_OP.keys()),
+                                     **const.COMBO_PARAMETERS)
+
+        self.cbox['morph_shape_lbl'].config(text='... shape:',
+                                            **const.LABEL_PARAMETERS)
+        self.cbox['morph_shape'].config(textvariable=self.cbox_val['morph_shape'],
+                                        width=16 + width_correction,
+                                        values=list(const.CV_MORPH_SHAPE.keys()),
+                                        **const.COMBO_PARAMETERS)
+
+        self.cbox['size_std_lbl'].config(text='Select the standard used:',
+                                         **const.LABEL_PARAMETERS)
+        self.cbox['size_std'].config(textvariable=self.cbox_val['size_std'],
+                                     width=12 + width_correction,
+                                     values=list(const.SIZE_STANDARDS.keys()),
+                                     **const.COMBO_PARAMETERS)
+
+        self.cbox['matte_lbl'].config(text='Select a matte color:',
+                                      **const.LABEL_PARAMETERS)
+        self.cbox['matte_color'].config(textvariable=self.cbox_val['matte_color'],
+                                        width=10 + width_correction,
+                                        values=list(const.MATTE_COLOR.keys()),
+                                        **const.COMBO_PARAMETERS)
+
+        # Now bind functions to all Comboboxes.
+        # Note that the isinstance() tk.Label condition isn't needed for
+        # performance, it just clarifies the bind intention.
+        for _name, _w in self.cbox.items():
+            if isinstance(_w, tk.Label):
+                continue
+            if _name == 'size_std':
+                _w.bind('<<ComboboxSelected>>',
+                        func=lambda _: self.process_sizes(caller='size_std'))
+            else:  # is morph_op or morph_shape
+                _w.bind('<<ComboboxSelected>>', func=lambda _: self.process_matte())
+
+    def config_entries(self) -> None:
+        """
+        Configure arguments and mouse button bindings for Entry widgets
+        in the settings (mainloop, self) window.
+        Called from __init__.
+
+        Returns: None
+        """
+
+        self.size_std['px_entry'].config(textvariable=self.size_std['px_val'],
+                                         width=6)
+        self.size_std['px_lbl'].config(text='Enter px diameter of size standard:',
+                                       **const.LABEL_PARAMETERS)
+
+        self.size_std['custom_entry'].config(textvariable=self.size_std['custom_val'],
+                                             width=8)
+        self.size_std['custom_lbl'].config(text="Enter custom standard's size:",
+                                           **const.LABEL_PARAMETERS)
+
+        for _name, _w in self.size_std.items():
+            if isinstance(_w, tk.Entry):
+                _w.bind('<Return>', lambda _, n=_name: self.process_sizes(caller=n))
+                _w.bind('<KP_Enter>', lambda _, n=_name: self.process_sizes(caller=n))
+
+    def apply_default_settings(self):
+        """
+        Resets settings values and processes images.
+        Calls set_auto_scale_factor(), set_defaults(), process_matte(), and
+        show_info_message().
+        Called from keybinding, menu, and button commands.
+        """
+
+        # Order of calls is important here.
+        self.slider_values.clear()
+        # self.metrics = manage.input_metrics(img=self.cvimg['input'])
+        self.set_auto_scale_factor()
+        # self.configure_circle_r_sliders()
+        self.set_defaults()
+        self.widget_control('off')  # is turned 'on' in process_matte()
+        self.process_matte()
+
+        _info = ('\nSettings have been reset to their defaults.\n'
+                 'Check and adjust them if needed, then...\n'
+                 'Select a "Run" button to finalize updating the\n'
+                 'report and image results.\n')
+        self.show_info_message(info=_info, color='blue')
 
     def set_color_defaults(self):
         """
@@ -2417,6 +2374,10 @@ if __name__ == '__main__':
         print(f'{PROGRAM_NAME} has launched...')
         app = SetupApp()
         app.title(f'{PROGRAM_NAME} Report & Settings')
+        # This order of events, when coordinated with the calls in
+        #  start_now(), allow macOS implementation to flow well.
+        app.setup_main_window()
+        app.setup_start_window()
 
         # The custom app icon is expected to be in the repository images folder.
         try:
