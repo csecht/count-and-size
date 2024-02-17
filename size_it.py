@@ -892,16 +892,17 @@ class ViewImage(ProcessImage):
         """
         if self.settings_file_path.exists():
             if self.first_run:
-                msg = (f'Yes, use settings file in the folder: {self.input_folder_name}.\n'
-                       'No, use default settings.')
+                choice = ('Yes, from JSON file in\n'
+                          f'   folder: {self.input_folder_name}.\n'
+                          'No, use default settings.')
             else:
-                msg = (f'Yes, use settings file in folder: {self.input_folder_name}.\n'
-                       'No, use current settings.')
+                choice = ('Yes, from JSON file in\n'
+                          f'   folder: {self.input_folder_name}.\n'
+                          'No, use current settings.')
 
             self.use_saved_settings = messagebox.askyesno(
-                # parent=self.focus_get(),
-                title=f"Use saved settings on file: {self.input_file_name}?",
-                detail=msg)
+                title=f"Use saved settings?",
+                detail=choice)
 
         if self.use_saved_settings:
             self.import_settings()
