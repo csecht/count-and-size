@@ -55,14 +55,10 @@ try:
     import numpy as np
     import tkinter as tk
     from tkinter import ttk, messagebox, filedialog
-    from skimage.segmentation import watershed, random_walker
-    from skimage.feature import peak_local_max
-    from scipy import ndimage
-
 except (ImportError, ModuleNotFoundError) as import_err:
     sys_exit(
         '*** One or more required Python packages were not found'
-        ' or need an update:\nOpenCV-Python, NumPy, scikit-image, SciPy, tkinter (Tk/Tcl).\n\n'
+        ' or need an update:\nOpenCV-Python, NumPy, tkinter (Tk/Tcl).\n\n'
         'To install: from the current folder, run this command'
         ' for the Python package installer (PIP):\n'
         '   python3 -m pip install -r requirements.txt\n\n'
@@ -1143,6 +1139,287 @@ class SetupApp(ViewImage):
 
         self.start_process_btn_txt = tk.StringVar()
 
+    def call_cmd(self):
+        """
+        Uses a nested class to access everything in the parent class.
+        It groups methods that are shared by buttons, menus, and
+        key bind commands. If only one method were to called them, then
+        they could work as inner functions, but not be called
+        outside that method. Multiple calling methods could use them
+        as regular class methods, but then that creates in the parent
+        class a clutter of methods. Grouping them here, in an inner
+        Class, thus helps limit the number of public methods.
+        Called from setup_main_window(), add_menu_bar(),
+        bind_annotation_styles(), configure_buttons().
+
+        Returns: None
+        """
+
+        # Concept from:
+        # https://stackoverflow.com/questions/719705/
+        #   what-is-the-purpose-of-pythons-inner-classes/722175
+        cmd_self = self
+
+        def _display_annotation_action(action: str, value: str):
+            _info = (f'\n\nA new annotation style was applied.\n'
+                     f'{action} was changed to {value}.\n\n')
+            self.show_info_message(info=_info, color='black')
+
+        cv_colors = list(const.COLORS_CV.keys())
+
+        class _Command:
+            """
+            Gives the following methods access to all module methods and
+            instance variables:
+            save_results()
+            new_input()
+            export_settings()
+            export_objects()
+            increase_font_size()
+            decrease_font_size()
+            increase_line_thickness()
+            decrease_line_thickness()
+            next_font_color()
+            preceding_font_color()
+            """
+            # These methods are called from configure_buttons() and the
+            # "file" menubar of add_menu_bar().
+            @staticmethod
+            def save_results():
+                """
+                Save annotated sized image and its Report text with
+                individual object sizes appended.
+                Calls utils.save_report_and_img(), show_info_message().
+                Called from keybinding, menu, and button commands.
+                """
+                _sizes = ', '.join(str(i) for i in cmd_self.sorted_size_list)
+                utils.save_report_and_img(
+                    path2input=cmd_self.input_file_path,
+                    img2save=cmd_self.cvimg['sized'],
+                    txt2save=cmd_self.report_txt + f'\n{_sizes}',
+                    caller=utils.program_name(),
+                )
+
+                _info = ('\n\nSettings report and result image were saved to\n'
+                         f'the input image folder: {cmd_self.input_folder_name}\n\n')
+                cmd_self.show_info_message(info=_info, color='blue')
+
+            @staticmethod
+            def new_input():
+                """
+                Reads a new image file for preprocessing.
+                Calls open_input(), show_info_message().
+                Called from keybinding, menu, and button commands.
+
+                Returns: None
+                """
+                if cmd_self.open_input(parent=cmd_self):
+                    cmd_self.check_for_saved_settings()
+                    cmd_self.update_image(tkimg_name='input',
+                                          cvimg_array=cmd_self.cvimg['input'])
+                else:  # User canceled input selection or closed messagebox window.
+                    _info = '\n\nNo new input file was selected.\n\n\n'
+                    cmd_self.show_info_message(info=_info, color='vermilion')
+                    cmd_self.delay_size_std_info_msg()
+
+                    return
+
+                cmd_self.process_matte()
+
+            @staticmethod
+            def export_settings():
+                """
+                Saves a dictionary of current settings a JSON file.
+                Calls utils.export_settings_to_json(), show_info_message().
+                Called from menu and button commands.
+                """
+
+                settings_dict = {
+                    'noise_iter': cmd_self.slider_val['noise_iter'].get(),
+                    'morph_op': cmd_self.cbox_val['morph_op'].get(),
+                    'morph_shape': cmd_self.cbox_val['morph_shape'].get(),
+                    'circle_r_min': cmd_self.slider_val['circle_r_min'].get(),
+                    'circle_r_max': cmd_self.slider_val['circle_r_max'].get(),
+                    'noise_k': cmd_self.slider_val['noise_k'].get(),
+                    'size_std': cmd_self.cbox_val['size_std'].get(),
+                    # 'scale': cmd_self.scale_factor.get(),
+                    'px_val': cmd_self.size_std['px_val'].get(),
+                    'custom_val': cmd_self.size_std['custom_val'].get(),
+                    'annotation_color': cmd_self.cbox_val['annotation_color'].get(),
+                    'font_scale': cmd_self.font_scale,
+                    'line_thickness': cmd_self.line_thickness,
+                    'matte_color': cmd_self.cbox_val['matte_color'].get(),
+                }
+
+                utils.export_settings_to_json(
+                    path2folder=cmd_self.input_folder_path,
+                    settings2save=settings_dict,
+                    called_by_cs=True)
+
+                _info = ('\nSettings have been exported to folder:\n'
+                         f'{cmd_self.input_folder_name}\n'
+                         'and are available to use with "New input" or at\n'
+                         'startup. Previous settings file was overwritten.\n')
+                cmd_self.show_info_message(info=_info, color='blue')
+
+            @staticmethod
+            def export_objects():
+                """
+                Provides messagebox confirmation to export each selected object.
+                Calls select_and_export_objects(), show_info_message().
+                Called from menu and button commands.
+                """
+                export_segment = messagebox.askokcancel(
+                    title="Export all selected objects?",
+                    detail=f'OK: Write {cmd_self.num_obj_selected} image files to\n'
+                           f'     input folder: {cmd_self.input_folder_name}.\n'
+                           'Cancel: Export nothing and return.')
+
+                if export_segment:
+                    cmd_self.select_and_export_objects(cmd_self.matte_contours)
+
+                    _info = (f'\n{cmd_self.num_obj_selected} selected objects were individually\n'
+                             f' exported to the input image folder:\n'
+                             f'{cmd_self.input_folder_name}\n\n')
+                    cmd_self.show_info_message(info=_info, color='blue')
+
+            @staticmethod
+            def apply_default_settings():
+                """
+                Resets settings values and processes images.
+                Calls set_auto_scale_factor(), set_defaults(), process_matte(), and
+                show_info_message().
+                Called from keybinding, menu, and button commands.
+                """
+
+                # Order of calls is important here.
+                cmd_self.slider_values.clear()
+                cmd_self.set_auto_scale_factor()
+                cmd_self.set_defaults()
+                cmd_self.widget_control('off')  # is turned 'on' in process_matte()
+                cmd_self.process_matte()
+
+                _info = ('\nSettings have been reset to their defaults.\n'
+                         'Check and adjust them if needed, then...\n'
+                         'Select a "Run" button to finalize updating the\n'
+                         'report and image results.\n')
+                cmd_self.show_info_message(info=_info, color='blue')
+
+            # These methods are called from the "Style" menu of add_menu_bar()
+            #  and as bindings from setup_main_window() or bind_annotation_styles().
+            @staticmethod
+            def increase_font_size() -> None:
+                """Limit upper font size scale to a 5x increase."""
+                cmd_self.font_scale *= 1.1
+                cmd_self.font_scale = round(min(cmd_self.font_scale, 5), 2)
+                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
+                _display_annotation_action('Font scale', f'{cmd_self.font_scale}')
+
+            @staticmethod
+            def decrease_font_size() -> None:
+                """Limit lower font size scale to a 1/5 decrease."""
+                cmd_self.font_scale *= 0.9
+                cmd_self.font_scale = round(max(cmd_self.font_scale, 0.20), 2)
+                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
+                _display_annotation_action('Font scale', f'{cmd_self.font_scale}')
+
+            @staticmethod
+            def increase_line_thickness() -> None:
+                """Limit upper thickness to 15."""
+                cmd_self.line_thickness += 1
+                cmd_self.line_thickness = min(cmd_self.line_thickness, 15)
+                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
+                _display_annotation_action('Line thickness', f'{cmd_self.line_thickness}')
+
+            @staticmethod
+            def decrease_line_thickness() -> None:
+                """Limit lower thickness to 1."""
+                cmd_self.line_thickness -= 1
+                cmd_self.line_thickness = max(cmd_self.line_thickness, 1)
+                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
+                _display_annotation_action('Line thickness', f'{cmd_self.line_thickness}')
+
+            @staticmethod
+            def next_font_color() -> None:
+                """Go to the next color key in const.COLORS_CV.keys."""
+                current_color: str = cmd_self.cbox_val['annotation_color'].get()
+                current_index = cv_colors.index(current_color)
+                # Need to stop increasing idx at the end of colors list.
+                if current_index == len(cv_colors) - 1:
+                    next_color = cv_colors[len(cv_colors) - 1]
+                else:
+                    next_color = cv_colors[current_index + 1]
+                cmd_self.cbox_val['annotation_color'].set(next_color)
+                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
+                _display_annotation_action('Font color', f'{next_color}')
+
+            @staticmethod
+            def preceding_font_color() -> None:
+                """Go to the prior color key in const.COLORS_CV.keys."""
+                current_color: str = cmd_self.cbox_val['annotation_color'].get()
+                current_index = cv_colors.index(current_color)
+                # Need to stop decreasing idx at the beginning of colors list.
+                if current_index == 0:
+                    current_index = 1
+                preceding_color = cv_colors[current_index - 1]
+                cmd_self.cbox_val['annotation_color'].set(preceding_color)
+                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
+                _display_annotation_action('Font color', f'{preceding_color}')
+
+        return _Command
+
+    def call_start(self, parent) -> None:
+        """
+        Call the suite of methods to get things going, then destroy the
+        start window.
+        Called from setup_start_window() as button and bind commands.
+
+        Args:
+            parent: The named toplevel window object, e.g., start_win
+        Returns: None.
+        """
+
+        # Use a spinning cursor to indicate that something is happening
+        #  because larger images may take a while to process and show.
+        self.start_process_btn_txt.set('Processing started, wait...')
+        parent.config(cursor='watch')
+        self.start_now()
+        parent.destroy()
+
+    def start_now(self) -> None:
+        """
+        Initiate the processing pipeline by setting up and configuring
+        all settings widgets.
+        Called from setup_start_window() with the "Process now...".
+        Returns:
+            None
+        """
+
+        # This calling sequence produces a slight delay (longer for larger files)
+        #  before anything is displayed, but ensures that everything displays
+        #  nearly simultaneously for a visually cleaner start.
+        self.setup_image_windows()
+        self.configure_main_window()
+        self.configure_buttons()
+        self.config_sliders()
+        self.config_comboboxes()
+        self.config_entries()
+        self.bind_annotation_styles()
+        self.bind_scale_adjustment()
+        if not self.use_saved_settings:
+            self.set_defaults()
+            # else, are using settings imported at initial open_input().
+        self.grid_widgets()
+        self.grid_img_labels()
+        self.set_size_standard()
+
+        # Run processing for the starting image prior to displaying images.
+        # Call process_matte(), and display_windows(), in this sequence, for
+        #  best performance. process_matte() is inherited from ViewImage().
+        self.process_matte()
+        self.display_windows()
+        self.first_run = False
+
     def setup_main_window(self):
         """
         For clarity, remove from view the Tk mainloop window created
@@ -1179,125 +1456,11 @@ class SetupApp(ViewImage):
 
         c_key = 'Command' if const.MY_OS == 'dar' else 'Control'  # is 'lin' or 'win'.
         self.bind(f'<{f"{c_key}"}-m>', func=lambda _: self.process_matte())
-        self.bind(f'<{f"{c_key}"}-s>', func=lambda _: self.save_results())
-        self.bind(f'<{f"{c_key}"}-n>', func=lambda _: self.new_input())
-        self.bind(f'<{f"{c_key}"}-d>', func=lambda _: self.apply_default_settings())
+        self.bind(f'<{f"{c_key}"}-s>', func=lambda _: self.call_cmd().save_results())
+        self.bind(f'<{f"{c_key}"}-n>', func=lambda _: self.call_cmd().new_input())
+        self.bind(f'<{f"{c_key}"}-d>', func=lambda _: self.call_cmd().apply_default_settings())
 
         self.add_menu_bar(self)
-
-    def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
-        """
-        Provides an open file dialog to select an initial or new input
-        image file. Also sets a scale slider value for the displayed img.
-        Called from setup_start_window() or "New input" button.
-        Args:
-            parent: The window or mainloop Class over which to place the
-                file dialog, e.g., start_win or self.
-
-        Returns:
-            True or False depending on whether input was selected.
-
-        """
-        self.input_file_path = filedialog.askopenfilename(
-            parent=parent,
-            title='Select input image',
-            filetypes=[('JPG', '*.jpg'),
-                       ('JPG', '*.jpeg'),
-                       ('JPG', '*.JPG'),  # used for iPhone images
-                       ('PNG', '*.png'),
-                       ('TIFF', '*.tiff'),
-                       ('TIFF', '*.tif'),
-                       ('All', '*.*')],
-        )
-
-        # When user selects an input, check whether it can be used by OpenCV.
-        # If so, open it, and proceed. If user selects "Cancel" instead of
-        #  selecting a file, then quit if at the start window, otherwise
-        #  simply close the filedialog (default action) because this was
-        #  called from the "New input" button in the mainloop (self) window.
-        # Need to call quit_gui() without confirmation b/c a confirmation
-        #  dialog answer of "No" throws an error during file input.
-
-        try:
-            if self.input_file_path:
-                self.cvimg['input'] = cv2.imread(self.input_file_path)
-                self.input_ht = cv2.cvtColor(src=self.cvimg['input'],
-                                             code=cv2.COLOR_RGBA2GRAY).shape[0]
-                self.input_w = cv2.cvtColor(src=self.cvimg['input'],
-                                            code=cv2.COLOR_RGBA2GRAY).shape[1]
-                self.input_file_name = Path(self.input_file_path).name
-                self.input_folder_path = str(Path(self.input_file_path).parent)
-                self.input_folder_name = str(Path(self.input_file_path).parts[-2])
-                self.settings_file_path = Path(self.input_folder_path, const.CS_SETTINGS_FILE_NAME)
-            elif parent != self:
-                utils.quit_gui(mainloop=self, confirm=False)
-            else:  # no input and parent is self (app).
-                return False
-        except cv2.error as cverr:
-            msg = f'File: {self.input_file_name} cannot be used.'
-            if self.first_run:
-                print(f'{msg} Exiting with error:\n{cverr}')
-                messagebox.showerror(
-                    title="Bad input file",
-                    message=msg + '\nRestart and try a different file.\nQuitting...')
-                utils.quit_gui(mainloop=self, confirm=False)
-            else:
-                messagebox.showerror(
-                    title="Bad input file",
-                    message=msg + '\nUse "New input" to try another file.')
-                return False
-
-        # Auto-set images' scale factor based on input image size.
-        #  Can be later reset with keybindings in bind_scale_adjustment().
-        #  circle_r_slider ranges are a function of input image size.
-        self.metrics = manage.input_metrics(img=self.cvimg['input'])
-        self.line_thickness = self.metrics['line_thickness']
-        self.font_scale = self.metrics['font_scale']
-        self.set_auto_scale_factor()
-        self.configure_circle_r_sliders()
-        return True
-
-    def check_for_saved_settings(self) -> None:
-        """
-        Following image file import, need to check whether user wants to
-        use saved settings. The JSON settings file is expected to be in
-        the input image's folder. Calls import_settings().
-        """
-        if self.settings_file_path.exists():
-            if self.first_run:
-                choice = ('Yes, from JSON file in\n'
-                          f'   folder: {self.input_folder_name}.\n'
-                          'No, use default settings.')
-            else:
-                choice = ('Yes, from JSON file in\n'
-                          f'   folder: {self.input_folder_name}.\n'
-                          'No, use current settings.')
-
-            self.use_saved_settings = messagebox.askyesno(
-                title=f"Use saved settings?",
-                detail=choice)
-
-        if self.use_saved_settings:
-            self.import_settings()
-
-    def call_start(self, parent) -> None:
-        """
-        Call the suite of methods to get things going, then destroy the
-        start window.
-        Called from setup_start_window() as button and bind commands.
-
-        Args:
-            parent: The named toplevel window object, e.g., start_win
-        Returns: None.
-        """
-
-        if isinstance(parent, tk.Toplevel):  # is start window
-            # Use a spinning cursor to indicate that something is happening
-            #  because larger images may take a while to process and show.
-            self.start_process_btn_txt.set('Processing started, wait...')
-            parent.config(cursor='watch')
-            self.start_now()
-            parent.destroy()
 
     def setup_start_window(self) -> None:
         """
@@ -1415,6 +1578,66 @@ class SetupApp(ViewImage):
         color_label.config(state=tk.NORMAL)
         matte_label.config(state=tk.NORMAL)
 
+    def configure_main_window(self) -> None:
+        """
+        Settings and report window (mainloop, self) keybindings,
+        configurations, and grids for contour settings and reporting frames.
+
+        Returns:
+            None
+        """
+
+        # Color-in the main (self) window and give it a yellow border;
+        #  border highlightcolor changes to grey with loss of focus.
+        self.config(**const.WINDOW_PARAMETERS)
+
+        # Default Frame() arguments work fine to display report text.
+        # bg won't show when grid sticky EW for tk.Text; see utils.display_report().
+        self.selectors_frame.configure(relief='raised',
+                                       bg=const.DARK_BG,
+                                       # bg=const.COLORS_TK['sky blue'],  # for development
+                                       borderwidth=5)
+
+        # Allow Frames and widgets to resize with main window.
+        #  Row 1 is the report, row2 selectors, rows 2,3,4 are for Buttons().
+        self.rowconfigure(index=0, weight=1)
+        self.rowconfigure(index=1, weight=1)
+
+        # Keep the report scrollbar active in the resized frame.
+        self.report_frame.rowconfigure(index=0, weight=1)
+
+        # Expect there to be 20 rows in the selectors Frame.
+        for i in range(21):
+            self.selectors_frame.rowconfigure(index=i, weight=1)
+
+        self.columnconfigure(index=0, weight=1)
+        self.columnconfigure(index=1, weight=1)
+        self.report_frame.columnconfigure(index=0, weight=1)
+
+        # Allow only sliders, not labels, to expand with window.
+        self.selectors_frame.columnconfigure(index=1, weight=1)
+
+        self.report_frame.grid(column=0, row=0,
+                               columnspan=2,
+                               padx=(5, 5), pady=(5, 5),
+                               sticky=tk.EW)
+        self.selectors_frame.grid(column=0, row=1,
+                                  columnspan=2,
+                                  padx=5, pady=(0, 5),
+                                  ipadx=4, ipady=4,
+                                  sticky=tk.EW)
+
+        # Width should fit any text expected without causing WINDOW shifting.
+        self.info_label.config(font=const.WIDGET_FONT,
+                               width=50,  # width should fit any text expected without
+                               justify='right',
+                               bg=const.MASTER_BG,  # use 'pink' for development
+                               fg='black')
+
+        # Note: the main window (mainloop, self, app) is deiconified in
+        #  display_windows() after all image windows so that, at startup,
+        #  it stacks on top.
+
     def add_menu_bar(self, parent: Union[tk.Toplevel, 'SetupApp']) -> None:
         """
         Create menu instance and add pull-down menus.
@@ -1446,24 +1669,47 @@ class SetupApp(ViewImage):
                              accelerator='Return')  # macOS doesn't recognize 'Enter'
 
         elif isinstance(parent, SetupApp):
-            # Accelerators use key binds from setup_main_window().
+            # Accelerators use key binds from setup_main_window() and
+            #   bind_annotation_styles().
             file.add_command(label='Process matte segments',
                              command=self.process_matte,
                              accelerator=f'{os_accelerator}+M')
             file.add_command(label='Save results',
-                             command=self.save_results,
+                             command=self.call_cmd().save_results,
                              accelerator=f'{os_accelerator}+S')
             file.add_command(label='Export objects individually...',
-                             command=self.export_objects)
+                             command=self.call_cmd().export_objects)
             file.add_command(label='New input...',
-                             command=self.new_input,
+                             command=self.call_cmd().new_input,
                              accelerator=f'{os_accelerator}+N')
             file.add_command(label='Export current settings',
-                             command=self.export_settings)
+                             command=self.call_cmd().export_settings)
             file.add_command(label='Apply default settings',
-                             command=self.apply_default_settings,
+                             command=self.call_cmd().apply_default_settings,
                              accelerator=f'{os_accelerator}+D')
 
+            style = tk.Menu(master=self.master, tearoff=0)
+            menubar.add_cascade(label="Annotation styles", menu=style)
+            style.add_command(label='Increase font size',
+                              command=self.call_cmd().increase_font_size,
+                              accelerator=f'{os_accelerator}+(plus)')
+            style.add_command(label='Decrease font size',
+                              command=self.call_cmd().decrease_font_size,
+                              accelerator=f'{os_accelerator}+(minus)')
+            style.add_command(label='Increase line thickness',
+                              command=self.call_cmd().increase_line_thickness,
+                              accelerator=f'Shift+{os_accelerator}+(plus)')
+            style.add_command(label='Decrease line thickness',
+                              command=self.call_cmd().decrease_line_thickness,
+                              accelerator=f'Shift+{os_accelerator}+(minus)')
+            style.add_command(label='Next color',
+                              command=self.call_cmd().next_font_color,
+                              accelerator=f'{os_accelerator}+↑')
+            style.add_command(label='Prior color',
+                              command=self.call_cmd().preceding_font_color,
+                              accelerator=f'{os_accelerator}+↓')
+
+        file.add(tk.SEPARATOR)
         file.add_command(label='Quit',
                          command=lambda: utils.quit_gui(self),
                          # macOS doesn't recognize 'Command+Q' as an accelerator
@@ -1476,8 +1722,8 @@ class SetupApp(ViewImage):
         help_menu.add_cascade(label='Tips...', menu=tips)
 
         # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
-        tips.add_command(label='• Images are automatically scaled to fit on')
-        tips.add_command(label='     the screen. Scaling can be changed later')
+        tips.add_command(label='• Images are automatically scaled to fit all')
+        tips.add_command(label='     windows on the screen. Adjust scaling with')
         tips.add_command(label=f'     {tip_scaling_text}')
         tips.add_command(label='• Use a lighter font color with darker objects.')
         tips.add_command(label='• Font and line color can be changed with')
@@ -1495,39 +1741,100 @@ class SetupApp(ViewImage):
         help_menu.add_command(label='About',
                               command=lambda: utils.about_win(parent=parent))
 
-    def start_now(self) -> None:
+    def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
         """
-        Initiate the processing pipeline by setting up and configuring
-        all settings widgets.
-        Called from setup_start_window() with the "Process now...".
+        Provides an open file dialog to select an initial or new input
+        image file. Also sets a scale slider value for the displayed img.
+        Called from setup_start_window() or "New input" button.
+        Args:
+            parent: The window or mainloop Class over which to place the
+                file dialog, e.g., start_win or self.
+
         Returns:
-            None
+            True or False depending on whether input was selected.
+
         """
+        self.input_file_path = filedialog.askopenfilename(
+            parent=parent,
+            title='Select input image',
+            filetypes=[('JPG', '*.jpg'),
+                       ('JPG', '*.jpeg'),
+                       ('JPG', '*.JPG'),  # used for iPhone images
+                       ('PNG', '*.png'),
+                       ('TIFF', '*.tiff'),
+                       ('TIFF', '*.tif'),
+                       ('All', '*.*')],
+        )
 
-        # This calling sequence produces a slight delay (longer for larger files)
-        #  before anything is displayed, but ensures that everything displays
-        #  nearly simultaneously for a visually cleaner start.
-        self.setup_image_windows()
-        self.configure_main_window()
-        self.configure_buttons()
-        self.config_sliders()
-        self.config_comboboxes()
-        self.config_entries()
-        self.bind_annotation_styles()
-        self.bind_scale_adjustment()
-        if not self.use_saved_settings:
-            self.set_defaults()
-            # else, are using settings imported at initial open_input().
-        self.grid_widgets()
-        self.grid_img_labels()
-        self.set_size_standard()
+        # When user selects an input, check whether it can be used by OpenCV.
+        # If so, open it, and proceed. If user selects "Cancel" instead of
+        #  selecting a file, then quit if at the start window, otherwise
+        #  simply close the filedialog (default action) because this was
+        #  called from the "New input" button in the mainloop (self) window.
+        # Need to call quit_gui() without confirmation b/c a confirmation
+        #  dialog answer of "No" throws an error during file input.
 
-        # Run processing for the starting image prior to displaying images.
-        # Call process_matte(), and display_windows(), in this sequence, for
-        #  best performance. process_matte() is inherited from ViewImage().
-        self.process_matte()
-        self.display_windows()
-        self.first_run = False
+        try:
+            if self.input_file_path:
+                self.cvimg['input'] = cv2.imread(self.input_file_path)
+                self.input_ht = cv2.cvtColor(src=self.cvimg['input'],
+                                             code=cv2.COLOR_RGBA2GRAY).shape[0]
+                self.input_w = cv2.cvtColor(src=self.cvimg['input'],
+                                            code=cv2.COLOR_RGBA2GRAY).shape[1]
+                self.input_file_name = Path(self.input_file_path).name
+                self.input_folder_path = str(Path(self.input_file_path).parent)
+                self.input_folder_name = str(Path(self.input_file_path).parts[-2])
+                self.settings_file_path = Path(self.input_folder_path, const.CS_SETTINGS_FILE_NAME)
+            elif parent != self:
+                utils.quit_gui(mainloop=self, confirm=False)
+            else:  # no input and parent is self (app).
+                return False
+        except cv2.error as cverr:
+            msg = f'File: {self.input_file_name} cannot be used.'
+            if self.first_run:
+                print(f'{msg} Exiting with error:\n{cverr}')
+                messagebox.showerror(
+                    title="Bad input file",
+                    message=msg + '\nRestart and try a different file.\nQuitting...')
+                utils.quit_gui(mainloop=self, confirm=False)
+            else:
+                messagebox.showerror(
+                    title="Bad input file",
+                    message=msg + '\nUse "New input" to try another file.')
+                return False
+
+        # Auto-set images' scale factor based on input image size.
+        #  Can be later reset with keybindings in bind_scale_adjustment().
+        #  circle_r_slider ranges are a function of input image size.
+        self.metrics = manage.input_metrics(img=self.cvimg['input'])
+        self.line_thickness = self.metrics['line_thickness']
+        self.font_scale = self.metrics['font_scale']
+        self.set_auto_scale_factor()
+        self.configure_circle_r_sliders()
+        return True
+
+    def check_for_saved_settings(self) -> None:
+        """
+        Following image file import, need to check whether user wants to
+        use saved settings. The JSON settings file is expected to be in
+        the input image's folder. Calls import_settings().
+        """
+        if self.settings_file_path.exists():
+            if self.first_run:
+                choice = ('Yes, from JSON file in\n'
+                          f'   folder: {self.input_folder_name}.\n'
+                          'No, use default settings.')
+            else:
+                choice = ('Yes, from JSON file in\n'
+                          f'   folder: {self.input_folder_name}.\n'
+                          'No, use current settings.')
+
+            self.use_saved_settings = messagebox.askyesno(
+                title="Use saved settings?",
+                detail=choice)
+
+        if self.use_saved_settings:
+            self.import_settings()
 
     def _delete_window_message(self) -> None:
         """
@@ -1615,155 +1922,50 @@ class SetupApp(ViewImage):
             _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(self))
             _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
 
-    def configure_main_window(self) -> None:
-        """
-        Settings and report window (mainloop, self) keybindings,
-        configurations, and grids for contour settings and reporting frames.
-
-        Returns:
-            None
-        """
-
-        # Color-in the main (self) window and give it a yellow border;
-        #  border highlightcolor changes to grey with loss of focus.
-        self.config(**const.WINDOW_PARAMETERS)
-
-        # Default Frame() arguments work fine to display report text.
-        # bg won't show when grid sticky EW for tk.Text; see utils.display_report().
-        self.selectors_frame.configure(relief='raised',
-                                       bg=const.DARK_BG,
-                                       # bg=const.COLORS_TK['sky blue'],  # for development
-                                       borderwidth=5)
-
-        # Allow Frames and widgets to resize with main window.
-        #  Row 1 is the report, row2 selectors, rows 2,3,4 are for Buttons().
-        self.rowconfigure(index=0, weight=1)
-        self.rowconfigure(index=1, weight=1)
-
-        # Keep the report scrollbar active in the resized frame.
-        self.report_frame.rowconfigure(index=0, weight=1)
-
-        # Expect there to be 20 rows in the selectors Frame.
-        for i in range(21):
-            self.selectors_frame.rowconfigure(index=i, weight=1)
-
-        self.columnconfigure(index=0, weight=1)
-        self.columnconfigure(index=1, weight=1)
-        self.report_frame.columnconfigure(index=0, weight=1)
-
-        # Allow only sliders, not labels, to expand with window.
-        self.selectors_frame.columnconfigure(index=1, weight=1)
-
-        self.report_frame.grid(column=0, row=0,
-                               columnspan=2,
-                               padx=(5, 5), pady=(5, 5),
-                               sticky=tk.EW)
-        self.selectors_frame.grid(column=0, row=1,
-                                  columnspan=2,
-                                  padx=5, pady=(0, 5),
-                                  ipadx=4, ipady=4,
-                                  sticky=tk.EW)
-
-        # Width should fit any text expected without causing WINDOW shifting.
-        self.info_label.config(font=const.WIDGET_FONT,
-                               width=50,  # width should fit any text expected without
-                               justify='right',
-                               bg=const.MASTER_BG,  # use 'pink' for development
-                               fg='black')
-
-        # Note: the main window (mainloop, self, app) is deiconified in
-        #  display_windows() after all image windows so that, at startup,
-        #  it stacks on top.
-
     def bind_annotation_styles(self) -> None:
         """
         Set key bindings to change font size, color, and line thickness
         of annotations in the 'sized' cv2 image.
         Called at startup.
+        Calls methods from the inner _Command class of self.call_cmd().
 
         Returns: None
         """
-
-        def _display_annotation_action(action: str, value: str):
-            _info = (f'\n\nA new annotation style was applied.\n'
-                     f'{action} was changed to {value}.\n\n')
-            self.show_info_message(info=_info, color='black')
-
-        def _increase_font_size() -> None:
-            """Limit upper font size scale to a 5x increase."""
-            self.font_scale *= 1.1
-            self.font_scale = round(min(self.font_scale, 5), 2)
-            self.select_and_size_objects(contour_pointset=self.matte_contours)
-            _display_annotation_action('Font scale', f'{self.font_scale}')
-
-        def _decrease_font_size() -> None:
-            """Limit lower font size scale to a 1/5 decrease."""
-            self.font_scale *= 0.9
-            self.font_scale = round(max(self.font_scale, 0.20), 2)
-            self.select_and_size_objects(contour_pointset=self.matte_contours)
-            _display_annotation_action('Font scale', f'{self.font_scale}')
-
-        def _increase_line_thickness() -> None:
-            """Limit upper thickness to 15."""
-            self.line_thickness += 1
-            self.line_thickness = min(self.line_thickness, 15)
-            self.select_and_size_objects(contour_pointset=self.matte_contours)
-            _display_annotation_action('Line thickness', f'{self.line_thickness}')
-
-        def _decrease_line_thickness() -> None:
-            """Limit lower thickness to 1."""
-            self.line_thickness -= 1
-            self.line_thickness = max(self.line_thickness, 1)
-            self.select_and_size_objects(contour_pointset=self.matte_contours)
-            _display_annotation_action('Line thickness', f'{self.line_thickness}')
-
-        colors = list(const.COLORS_CV.keys())
-
-        def _next_font_color() -> None:
-            current_color: str = self.cbox_val['annotation_color'].get()
-            current_index = colors.index(current_color)
-            # Need to stop increasing idx at the end of colors list.
-            if current_index == len(colors) - 1:
-                next_color = colors[len(colors) - 1]
-            else:
-                next_color = colors[current_index + 1]
-            self.cbox_val['annotation_color'].set(next_color)
-            self.select_and_size_objects(contour_pointset=self.matte_contours)
-            _display_annotation_action('Font color', f'{next_color}')
-
-        def _preceding_font_color() -> None:
-            current_color: str = self.cbox_val['annotation_color'].get()
-            current_index = colors.index(current_color)
-            # Need to stop decreasing idx at the beginning of colors list.
-            if current_index == 0:
-                current_index = 1
-            preceding_color = colors[current_index - 1]
-            self.cbox_val['annotation_color'].set(preceding_color)
-            self.select_and_size_objects(contour_pointset=self.matte_contours)
-            _display_annotation_action('Font color', f'{preceding_color}')
 
         # Bindings are needed only for the settings and sized img windows,
         #  but is simpler to use bind_all() which does not depend on widget focus.
         # NOTE: On Windows, KP_* is not a recognized keysym string; works on Linux.
         #  Windows keysyms 'plus' & 'minus' are for both keyboard and keypad.
-        self.bind_all('<Control-equal>', lambda _: _increase_font_size())
-        self.bind_all('<Control-minus>', lambda _: _decrease_font_size())
-        self.bind_all('<Control-KP_Subtract>', lambda _: _decrease_font_size())
+        self.bind_all('<Control-equal>',
+                      lambda _: self.call_cmd().increase_font_size())
+        self.bind_all('<Control-minus>',
+                      lambda _: self.call_cmd().decrease_font_size())
+        self.bind_all('<Control-KP_Subtract>',
+                      lambda _: self.call_cmd().decrease_font_size())
 
-        self.bind_all('<Shift-Control-plus>', lambda _: _increase_line_thickness())
-        self.bind_all('<Shift-Control-KP_Add>', lambda _: _increase_line_thickness())
-        self.bind_all('<Shift-Control-underscore>', lambda _: _decrease_line_thickness())
+        self.bind_all('<Shift-Control-plus>',
+                      lambda _: self.call_cmd().increase_line_thickness())
+        self.bind_all('<Shift-Control-KP_Add>',
+                      lambda _: self.call_cmd().increase_line_thickness())
+        self.bind_all('<Shift-Control-underscore>',
+                      lambda _: self.call_cmd().decrease_line_thickness())
 
-        self.bind_all('<Control-Up>', lambda _: _next_font_color())
-        self.bind_all('<Control-Down>', lambda _: _preceding_font_color())
+        self.bind_all('<Control-Up>',
+                      lambda _: self.call_cmd().next_font_color())
+        self.bind_all('<Control-Down>',
+                      lambda _: self.call_cmd().preceding_font_color())
 
         # Need platform-specific keypad keysym.
         if const.MY_OS == 'win':
-            self.bind_all('<Control-plus>', lambda _: _increase_font_size())
-            self.bind_all('<Shift-Control-minus>', lambda _: _decrease_line_thickness())
+            self.bind_all('<Control-plus>',
+                          lambda _: self.call_cmd().increase_font_size())
+            self.bind_all('<Shift-Control-minus>',
+                          lambda _: self.call_cmd().decrease_line_thickness())
         else:
-            self.bind_all('<Control-KP_Add>', lambda _: _increase_font_size())
-            self.bind_all('<Shift-Control-KP_Subtract>', lambda _: _decrease_line_thickness())
+            self.bind_all('<Control-KP_Add>',
+                          lambda _: self.call_cmd().increase_font_size())
+            self.bind_all('<Shift-Control-KP_Subtract>',
+                          lambda _: self.call_cmd().decrease_line_thickness())
 
     def bind_scale_adjustment(self) -> None:
         """
@@ -1808,101 +2010,6 @@ class SetupApp(ViewImage):
         self.bind_all('<Control-Right>', lambda _: _increase_scale_factor())
         self.bind_all('<Control-Left>', lambda _: _decrease_scale_factor())
 
-    def save_results(self):
-        """
-        Save annotated sized image and its Report text with
-        individual object sizes appended.
-        Calls utils.save_report_and_img(), show_info_message().
-        Called from keybinding, menu, and button commands.
-        """
-        _sizes = ', '.join(str(i) for i in self.sorted_size_list)
-        utils.save_report_and_img(
-            path2input=self.input_file_path,
-            img2save=self.cvimg['sized'],
-            txt2save=self.report_txt + f'\n{_sizes}',
-            caller=utils.program_name(),
-        )
-
-        _info = ('\n\nSettings report and result image were saved to\n'
-                 f'the input image folder: {self.input_folder_name}\n\n')
-        self.show_info_message(info=_info, color='blue')
-
-    def new_input(self):
-        """
-        Reads a new image file for preprocessing.
-        Calls open_input(), show_info_message().
-        Called from keybinding, menu, and button commands.
-
-        Returns: None
-        """
-        if self.open_input(parent=self):
-            self.check_for_saved_settings()
-            self.update_image(tkimg_name='input',
-                              cvimg_array=self.cvimg['input'])
-        else:  # User canceled input selection or closed messagebox window.
-            _info = '\n\nNo new input file was selected.\n\n\n'
-            self.show_info_message(info=_info, color='vermilion')
-            self.delay_size_std_info_msg()
-
-            return
-
-        self.process_matte()
-
-    def export_settings(self):
-        """
-        Saves a dictionary of current settings a JSON file.
-        Calls utils.export_settings_to_json(), show_info_message().
-        Called from menu and button commands.
-        """
-
-        settings_dict = {
-            'noise_iter': self.slider_val['noise_iter'].get(),
-            'morph_op': self.cbox_val['morph_op'].get(),
-            'morph_shape': self.cbox_val['morph_shape'].get(),
-            'circle_r_min': self.slider_val['circle_r_min'].get(),
-            'circle_r_max': self.slider_val['circle_r_max'].get(),
-            'noise_k': self.slider_val['noise_k'].get(),
-            'size_std': self.cbox_val['size_std'].get(),
-            # 'scale': self.scale_factor.get(),
-            'px_val': self.size_std['px_val'].get(),
-            'custom_val': self.size_std['custom_val'].get(),
-            'annotation_color': self.cbox_val['annotation_color'].get(),
-            'font_scale': self.font_scale,
-            'line_thickness': self.line_thickness,
-            'matte_color': self.cbox_val['matte_color'].get(),
-        }
-
-        utils.export_settings_to_json(
-            path2folder=self.input_folder_path,
-            settings2save=settings_dict,
-            called_by_cs=True)
-
-        _info = ('\nSettings have been exported to folder:\n'
-                 f'{self.input_folder_name}\n'
-                 'and are available to use with "New input" or at\n'
-                 'startup. Previous settings file was overwritten.\n')
-        self.show_info_message(info=_info, color='blue')
-
-    def export_objects(self):
-        """
-        Provides messagebox confirmation to export each selected object.
-        Calls select_and_export_objects(), show_info_message().
-        Called from menu and button commands.
-        """
-        export_segment = messagebox.askokcancel(
-            title="Export all selected objects?",
-            detail=f'OK: Write {self.num_obj_selected} image files to\n'
-                   f'     input folder: {self.input_folder_name}.\n'
-                   'Cancel: Export nothing and return.')
-
-        if export_segment:
-            self.select_and_export_objects(self.matte_contours)
-
-            _info = (f'\n{self.num_obj_selected} selected objects were individually\n'
-                     f' exported to the input image folder:\n'
-                     f'{self.input_folder_name}\n\n')
-            self.show_info_message(info=_info, color='blue')
-
     def configure_buttons(self) -> None:
         """
         Assign and grid Buttons in the settings (mainloop, self) window.
@@ -1928,27 +2035,27 @@ class SetupApp(ViewImage):
 
         self.button['save_results'].config(
             text='Save results',
-            command=self.save_results,
+            command=self.call_cmd().save_results,
             **button_params)
 
         self.button['export_settings'].config(
             text='Export settings',
-            command=self.export_settings,
+            command=self.call_cmd().export_settings,
             **button_params)
 
         self.button['new_input'].config(
             text='New input',
-            command=self.new_input,
+            command=self.call_cmd().new_input,
             **button_params)
 
         self.button['export_objects'].config(
             text='Export objects',
-            command=self.export_objects,
+            command=self.call_cmd().export_objects,
             **button_params)
 
         self.button['reset'].config(
             text='Reset',
-            command=self.apply_default_settings,
+            command=self.call_cmd().apply_default_settings,
             **button_params)
 
     def config_sliders(self) -> None:
@@ -1978,6 +2085,7 @@ class SetupApp(ViewImage):
                                              **const.LABEL_PARAMETERS)
         self.slider['noise_k'].configure(from_=1, to=51,
                                          tickinterval=5,
+                                         length=scale_len,
                                          variable=self.slider_val['noise_k'],
                                          **const.SCALE_PARAMETERS)
 
@@ -2091,29 +2199,6 @@ class SetupApp(ViewImage):
             if isinstance(_w, tk.Entry):
                 _w.bind('<Return>', lambda _, n=_name: self.process_sizes(caller=n))
                 _w.bind('<KP_Enter>', lambda _, n=_name: self.process_sizes(caller=n))
-
-    def apply_default_settings(self):
-        """
-        Resets settings values and processes images.
-        Calls set_auto_scale_factor(), set_defaults(), process_matte(), and
-        show_info_message().
-        Called from keybinding, menu, and button commands.
-        """
-
-        # Order of calls is important here.
-        self.slider_values.clear()
-        # self.metrics = manage.input_metrics(img=self.cvimg['input'])
-        self.set_auto_scale_factor()
-        # self.configure_circle_r_sliders()
-        self.set_defaults()
-        self.widget_control('off')  # is turned 'on' in process_matte()
-        self.process_matte()
-
-        _info = ('\nSettings have been reset to their defaults.\n'
-                 'Check and adjust them if needed, then...\n'
-                 'Select a "Run" button to finalize updating the\n'
-                 'report and image results.\n')
-        self.show_info_message(info=_info, color='blue')
 
     def set_color_defaults(self):
         """
