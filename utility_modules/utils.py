@@ -236,7 +236,7 @@ def save_report_and_img(path2input: str,
 
 
 def export_segments(path2folder: str,
-                    img2exp: np.ndarray,
+                    img2exp: Union[np.ndarray, cv2.UMat],
                     index: int,
                     timestamp: str) -> None:
     """
@@ -247,8 +247,8 @@ def export_segments(path2folder: str,
 
     Args:
         path2folder: The input image file path, as string.
-        img2exp: An np.ndarray slice of a segmented (contoured) object,
-                 from the input image, to be exported to file.
+        img2exp: Either a np.ndarray or binary UMat slice of a segmented
+            (contoured) object, from the input image, to export to file.
         index: The segmented contour index number.
         timestamp: The starting time of the calling method.
 
