@@ -1057,27 +1057,24 @@ class SetupApp(ViewImage):
     """
     The mainloop Class that configures windows and widgets.
     Methods:
+    call_cmd
+    call_start
+    start_now
     setup_main_window
+    setup_start_window
+    configure_main_window
+    add_menu_bar
     open_input
     check_for_saved_settings
-    call_start
-    setup_start_window
-    add_menu_bar
-    start_now
     _delete_window_message
     setup_image_windows
-    configure_main_window
-    save_results
-    new_input
-    apply_default_settings
-    export_settings
-    export_objects
+    bind_annotation_styles
+    bind_scale_adjustment
+    bind_saving_images
     configure_buttons
     config_sliders
     config_comboboxes
     config_entries
-    bind_annotation_styles
-    bind_scale_adjustment
     set_color_defaults
     set_defaults
     grid_widgets
@@ -1093,6 +1090,7 @@ class SetupApp(ViewImage):
         self.tkimg_window: dict = {}
         self.window_title: dict = {}
 
+        # Used only in the start window.
         self.start_process_btn_txt = tk.StringVar()
 
     def call_cmd(self):
@@ -1102,8 +1100,9 @@ class SetupApp(ViewImage):
         Called from setup_main_window(), add_menu_bar(),
         bind_annotation_styles(), bind_scale_adjustment(),
         configure_buttons().
+        Usage example: self.call_cmd().save_results()
 
-        Returns: Access to methods in the _Command inner class.
+        Returns: Callable methods in the _Command inner class.
         """
 
         # Inner class concept adapted from:
@@ -1132,22 +1131,26 @@ class SetupApp(ViewImage):
 
         class _Command:
             """
-            Gives the following methods access to all module methods and
-            instance variables:
-            save_results()
-            new_input()
-            export_settings()
-            export_objects()
-            increase_font_size()
-            decrease_font_size()
-            increase_line_thickness()
-            decrease_line_thickness()
-            next_font_color()
-            preceding_font_color()
+            Gives command-based methods access to all module methods and
+            instance variables.
+            Methods:
+                save_results
+                new_input
+                export_settings
+                export_objects
+                increase_font_size
+                decrease_font_size
+                increase_line_thickness
+                decrease_line_thickness
+                next_font_color
+                preceding_font_color
+                increase_scale_factor
+                decrease_scale_factor
+                apply_default_settings
             """
 
             # These methods are called from configure_buttons() and the
-            # "file" menubar of add_menu_bar().
+            # "File" menubar of add_menu_bar().
             @staticmethod
             def save_results():
                 """
@@ -1247,28 +1250,6 @@ class SetupApp(ViewImage):
                              f'{cmd_self.input_folder_name}\n\n')
                     cmd_self.show_info_message(info=_info, color='blue')
 
-            @staticmethod
-            def apply_default_settings():
-                """
-                Resets settings values and processes images.
-                Calls set_auto_scale_factor(), set_defaults(), process_matte(), and
-                show_info_message().
-                Called from keybinding, menu, and button commands.
-                """
-
-                # Order of calls is important here.
-                cmd_self.slider_values.clear()
-                cmd_self.set_auto_scale_factor()
-                cmd_self.set_defaults()
-                cmd_self.widget_control('off')  # is turned 'on' in process_matte()
-                cmd_self.process_matte()
-
-                _info = ('\nSettings have been reset to their defaults.\n'
-                         'Check and adjust them if needed, then...\n'
-                         'Select a "Run" button to finalize updating the\n'
-                         'report and image results.\n')
-                cmd_self.show_info_message(info=_info, color='blue')
-
             # These methods are called from the "Style" menu of add_menu_bar()
             #  and as bindings from setup_main_window() or bind_annotation_styles().
             @staticmethod
@@ -1352,6 +1333,29 @@ class SetupApp(ViewImage):
                 self.scale_factor.set(scale_factor)
                 _apply_new_scale()
 
+            # This method is called from the "Help" menu of add_menu_bar()
+            #  and from configure_buttons() and setup_main_window().
+            @staticmethod
+            def apply_default_settings():
+                """
+                Resets settings values and processes images.
+                Calls set_auto_scale_factor(), set_defaults(), process_matte(), and
+                show_info_message().
+                Called from keybinding, menu, and button commands.
+                """
+
+                # Order of calls is important here.
+                cmd_self.slider_values.clear()
+                cmd_self.set_auto_scale_factor()
+                cmd_self.set_defaults()
+                cmd_self.widget_control('off')  # is turned 'on' in process_matte()
+                cmd_self.process_matte()
+
+                _info = ('\nSettings have been reset to their defaults.\n'
+                         'Check and adjust them if needed, then...\n'
+                         'Select a "Run" button to finalize updating the\n'
+                         'report and image results.\n')
+                cmd_self.show_info_message(info=_info, color='blue')
 
         return _Command
 
@@ -1550,10 +1554,13 @@ class SetupApp(ViewImage):
 
         # Take a break in configuring the window to grab the input.
         # For macOS: Need to have the filedialog be a child of
-        #   start_win and need update() here.
-        self.open_input(parent=start_win)
+        #   start_win as 'self'.
+        if const.MY_OS == 'dar':
+            self.open_input(parent=self)
+        else:  # is Linux or Windows
+            self.open_input(parent=start_win)
+
         self.check_for_saved_settings()
-        self.update()
 
         # Finally, give start window its active title,...
         start_win.title('Set start parameters')
