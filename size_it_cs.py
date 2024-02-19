@@ -1649,9 +1649,13 @@ class SetupApp(ViewImage):
         if const.MY_OS == 'dar':
             color_tip = 'shift-control-↑ & shift-control-↓'
             tip_scaling_text = 'with shift-control-← & shift-control-→.'
+            plus_key = '+'
+            minus_key = '-'
         else:
             color_tip = ' Ctrl-↑ & Ctrl-↓'
             tip_scaling_text = 'with Ctrl-← & Ctrl-→.'
+            plus_key = '(plus)'
+            minus_key = '(minus)'
 
         menubar = tk.Menu(master=parent)
         parent.config(menu=menubar)
@@ -1709,19 +1713,19 @@ class SetupApp(ViewImage):
             style.add_command(label='Increase font size',
                               font=const.MENU_FONT,
                               command=self.call_cmd().increase_font_size,
-                              accelerator=f'{os_accelerator}+(plus)')
+                              accelerator=f'{os_accelerator}+{plus_key}')
             style.add_command(label='Decrease font size',
                               font=const.MENU_FONT,
                               command=self.call_cmd().decrease_font_size,
-                              accelerator=f'{os_accelerator}+(minus)')
+                              accelerator=f'{os_accelerator}+{minus_key}')
             style.add_command(label='Increase line thickness',
                               font=const.MENU_FONT,
                               command=self.call_cmd().increase_line_thickness,
-                              accelerator=f'Shift+{os_accelerator}+(plus)')
+                              accelerator=f'Shift+{os_accelerator}+{plus_key}')
             style.add_command(label='Decrease line thickness',
                               font=const.MENU_FONT,
                               command=self.call_cmd().decrease_line_thickness,
-                              accelerator=f'Shift+{os_accelerator}+(minus)')
+                              accelerator=f'Shift+{os_accelerator}+{minus_key}')
             style.add_command(label='Next color',
                               font=const.MENU_FONT,
                               command=self.call_cmd().next_font_color,
