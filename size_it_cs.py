@@ -1650,21 +1650,32 @@ class SetupApp(ViewImage):
         parent.config(menu=menubar)
 
         file = tk.Menu(master=self.master, tearoff=0)
-        menubar.add_cascade(label=utils.program_name(), menu=file)
 
-        # Only need "Process now" and "Quit" commands for the start window menu.
+        # Only need "Process now", "Quit", and "About" commands for the
+        # start window menu, but need all commands for the main (settings) menu.
         if isinstance(parent, tk.Toplevel):
+            menubar.add_cascade(label=utils.program_name(), menu=file)
             file.add_command(label='Process now',
                              command=lambda: self.call_start(parent),
                              accelerator='Return')  # macOS doesn't recognize 'Enter'
+            file.add(tk.SEPARATOR)
+            file.add_command(label='Quit',
+                             command=lambda: utils.quit_gui(self),
+                             # macOS doesn't recognize 'Command+Q' as an accelerator
+                             #   b/c cannot override that system's native Command-Q,
+                             accelerator=f'{os_accelerator}+Q')
+
+            help_menu = tk.Menu(master=parent, tearoff=0)
+            menubar.add_cascade(label='Help', menu=help_menu)
+
+            help_menu.add_command(label='About',
+                                  command=lambda: utils.about_win(parent=parent))
 
         elif isinstance(parent, SetupApp):
             # Accelerators use key binds from setup_main_window() and
             #   bind_annotation_styles().
-            file.add_command(label='Process matte segments',
-                             font=const.MENU_FONT,
-                             command=self.process_matte,
-                             accelerator=f'{os_accelerator}+M')
+            menubar.add_cascade(label='File', menu=file)
+
             file.add_command(label='Save results',
                              font=const.MENU_FONT,
                              command=self.call_cmd().save_results,
@@ -1679,6 +1690,12 @@ class SetupApp(ViewImage):
             file.add_command(label='Export current settings',
                              font=const.MENU_FONT,
                              command=self.call_cmd().export_settings)
+            file.add(tk.SEPARATOR)
+            file.add_command(label='Quit',
+                             command=lambda: utils.quit_gui(self),
+                             # macOS doesn't recognize 'Command+Q' as an accelerator
+                             #   b/c cannot override that system's native Command-Q,
+                             accelerator=f'{os_accelerator}+Q')
 
             style = tk.Menu(master=self.master, tearoff=0)
             menubar.add_cascade(label="Annotation styles", menu=style)
@@ -1717,54 +1734,55 @@ class SetupApp(ViewImage):
                              font=const.MENU_FONT,
                              command=self.call_cmd().increase_scale_factor,
                              accelerator=f'{os_accelerator}+→')
+            # Note that 'Update "Color matte segments"' is needed to just
+            #  update the contour color and line thickness of segments image.
+            #  Everything else is already up-to-date, but still need to run
+            #  process_matte().
+            view.add_command(label='Update "Color matte segments"',
+                             font=const.MENU_FONT,
+                             command=self.process_matte,
+                             accelerator=f'{os_accelerator}+M')
 
-        file.add(tk.SEPARATOR)
-        file.add_command(label='Quit',
-                         command=lambda: utils.quit_gui(self),
-                         # macOS doesn't recognize 'Command+Q' as an accelerator
-                         #   b/c cannot override that system's native Command-Q,
-                         accelerator=f'{os_accelerator}+Q')
+            help_menu = tk.Menu(master=parent, tearoff=0)
+            tips = tk.Menu(master=parent, tearoff=0)
+            menubar.add_cascade(label='Help', menu=help_menu)
 
-        help_menu = tk.Menu(master=parent, tearoff=0)
-        tips = tk.Menu(master=parent, tearoff=0)
-        menubar.add_cascade(label='Help', menu=help_menu)
-        help_menu.add_cascade(label='Tips...', menu=tips)
-
-        # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
-        tips.add_command(label='• Images are automatically scaled to fit all',
-                         font=const.TIPS_FONT)
-        tips.add_command(label='     windows on the screen. Adjust zoom with',
-                         font=const.TIPS_FONT)
-        tips.add_command(label=f'     {tip_scaling_text}', font=const.TIPS_FONT)
-        tips.add_command(label='• Use a lighter font color with darker objects.',
-                         font=const.TIPS_FONT)
-        tips.add_command(label='• Font and line color can be changed with', font=const.TIPS_FONT)
-        tips.add_command(label=f'     {color_tip}.', font=const.TIPS_FONT)
-        tips.add_command(label='• Font size can be changed with', font=const.TIPS_FONT)
-        tips.add_command(label='     Ctrl-+(plus) & Ctrl--(minus).', font=const.TIPS_FONT)
-        tips.add_command(label='• Font and line thickness can be changed with',
-                         font=const.TIPS_FONT)
-        tips.add_command(label='     Shift-Ctrl-+(plus) & Shift-Ctrl--(minus).',
-                         font=const.TIPS_FONT)
-        tips.add_command(label='• Matte color can be changed in a main window pull-down.',
-                         font=const.TIPS_FONT)
-        tips.add_command(label='• Right-click to save an image at its display (scaled) size.',
-                         font=const.TIPS_FONT)
-        tips.add_command(label='     Shift-Right-click to save the image at full size.',
-                         font=const.TIPS_FONT)
-        tips.add_command(label="• More Tips are in the repository's README file.",
-                         font=const.TIPS_FONT)
-        tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.',
-                         font=const.TIPS_FONT)
-
-        if isinstance(parent, SetupApp):
             help_menu.add_command(label='Apply default settings',
                                   font=const.MENU_FONT,
                                   command=self.call_cmd().apply_default_settings,
                                   accelerator=f'{os_accelerator}+D')
 
-        help_menu.add_command(label='About',
-                              command=lambda: utils.about_win(parent=parent))
+            help_menu.add_cascade(label='Tips...', menu=tips)
+
+            # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
+            tips.add_command(label='• Images are automatically scaled to fit all',
+                             font=const.TIPS_FONT)
+            tips.add_command(label='     windows on the screen. Adjust zoom with',
+                             font=const.TIPS_FONT)
+            tips.add_command(label=f'     {tip_scaling_text}', font=const.TIPS_FONT)
+            tips.add_command(label='• Use a lighter font color with darker objects.',
+                             font=const.TIPS_FONT)
+            tips.add_command(label='• Font and line color can be changed with', font=const.TIPS_FONT)
+            tips.add_command(label=f'     {color_tip}.', font=const.TIPS_FONT)
+            tips.add_command(label='• Font size can be changed with', font=const.TIPS_FONT)
+            tips.add_command(label='     Ctrl-+(plus) & Ctrl--(minus).', font=const.TIPS_FONT)
+            tips.add_command(label='• Font and line thickness can be changed with',
+                             font=const.TIPS_FONT)
+            tips.add_command(label='     Shift-Ctrl-+(plus) & Shift-Ctrl--(minus).',
+                             font=const.TIPS_FONT)
+            tips.add_command(label='• Matte color can be changed in a main window pull-down.',
+                             font=const.TIPS_FONT)
+            tips.add_command(label='• Right-click to save an image at its display (scaled) size.',
+                             font=const.TIPS_FONT)
+            tips.add_command(label='     Shift-Right-click to save the image at full size.',
+                             font=const.TIPS_FONT)
+            tips.add_command(label="• More Tips are in the repository's README file.",
+                             font=const.TIPS_FONT)
+            tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.',
+                             font=const.TIPS_FONT)
+
+            help_menu.add_command(label='About',
+                                  command=lambda: utils.about_win(parent=parent))
 
     def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
         """
