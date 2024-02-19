@@ -205,6 +205,8 @@ FONT_TYPE = cv2.FONT_HERSHEY_SIMPLEX
 if MY_OS == 'lin':
     WIDGET_FONT = 'TkTooltipFont', 8
     REPORT_FONT = 'DejaVu Sans Mono', 9
+    MENU_FONT = 'TkMenuFont', 9
+    TIPS_FONT = 'TkTooltipFont', 8
     COLORS_TK['tk_white'] = 'grey85'
     radio_params = dict(
         fg=COLORS_TK['yellow'],
@@ -214,11 +216,16 @@ if MY_OS == 'lin':
 elif MY_OS == 'win':
     WIDGET_FONT = 'TkTooltipFont', 7
     REPORT_FONT = 'Consolas', 9
+    MENU_FONT = 'TkMenuFont', 6
+    TIPS_FONT = 'TkTooltipFont', 7
+
     COLORS_TK['tk_white'] = 'grey95'
     radio_params = dict(fg='black')
 else:  # is macOS
     WIDGET_FONT = 'TkTooltipFont', 9
     REPORT_FONT = 'Andale Mono', 10
+    MENU_FONT = 'TkMenuFont', 10
+    TIPS_FONT = 'TkTooltipFont', 9
     COLORS_TK['tk_white'] = 'white'
     radio_params = dict(fg='black')
 

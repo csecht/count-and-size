@@ -526,50 +526,6 @@ class ViewImage(ProcessImage):
             variable=self.slider_val['circle_r_max'],
             **const.SCALE_PARAMETERS)
 
-    def _on_click_save_tkimg(self, image_name: str) -> None:
-        """
-        Save a window image (Label) that was rt-clicked.
-        Called only from display_windows() for keybindings.
-
-        Args:
-            image_name: The key name (string) used in the img_label
-                        dictionary.
-        Returns:
-            None
-        """
-        tkimg = self.tkimg[image_name]
-
-        click_info = (f'The displayed {image_name} image was saved at'
-                      f' {self.scale_factor.get()} scale.')
-
-        utils.save_report_and_img(path2input=self.input_file_path,
-                                  img2save=tkimg,
-                                  txt2save=click_info,
-                                  caller=image_name)
-
-        # Provide user with a notice that a file was created and
-        #  give user time to read the message before resetting it.
-        _info = (f'\nThe result image, "{image_name}", was saved to\n'
-                 f'the input image folder: {self.input_folder_name}\n'
-                 f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
-        self.show_info_message(info=_info, color='black')
-
-    def _on_click_save_cvimg(self, image_name: str) -> None:
-        cvimg = self.cvimg[image_name]
-
-        click_info = (f'\nThe displayed {image_name} image was saved to\n'
-                      f'the input image folder: {self.input_folder_name}\n'
-                      'with a timestamp and original pixel dimensions.\n\n')
-
-        utils.save_report_and_img(path2input=self.input_file_path,
-                                  img2save=cvimg,
-                                  txt2save=click_info,
-                                  caller=image_name)
-
-        # Provide user with a notice that a file was created and
-        #  give user time to read the message before resetting it.
-        self.show_info_message(info=click_info, color='black')
-
     def widget_control(self, action: str) -> None:
         """
         Simply show a spinning watch/wheel cursor during the short
@@ -1141,31 +1097,38 @@ class SetupApp(ViewImage):
 
     def call_cmd(self):
         """
-        Uses a nested class to access everything in the parent class.
-        It groups methods that are shared by buttons, menus, and
-        key bind commands. If only one method were to called them, then
-        they could work as inner functions, but not be called
-        outside that method. Multiple calling methods could use them
-        as regular class methods, but then that creates in the parent
-        class a clutter of methods. Grouping them here, in an inner
-        Class, thus helps limit the number of public methods.
+        Groups methods that are shared by buttons, menus, and
+        key bind commands in a nested Class.
         Called from setup_main_window(), add_menu_bar(),
-        bind_annotation_styles(), configure_buttons().
+        bind_annotation_styles(), bind_scale_adjustment(),
+        configure_buttons().
 
-        Returns: None
+        Returns: Access to methods in the _Command inner class.
         """
 
-        # Concept from:
+        # Inner class concept adapted from:
         # https://stackoverflow.com/questions/719705/
         #   what-is-the-purpose-of-pythons-inner-classes/722175
         cmd_self = self
+        cv_colors = list(const.COLORS_CV.keys())
 
         def _display_annotation_action(action: str, value: str):
             _info = (f'\n\nA new annotation style was applied.\n'
                      f'{action} was changed to {value}.\n\n')
             self.show_info_message(info=_info, color='black')
 
-        cv_colors = list(const.COLORS_CV.keys())
+        def _apply_new_scale():
+            """
+            The scale_factor is applied in ProcessImage.update_image()
+            Called from _Command.increase_scale, _Command.decrease_scale,
+            """
+            _sf = round(self.scale_factor.get(), 2)
+            _info = f'\n\nA new scale factor of {_sf} was applied.\n\n\n'
+            self.show_info_message(info=_info, color='black')
+
+            for _n in self.image_names:
+                self.update_image(tkimg_name=_n,
+                                  cvimg_array=self.cvimg[_n])
 
         class _Command:
             """
@@ -1182,6 +1145,7 @@ class SetupApp(ViewImage):
             next_font_color()
             preceding_font_color()
             """
+
             # These methods are called from configure_buttons() and the
             # "file" menubar of add_menu_bar().
             @staticmethod
@@ -1366,6 +1330,29 @@ class SetupApp(ViewImage):
                 cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
                 _display_annotation_action('Font color', f'{preceding_color}')
 
+            @staticmethod
+            def increase_scale_factor() -> None:
+                """
+                Limit upper factor to a 5x increase to maintain performance.
+                """
+                scale_factor: float = self.scale_factor.get()
+                scale_factor *= 1.1
+                scale_factor = round(min(scale_factor, 5), 2)
+                self.scale_factor.set(scale_factor)
+                _apply_new_scale()
+
+            @staticmethod
+            def decrease_scale_factor() -> None:
+                """
+                Limit lower factor to a 1/10 decrease to maintain readability.
+                """
+                scale_factor: float = self.scale_factor.get()
+                scale_factor *= 0.9
+                scale_factor = round(max(scale_factor, 0.10), 2)
+                self.scale_factor.set(scale_factor)
+                _apply_new_scale()
+
+
         return _Command
 
     def call_start(self, parent) -> None:
@@ -1406,6 +1393,7 @@ class SetupApp(ViewImage):
         self.config_entries()
         self.bind_annotation_styles()
         self.bind_scale_adjustment()
+        self.bind_saving_images()
         if not self.use_saved_settings:
             self.set_defaults()
             # else, are using settings imported at initial open_input().
@@ -1647,6 +1635,8 @@ class SetupApp(ViewImage):
         Returns: None
         """
 
+        os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
+
         # Unicode arrow symbols: left \u2190, right \u2192
         # Unicode arrow symbols: up \u2101, down \u2193
         if const.MY_OS == 'dar':
@@ -1656,13 +1646,13 @@ class SetupApp(ViewImage):
             color_tip = ' Ctrl-↑ & Ctrl-↓'
             tip_scaling_text = 'with Ctrl-← & Ctrl-→.'
 
-        menubar = tk.Menu(master=parent, )
+        menubar = tk.Menu(master=parent)
         parent.config(menu=menubar)
 
-        os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
         file = tk.Menu(master=self.master, tearoff=0)
         menubar.add_cascade(label=utils.program_name(), menu=file)
-        # Only need start command for the start window menu.
+
+        # Only need "Process now" and "Quit" commands for the start window menu.
         if isinstance(parent, tk.Toplevel):
             file.add_command(label='Process now',
                              command=lambda: self.call_start(parent),
@@ -1672,42 +1662,61 @@ class SetupApp(ViewImage):
             # Accelerators use key binds from setup_main_window() and
             #   bind_annotation_styles().
             file.add_command(label='Process matte segments',
+                             font=const.MENU_FONT,
                              command=self.process_matte,
                              accelerator=f'{os_accelerator}+M')
             file.add_command(label='Save results',
+                             font=const.MENU_FONT,
                              command=self.call_cmd().save_results,
                              accelerator=f'{os_accelerator}+S')
             file.add_command(label='Export objects individually...',
+                             font=const.MENU_FONT,
                              command=self.call_cmd().export_objects)
             file.add_command(label='New input...',
+                             font=const.MENU_FONT,
                              command=self.call_cmd().new_input,
                              accelerator=f'{os_accelerator}+N')
             file.add_command(label='Export current settings',
+                             font=const.MENU_FONT,
                              command=self.call_cmd().export_settings)
-            file.add_command(label='Apply default settings',
-                             command=self.call_cmd().apply_default_settings,
-                             accelerator=f'{os_accelerator}+D')
 
             style = tk.Menu(master=self.master, tearoff=0)
             menubar.add_cascade(label="Annotation styles", menu=style)
             style.add_command(label='Increase font size',
+                              font=const.MENU_FONT,
                               command=self.call_cmd().increase_font_size,
                               accelerator=f'{os_accelerator}+(plus)')
             style.add_command(label='Decrease font size',
+                              font=const.MENU_FONT,
                               command=self.call_cmd().decrease_font_size,
                               accelerator=f'{os_accelerator}+(minus)')
             style.add_command(label='Increase line thickness',
+                              font=const.MENU_FONT,
                               command=self.call_cmd().increase_line_thickness,
                               accelerator=f'Shift+{os_accelerator}+(plus)')
             style.add_command(label='Decrease line thickness',
+                              font=const.MENU_FONT,
                               command=self.call_cmd().decrease_line_thickness,
                               accelerator=f'Shift+{os_accelerator}+(minus)')
             style.add_command(label='Next color',
+                              font=const.MENU_FONT,
                               command=self.call_cmd().next_font_color,
                               accelerator=f'{os_accelerator}+↑')
             style.add_command(label='Prior color',
+                              font=const.MENU_FONT,
                               command=self.call_cmd().preceding_font_color,
                               accelerator=f'{os_accelerator}+↓')
+
+            view = tk.Menu(master=self.master, tearoff=0)
+            menubar.add_cascade(label="View", menu=view)
+            view.add_command(label='Zoom images out',
+                             command=self.call_cmd().decrease_scale_factor,
+                             font=const.MENU_FONT,
+                             accelerator=f'{os_accelerator}+←')
+            view.add_command(label='Zoom images in',
+                             font=const.MENU_FONT,
+                             command=self.call_cmd().increase_scale_factor,
+                             accelerator=f'{os_accelerator}+→')
 
         file.add(tk.SEPARATOR)
         file.add_command(label='Quit',
@@ -1722,21 +1731,37 @@ class SetupApp(ViewImage):
         help_menu.add_cascade(label='Tips...', menu=tips)
 
         # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
-        tips.add_command(label='• Images are automatically scaled to fit all')
-        tips.add_command(label='     windows on the screen. Adjust scaling with')
-        tips.add_command(label=f'     {tip_scaling_text}')
-        tips.add_command(label='• Use a lighter font color with darker objects.')
-        tips.add_command(label='• Font and line color can be changed with')
-        tips.add_command(label=f'     {color_tip}.')
-        tips.add_command(label='• Font size can be changed with')
-        tips.add_command(label='     Ctrl-+(plus) & Ctrl--(minus).')
-        tips.add_command(label='• Font and line thickness can be changed with')
-        tips.add_command(label='     Shift-Ctrl-+(plus) & Shift-Ctrl--(minus).')
-        tips.add_command(label='• Matte color can be changed in a main window pull-down.')
-        tips.add_command(label='• Right-click to save an image at its display (scaled) size.')
-        tips.add_command(label='     Shift-Right-click to save the image at full size.')
-        tips.add_command(label="• More Tips are in the repository's README file.")
-        tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.')
+        tips.add_command(label='• Images are automatically scaled to fit all',
+                         font=const.TIPS_FONT)
+        tips.add_command(label='     windows on the screen. Adjust zoom with',
+                         font=const.TIPS_FONT)
+        tips.add_command(label=f'     {tip_scaling_text}', font=const.TIPS_FONT)
+        tips.add_command(label='• Use a lighter font color with darker objects.',
+                         font=const.TIPS_FONT)
+        tips.add_command(label='• Font and line color can be changed with', font=const.TIPS_FONT)
+        tips.add_command(label=f'     {color_tip}.', font=const.TIPS_FONT)
+        tips.add_command(label='• Font size can be changed with', font=const.TIPS_FONT)
+        tips.add_command(label='     Ctrl-+(plus) & Ctrl--(minus).', font=const.TIPS_FONT)
+        tips.add_command(label='• Font and line thickness can be changed with',
+                         font=const.TIPS_FONT)
+        tips.add_command(label='     Shift-Ctrl-+(plus) & Shift-Ctrl--(minus).',
+                         font=const.TIPS_FONT)
+        tips.add_command(label='• Matte color can be changed in a main window pull-down.',
+                         font=const.TIPS_FONT)
+        tips.add_command(label='• Right-click to save an image at its display (scaled) size.',
+                         font=const.TIPS_FONT)
+        tips.add_command(label='     Shift-Right-click to save the image at full size.',
+                         font=const.TIPS_FONT)
+        tips.add_command(label="• More Tips are in the repository's README file.",
+                         font=const.TIPS_FONT)
+        tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.',
+                         font=const.TIPS_FONT)
+
+        if isinstance(parent, SetupApp):
+            help_menu.add_command(label='Apply default settings',
+                                  font=const.MENU_FONT,
+                                  command=self.call_cmd().apply_default_settings,
+                                  accelerator=f'{os_accelerator}+D')
 
         help_menu.add_command(label='About',
                               command=lambda: utils.about_win(parent=parent))
@@ -1975,40 +2000,61 @@ class SetupApp(ViewImage):
         Returns: None
         """
 
-        def _apply_new_scale():
-            """
-            The scale_factor is applied in ProcessImage.update_image()
-            """
-            _sf = round(self.scale_factor.get(), 2)
-            _info = f'\n\nA new scale factor of {_sf} was applied.\n\n\n'
+        self.bind_all('<Control-Right>', lambda _: self.call_cmd().increase_scale_factor())
+        self.bind_all('<Control-Left>', lambda _: self.call_cmd().decrease_scale_factor())
+
+    def bind_saving_images(self) -> None:
+        """
+        Save individual displayed images to file with mouse clicks; either
+        at current tkimg scale or at original cvimg scale.
+
+        Returns: None
+        """
+
+        # Note: the only way to place these internals in call_cmd._Command is
+        #  to add an image=None parameter to call_cmd then pass the image_name
+        #  to the on_click,,, methods in _Command.
+        #  That seems a bit hacky, so just live with these internals.
+        def _on_click_save_tkimg(image_name: str) -> None:
+            tkimg = self.tkimg[image_name]
+
+            click_info = (f'The displayed {image_name} image was saved at'
+                          f' {self.scale_factor.get()} scale.')
+
+            utils.save_report_and_img(path2input=self.input_file_path,
+                                      img2save=tkimg,
+                                      txt2save=click_info,
+                                      caller=image_name)
+
+            _info = (f'\nThe result image, "{image_name}", was saved to\n'
+                     f'the input image folder: {self.input_folder_name}\n'
+                     f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
             self.show_info_message(info=_info, color='black')
 
-            for _n in self.image_names:
-                self.update_image(tkimg_name=_n,
-                                  cvimg_array=self.cvimg[_n])
+        def _on_click_save_cvimg(image_name: str) -> None:
+            cvimg = self.cvimg[image_name]
 
-        def _increase_scale_factor() -> None:
-            """
-            Limit upper factor to a 5x increase to maintain performance.
-            """
-            scale_factor: float = self.scale_factor.get()
-            scale_factor *= 1.1
-            scale_factor = round(min(scale_factor, 5), 2)
-            self.scale_factor.set(scale_factor)
-            _apply_new_scale()
+            click_info = (f'\nThe displayed {image_name} image was saved to\n'
+                          f'the input image folder: {self.input_folder_name}\n'
+                          'with a timestamp and original pixel dimensions.\n\n')
 
-        def _decrease_scale_factor() -> None:
-            """
-            Limit lower factor to a 1/10 decrease to maintain readability.
-            """
-            scale_factor: float = self.scale_factor.get()
-            scale_factor *= 0.9
-            scale_factor = round(max(scale_factor, 0.10), 2)
-            self.scale_factor.set(scale_factor)
-            _apply_new_scale()
+            utils.save_report_and_img(path2input=self.input_file_path,
+                                      img2save=cvimg,
+                                      txt2save=click_info,
+                                      caller=image_name)
 
-        self.bind_all('<Control-Right>', lambda _: _increase_scale_factor())
-        self.bind_all('<Control-Left>', lambda _: _decrease_scale_factor())
+            self.show_info_message(info=click_info, color='black')
+
+        # Right click will save displayed tk image to file, at current scale.
+        # Shift right click saves (processed) cv image at full (original) scale.
+        # macOS right mouse button has a different event ID.
+        rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
+        shift_rt_click = '<Shift-Button-3>' if const.MY_OS in 'lin, win' else '<Shift-Button-2>'
+        for name, label in self.img_label.items():
+            label.bind(rt_click,
+                       lambda _, n=name: _on_click_save_tkimg(image_name=n))
+            label.bind(shift_rt_click,
+                       lambda _, n=name: _on_click_save_cvimg(image_name=n))
 
     def configure_buttons(self) -> None:
         """
@@ -2416,16 +2462,6 @@ class SetupApp(ViewImage):
         self.update_image(tkimg_name='input',
                           cvimg_array=self.cvimg['input'])
 
-        # Right click will save displayed tk image to file, at current scale.
-        # Shift right click saves (processed) cv image at full (original) scale.
-        # macOS right mouse button has a different event ID.
-        rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
-        shift_rt_click = '<Shift-Button-3>' if const.MY_OS in 'lin, win' else '<Shift-Button-2>'
-        for name, label in self.img_label.items():
-            label.bind(rt_click,
-                       lambda _, n=name: self._on_click_save_tkimg(image_name=n))
-            label.bind(shift_rt_click,
-                       lambda _, n=name: self._on_click_save_cvimg(image_name=n))
         self.update()
 
         # Now is time to show the mainloop (self) report window that
