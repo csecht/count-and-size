@@ -1448,7 +1448,7 @@ class SetupApp(ViewImage):
         self.bind(f'<{f"{c_key}"}-n>', func=lambda _: self.call_cmd().new_input())
         self.bind(f'<{f"{c_key}"}-d>', func=lambda _: self.call_cmd().apply_default_settings())
 
-        self.add_menu_bar(self)
+        self.setup_menu_bar(self)
 
     def setup_start_window(self) -> None:
         """
@@ -1499,7 +1499,7 @@ class SetupApp(ViewImage):
             text='Image: waiting to be selected...\nSize: TBD',
             **const.LABEL_PARAMETERS)
 
-        self.add_menu_bar(start_win)
+        self.setup_menu_bar(start_win)
 
         color_label = tk.Label(master=start_win,
                                text='Annotation font color:',
@@ -1626,7 +1626,7 @@ class SetupApp(ViewImage):
         #  display_windows() after all image windows so that, at startup,
         #  it stacks on top.
 
-    def add_menu_bar(self, parent: Union[tk.Toplevel, 'SetupApp']) -> None:
+    def setup_menu_bar(self, parent: Union[tk.Toplevel, 'SetupApp']) -> None:
         """
         Create menu instance and add pull-down menus.
         Args:
@@ -1752,7 +1752,7 @@ class SetupApp(ViewImage):
                                   command=self.call_cmd().apply_default_settings,
                                   accelerator=f'{os_accelerator}+D')
 
-            help_menu.add_cascade(label='Tips...', menu=tips)
+            help_menu.add_cascade(label='Tips...', menu=tips, font=const.MENU_FONT,)
 
             # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
             tips.add_command(label='• Images are automatically scaled to fit all',
@@ -1782,6 +1782,7 @@ class SetupApp(ViewImage):
                              font=const.TIPS_FONT)
 
             help_menu.add_command(label='About',
+                                  font=const.MENU_FONT,
                                   command=lambda: utils.about_win(parent=parent))
 
     def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
