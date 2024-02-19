@@ -216,7 +216,7 @@ if MY_OS == 'lin':
 elif MY_OS == 'win':
     WIDGET_FONT = 'TkTooltipFont', 7
     REPORT_FONT = 'Consolas', 9
-    MENU_FONT = 'TkMenuFont', 6
+    MENU_FONT = 'TkMenuFont', 8
     TIPS_FONT = 'TkTooltipFont', 7
 
     COLORS_TK['tk_white'] = 'grey95'
