@@ -172,8 +172,9 @@ Object size metrics,   mean: 12.3, median: 12.2, range: 6.74--18.1
 Below, relevant image processing steps in `size_it.py` are displayed in seven panes in four windows. Images update as settings are changed.
 ![all size_it image windows](images/all_image_windows.png)
 
-Below, example of green screen segmentation of 93 selected objects using `size_it_cs.py`. Example image `sample6.jpg` was processed with these settings: Matte color: green3, Noise reduction ksize=3, iterations=1; morphology operator =cv2.MORPH_HITMISS, shape=cv2.MORPH_RECT, Selected size range: 5--375 pixels. Displayed sizes are pixels. The white and black circles are hockey puck-sized standards (plastic cut-outs). 
-![sample6_greenscreen_result](images/sample6_result_screenshot.jpg)
+Below, `size_it_cs.py` settings window with menubar and result for green screen segmentation. Example image `sample6.jpg` was processed with these settings: Matte color: green3, Noise reduction ksize=3, iterations=1; morphology operator =cv2.MORPH_HITMISS, shape=cv2.MORPH_RECT, Selected size range: 5--375 pixels. Displayed sizes are pixels. The white and black circles are hockey puck-sized standards (plastic cut-outs). 
+![size_it_cs settings](images/size_it_cs_settings_screenshot.png)
+![sample6 result](images/sample6_result_screenshot.jpg)
 
 ### Sizing with lens distortion:
 There are three ways to deal with lens distortion to obtain the best size estimates. For example, an iPhone 11 using the wide-angle (normal) lens at a zoom of 1x, with the sample stage at a 20-inch distance and the size standard placed at the center, there is ~2% increase in the population mean size because objects farther from the center cover slightly more pixel area than their actual size. With the ultra-wide lens (e.g. zoom of 0.7x), the sizing error is about 3% to 4%.
