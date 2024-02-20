@@ -1764,36 +1764,20 @@ class SetupApp(ViewImage):
             help_menu.add_cascade(label='Tips...', menu=tips, font=const.MENU_FONT,)
 
             # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
-            tips.add_command(label='• Images are automatically scaled to fit all',
-                             font=const.TIPS_FONT)
-            tips.add_command(label='     windows on the screen. Adjust zoom with',
-                             font=const.TIPS_FONT)
-            tips.add_command(label=f'     {tip_scaling_text}',
-                             font=const.TIPS_FONT)
-            tips.add_command(label='• Use a lighter font color with darker objects.',
-                             font=const.TIPS_FONT)
-            tips.add_command(label='• Font and line color can be changed with',
-                             font=const.TIPS_FONT)
-            tips.add_command(label=f'     {color_tip}.',
-                             font=const.TIPS_FONT)
-            tips.add_command(label='• Font size can be changed with',
-                             font=const.TIPS_FONT)
-            tips.add_command(label='     Ctrl-+(plus) & Ctrl--(minus).',
-                             font=const.TIPS_FONT)
-            tips.add_command(label='• Font and line thickness can be changed with',
-                             font=const.TIPS_FONT)
-            tips.add_command(label='     Shift-Ctrl-+(plus) & Shift-Ctrl--(minus).',
-                             font=const.TIPS_FONT)
-            tips.add_command(label='• Matte color can be changed in a main window pull-down.',
-                             font=const.TIPS_FONT)
-            tips.add_command(label='• Right-click to save an image at its display (scaled) size.',
-                             font=const.TIPS_FONT)
-            tips.add_command(label='     Shift-Right-click to save the image at full size.',
-                             font=const.TIPS_FONT)
-            tips.add_command(label="• More Tips are in the repository's README file.",
-                             font=const.TIPS_FONT)
-            tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.',
-                             font=const.TIPS_FONT)
+            tip_text = (
+                '• Images are auto-zoomed to fit windows at startup.',
+                f'     Zoom can be changed with {tip_scaling_text}',
+                f'• Font and line color can be changed with {color_tip}.',
+                '• Font size can be changed with Ctrl-+(plus) & -(minus).',
+                '• Boldness can be changed with Shift-Ctrl-+(plus) & -(minus).',
+                '• Matte color selection can affect counts and sizes.',
+                '• Right-click to save an image at its displayed size.',
+                '• Shift-Right-click to save the image at it original size.',
+                '• More Tips are in the repository\'s README file.',
+                '• Esc or Ctrl-Q from any window will exit the program.',
+            )
+            for _line in tip_text:
+                tips.add_command(label=_line, font=const.TIPS_FONT)
 
             help_menu.add_command(label='About',
                                   font=const.MENU_FONT,
