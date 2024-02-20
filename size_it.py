@@ -2,8 +2,8 @@
 """
 A tkinter GUI, size_it.py, for OpenCV processing of an image to obtain
 sizes, means, and ranges of objects in a sample population. The distance
- transform, watershed, and random walker algorithms are used interactively
- by setting their parameter values with slide bars and pull-down menus.
+transform, watershed, and random walker algorithms are used interactively
+by setting their parameter values with slide bars and pull-down menus.
 Related image preprocessing factors like contrast, brightness, noise
 reduction, and filtering are also adjusted interactively, with live
 updating of the resulting images.
@@ -23,8 +23,8 @@ Windows systems may need to substitute 'python3' with 'py' or 'python'.
 Displayed imaged can be scaled with key commands to help arrange windows
 on the screen.
 
-Image preprocessing functions do live updates as most settings are changed.
-For some slider settings however, when prompted, click the
+Image preprocessing functions do live updates as most settings are
+changed. For some slider settings however, when prompted, click the
 "Run..." button to initiate the final processing step.
 
 Save settings report and the annotated image with the "Save" button.

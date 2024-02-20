@@ -3,8 +3,8 @@
 A tkinter GUI, size_it_cs.py, for OpenCV processing of an image to obtain
 sizes, means, and ranges of objects in a sample population. Object
 segmentation is by use of a matte color screen ('cs'), such as with a
-green screen. Different matte colors can be selected. Noise reduction is
-interactive with live updating of resulting images.
+green screen. Different matte colors can be selected. Noise reduction
+is interactive with live updating of resulting images.
 
 A report is provided of parameter settings, object count, individual
 object sizes, and sample size mean and range, along with an annotated
@@ -18,14 +18,12 @@ python3 -m size_it_cs
 python3 -m size_it_cs --terminal
 Windows systems may need to substitute 'python3' with 'py' or 'python'.
 
-Displayed imaged can be scaled with key commands to help arrange windows
-on the screen.
-
-Save settings report and the annotated image with the "Save" button.
-Identified objects can be saved to individual image files.
+Commands for saving results and settings, adjusting images' screen
+size, and annotation styles are available from the "Report & Settings"
+window's menubar and buttons.
 
 Quit program with Esc key, Ctrl-Q key, the close window icon of the
-report window, or from command line with Ctrl-C.
+report window or File menubar. From the command line, use Ctrl-C.
 
 Requires Python 3.7 or later and the packages opencv-python, numpy,
 scikit-image, scipy, and psutil.
@@ -1875,9 +1873,9 @@ class SetupApp(ViewImage):
 
     def check_for_saved_settings(self) -> None:
         """
-        Following image file import, need to check whether user wants to
-        use saved settings. The JSON settings file is expected to be in
-        the input image's folder. Calls import_settings().
+        When open_input() is True, check whether user wants to
+        use saved JSON settings file that is in the input image folder.
+        Calls import_settings().
         """
         if self.settings_file_path.exists():
             if self.first_run:

@@ -59,8 +59,7 @@ def about_win(parent: tk.Toplevel) -> None:
                              borderwidth=8,
                              padx=30, pady=10,
                              wrap=tk.WORD,
-                             font=const.WIDGET_FONT,
-                             # font=cv2.FONT_HERSHEY_PLAIN,
+                             font=const.MENU_FONT,
                              )
 
     # The text returned from manage.arguments is that used for the --about arg.
