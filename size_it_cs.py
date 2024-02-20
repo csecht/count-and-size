@@ -1881,13 +1881,13 @@ class SetupApp(ViewImage):
         """
         if self.settings_file_path.exists():
             if self.first_run:
-                choice = ('Yes, from JSON file in\n'
-                          f'   folder: {self.input_folder_name}.\n'
-                          'No, use default settings.')
+                choice = ('Yes: use JSON file in the input folder:\n'
+                          f'     {self.input_folder_name}\n'
+                          'No (or close window): use default settings')
             else:
-                choice = ('Yes, from JSON file in\n'
-                          f'   folder: {self.input_folder_name}.\n'
-                          'No, use current settings.')
+                choice = ('Yes: use JSON file in the folder:\n'
+                          f'     {self.input_folder_name}\n'
+                          'No (or close window): use current settings')
 
             self.use_saved_settings = messagebox.askyesno(
                 title="Use saved settings?",
