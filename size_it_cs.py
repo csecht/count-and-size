@@ -1770,13 +1770,18 @@ class SetupApp(ViewImage):
                              font=const.TIPS_FONT)
             tips.add_command(label='     windows on the screen. Adjust zoom with',
                              font=const.TIPS_FONT)
-            tips.add_command(label=f'     {tip_scaling_text}', font=const.TIPS_FONT)
+            tips.add_command(label=f'     {tip_scaling_text}',
+                             font=const.TIPS_FONT)
             tips.add_command(label='• Use a lighter font color with darker objects.',
                              font=const.TIPS_FONT)
-            tips.add_command(label='• Font and line color can be changed with', font=const.TIPS_FONT)
-            tips.add_command(label=f'     {color_tip}.', font=const.TIPS_FONT)
-            tips.add_command(label='• Font size can be changed with', font=const.TIPS_FONT)
-            tips.add_command(label='     Ctrl-+(plus) & Ctrl--(minus).', font=const.TIPS_FONT)
+            tips.add_command(label='• Font and line color can be changed with',
+                             font=const.TIPS_FONT)
+            tips.add_command(label=f'     {color_tip}.',
+                             font=const.TIPS_FONT)
+            tips.add_command(label='• Font size can be changed with',
+                             font=const.TIPS_FONT)
+            tips.add_command(label='     Ctrl-+(plus) & Ctrl--(minus).',
+                             font=const.TIPS_FONT)
             tips.add_command(label='• Font and line thickness can be changed with',
                              font=const.TIPS_FONT)
             tips.add_command(label='     Shift-Ctrl-+(plus) & Shift-Ctrl--(minus).',
@@ -2103,11 +2108,9 @@ class SetupApp(ViewImage):
         )
 
         self.button['process_matte'].config(
-            text='Process matte segments',
+            text='Update "Color matte segments"',
             command=self.process_matte,
-            width=18,
-            style='My.TButton',
-        )
+            **button_params)
 
         self.button['save_results'].config(
             text='Save results',
