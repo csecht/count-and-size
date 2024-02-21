@@ -65,7 +65,7 @@ def about_win(parent: tk.Toplevel) -> None:
     # The text returned from manage.arguments is that used for the --about arg.
     abouttext.insert(index=tk.INSERT,
                      chars=f'{manage.arguments()["about"]}')
-    abouttext.pack(fill=tk.BOTH, side=tk.LEFT, expand=True)
+    abouttext.grid(sticky=tk.NSEW)
 
 
 def check_platform() -> None:
@@ -307,7 +307,7 @@ def display_report(frame: tk.Frame, report: str) -> None:
     reporttxt.see(index="end-1c linestart")
     reporttxt.grid(column=0, row=0,
                    columnspan=2,
-                   sticky=tk.EW)
+                   sticky=tk.NSEW)
 
 
 def count_sig_fig(entry_number: Union[int, float, str]) -> int:
