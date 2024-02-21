@@ -391,12 +391,21 @@ def quit_gui(mainloop: tk.Tk, confirm=True) -> None:
         _do_quit()
 
 
-def no_objects_found_msg():
+def no_objects_found_msg(caller: str) -> None:
     """
     Pop-up info when segments not found or their sizes out of range.
+
+    Args:
+        caller: The calling script.
     """
-    _m = ('No objects were found to size. Try changing threshold type.\n'
-          'Use threshold type *_INVERSE for light-on-dark, not for'
-          ' dark-on-light contrasts.\n'
-          'Also, "Circled radius size" sliders may need adjusting.')
-    messagebox.showinfo(detail=_m)
+    if caller == 'size_it':
+        _m = ('No objects were found to size.\n'
+              'Try changing the threshold type.\n'
+              'Use threshold type *_INVERSE for light-on-dark contrasts.\n'
+              'Also, "Circled radius size" sliders may need adjusting.')
+        messagebox.showinfo(detail=_m)
+    else:  # is size_it_cs
+        _m = ('No objects were found to size.\n'
+              'Try changing matte color.\n'
+              'Also, "Circled radius size" sliders may need adjusting.')
+        messagebox.showinfo(detail=_m)

@@ -157,7 +157,7 @@ class ProcessImage(tk.Tk):
         self.unit_per_px = tk.DoubleVar()
         self.num_sigfig: int = 0
         self.time_start: float = 0
-        self.elapsed: float = 0
+        self.elapsed: Union[float, int, str] = 0
 
     def update_image(self,
                      tkimg_name: str,
@@ -646,6 +646,10 @@ class ViewImage(ProcessImage):
             None
         """
 
+        if contour_pointset is None:
+            utils.no_objects_found_msg(caller=PROGRAM_NAME)
+            return
+
         self.cvimg['sized'] = self.cvimg['input'].copy()
 
         selected_sizes: List[float] = []
@@ -664,10 +668,6 @@ class ViewImage(ProcessImage):
         right_edge = self.input_w - 1
 
         self.num_obj_selected = 0
-
-        if not contour_pointset:
-            utils.no_objects_found_msg()
-            return
 
         flag = False
         for _c in contour_pointset:
@@ -754,7 +754,7 @@ class ViewImage(ProcessImage):
         if selected_sizes:
             self.sorted_size_list = sorted(selected_sizes)
         else:
-            utils.no_objects_found_msg()
+            utils.no_objects_found_msg(caller=PROGRAM_NAME)
 
         self.update_image(tkimg_name='sized',
                           cvimg_array=self.cvimg['sized'])
@@ -914,10 +914,10 @@ class ViewImage(ProcessImage):
                                                    precision=self.num_sigfig)
             median_unit_dia: str = to_p.to_precision(value=median(self.sorted_size_list),
                                                      precision=self.num_sigfig)
-            smallest = to_p.to_precision(value=min(self.sorted_size_list),
-                                         precision=self.num_sigfig)
-            biggest = to_p.to_precision(value=max(self.sorted_size_list),
-                                        precision=self.num_sigfig)
+            smallest: str = to_p.to_precision(value=min(self.sorted_size_list),
+                                              precision=self.num_sigfig)
+            biggest: str = to_p.to_precision(value=max(self.sorted_size_list),
+                                             precision=self.num_sigfig)
             size_range: str = f'{smallest}--{biggest}'
         else:
             num_selected = 0
@@ -979,8 +979,16 @@ class ViewImage(ProcessImage):
         self.matte_segmentation()
         self.select_and_size_objects(contour_pointset=self.matte_contours)
 
-        # Record processing time for info_txt.
-        self.elapsed = round(time() - self.time_start, 3)
+        # Record processing time for info_txt. When no contours are found,
+        #  its list has 1 element, so the elapsed time is considered n/a.
+        #  The sorted_size_list is cleared when no contours are found,
+        #    otherwise would retain the last run's sizes.
+        if len(self.matte_contours) <= 1:
+            self.elapsed = 'n/a'
+            self.sorted_size_list.clear()
+        else:
+            self.elapsed = round(time() - self.time_start, 3)
+
         self.report_results()
         self.widget_control('on')
 
@@ -1151,7 +1159,7 @@ class SetupApp(ViewImage):
                     path2folder=cmd_self.input_file_path,
                     img2save=cmd_self.cvimg['sized'],
                     txt2save=cmd_self.report_txt + f'\n{_sizes}',
-                    caller=utils.program_name(),
+                    caller=PROGRAM_NAME,
                 )
 
                 _info = ('\n\nSettings report and result image were saved to\n'
@@ -2132,7 +2140,7 @@ class SetupApp(ViewImage):
         #  used in process_matte(), which is called by one of the "Run" buttons.
 
         self.slider['noise_k_lbl'].configure(text='Reduce noise, kernel size\n',
-                                             ** const.LABEL_PARAMETERS)
+                                             **const.LABEL_PARAMETERS)
         self.slider['noise_k'].configure(from_=1, to=51,
                                          tickinterval=5,
                                          length=scale_len,
@@ -2337,12 +2345,12 @@ class SetupApp(ViewImage):
         # Label() widget is in the main window (self).
         # Note: with rowspan=5, there must be 5 return characters in
         #  each info string to prevent shifts of frame row spacing.
-        #  5 because that seems to be needed to cover the combined
+        #  Used 5 because that seems to be needed to cover the combined
         #  height of the last three main window rows (2, 3, 4) with buttons.
         #  Sticky is 'east' to prevent horizontal shifting when, during
         #  segmentation processing, all buttons in col 0 are removed.
         self.info_label.grid(column=1, row=2, rowspan=5, columnspan=2,
-                             padx=5, sticky=tk.E)
+                             padx=5, sticky=tk.EW)
 
         # Widgets gridded in the self.selectors_frame Frame.
         # Sorted by row number:
@@ -2391,8 +2399,8 @@ class SetupApp(ViewImage):
         morph_shape_padx = (0, self.cbox['morph_shape'].winfo_reqwidth() + 10)
         size_std_padx = (0, self.cbox['size_std'].winfo_reqwidth() + 10)
         custom_std_padx = (0, self.size_std['custom_entry'].winfo_reqwidth() + 10)
+        export_settings_padx = (self.button['save_results'].winfo_reqwidth() + 15, 0)
         export_obj_w: int = self.button['export_objects'].winfo_reqwidth()
-        save_results_w: int = self.button['save_results'].winfo_reqwidth()
 
         self.cbox['morph_shape_lbl'].grid(column=1, row=0,
                                           padx=morph_shape_padx,
@@ -2412,7 +2420,7 @@ class SetupApp(ViewImage):
         # Buttons' grids in the mainloop (self) window.
         self.button['export_settings'].grid(
             column=0, row=3,
-            padx=(save_results_w + 15, 0),
+            padx=export_settings_padx,
             **relative_b_grid_params)
 
         self.button['new_input'].grid(
