@@ -222,10 +222,10 @@ elif MY_OS == 'win':
     COLORS_TK['tk_white'] = 'grey95'
     radio_params = dict(fg='black')
 else:  # is macOS
-    WIDGET_FONT = 'TkTooltipFont', 9
+    WIDGET_FONT = 'TkTooltipFont', 10
     REPORT_FONT = 'Andale Mono', 10
     MENU_FONT = 'TkMenuFont', 12
-    TIPS_FONT = 'TkTooltipFont', 9
+    TIPS_FONT = 'TkTooltipFont', 10
     COLORS_TK['tk_white'] = 'white'
     radio_params = dict(fg='black')
 

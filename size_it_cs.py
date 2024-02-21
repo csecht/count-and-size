@@ -39,7 +39,7 @@ from pathlib import Path
 from statistics import mean, median
 from sys import exit as sys_exit
 from time import time
-from typing import Union
+from typing import Union, List
 
 # Third party imports.
 # tkinter(Tk/Tcl) is included with most Python3 distributions,
@@ -648,7 +648,7 @@ class ViewImage(ProcessImage):
 
         self.cvimg['sized'] = self.cvimg['input'].copy()
 
-        selected_sizes: list[float] = []
+        selected_sizes: List[float] = []
         annotation_color: tuple = const.COLORS_CV[self.cbox_val['annotation_color'].get()]
 
         # The size range slider values are radii pixels. This is done b/c:
@@ -1581,33 +1581,33 @@ class SetupApp(ViewImage):
                                        borderwidth=5)
 
         # Allow Frames and widgets to resize with main window.
-        #  Row 1 is the report, row2 selectors, rows 2,3,4 are for Buttons().
+        #  Row 0 is the report, row1 selectors, rows 2,3,4 are for Buttons().
         self.rowconfigure(index=0, weight=1)
         self.rowconfigure(index=1, weight=1)
 
         # Keep the report scrollbar active in the resized frame.
         self.report_frame.rowconfigure(index=0, weight=1)
 
-        # Expect there to be 20 rows in the selectors Frame.
-        for i in range(21):
+        # Expect there to be 6 rows in the selectors Frame.
+        for i in range(7):
             self.selectors_frame.rowconfigure(index=i, weight=1)
 
         self.columnconfigure(index=0, weight=1)
         self.columnconfigure(index=1, weight=1)
         self.report_frame.columnconfigure(index=0, weight=1)
 
-        # Allow only sliders, not labels, to expand with window.
+        # Allow only sliders, not their labels, to expand with window.
         self.selectors_frame.columnconfigure(index=1, weight=1)
 
         self.report_frame.grid(column=0, row=0,
                                columnspan=2,
                                padx=(5, 5), pady=(5, 5),
-                               sticky=tk.EW)
+                               sticky=tk.NSEW)
         self.selectors_frame.grid(column=0, row=1,
                                   columnspan=2,
                                   padx=5, pady=(0, 5),
                                   ipadx=4, ipady=4,
-                                  sticky=tk.EW)
+                                  sticky=tk.NSEW)
 
         # Width should fit any text expected without causing WINDOW shifting.
         self.info_label.config(font=const.WIDGET_FONT,
@@ -1944,6 +1944,7 @@ class SetupApp(ViewImage):
             if icon_path:
                 _toplevel.iconphoto(True, icon_path)
             _toplevel.wm_minsize(width=200, height=100)
+            _toplevel.resizable(False, False)
             _toplevel.protocol(name='WM_DELETE_WINDOW', func=self._delete_window_message)
             _toplevel.columnconfigure(index=0, weight=1)
             _toplevel.columnconfigure(index=1, weight=1)
@@ -2345,35 +2346,36 @@ class SetupApp(ViewImage):
 
         # Widgets gridded in the self.selectors_frame Frame.
         # Sorted by row number:
-        self.cbox['morph_op_lbl'].grid(column=0, row=2, **east_grid_params)
-        self.cbox['morph_op'].grid(column=1, row=2, **west_grid_params)
+        self.cbox['morph_op_lbl'].grid(column=0, row=0, **east_grid_params)
+        self.cbox['morph_op'].grid(column=1, row=0, **west_grid_params)
 
         # Note: Put morph shape on same row as morph op.
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['morph_shape'].grid(column=1, row=2, **east_grid_params)
+        self.cbox['morph_shape'].grid(column=1, row=0, **east_grid_params)
 
-        self.slider['noise_k_lbl'].grid(column=0, row=4, **east_grid_params)
-        self.slider['noise_k'].grid(column=1, row=4, **slider_grid_params)
+        self.slider['noise_k_lbl'].grid(column=0, row=1, **east_grid_params)
+        self.slider['noise_k'].grid(column=1, row=1, **slider_grid_params)
 
-        self.slider['noise_iter_lbl'].grid(column=0, row=5, **east_grid_params)
-        self.slider['noise_iter'].grid(column=1, row=5, **slider_grid_params)
-
-        # The label widget is gridded to the left, based on this widget's width.
-        self.slider['circle_r_min_lbl'].grid(column=0, row=17, **east_grid_params)
-        self.slider['circle_r_min'].grid(column=1, row=17, **slider_grid_params)
-
-        self.slider['circle_r_max_lbl'].grid(column=0, row=18, **east_grid_params)
-        self.slider['circle_r_max'].grid(column=1, row=18, **slider_grid_params)
-
-        self.size_std['px_lbl'].grid(column=0, row=19, **east_grid_params)
-        self.size_std['px_entry'].grid(column=1, row=19, **west_grid_params)
+        self.slider['noise_iter_lbl'].grid(column=0, row=2, **east_grid_params)
+        self.slider['noise_iter'].grid(column=1, row=2, **slider_grid_params)
 
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['size_std'].grid(column=1, row=19, **east_grid_params)
-        self.size_std['custom_entry'].grid(column=1, row=20, **east_grid_params)
+        self.slider['circle_r_min_lbl'].grid(column=0, row=3, **east_grid_params)
+        self.slider['circle_r_min'].grid(column=1, row=3, **slider_grid_params)
 
-        self.cbox['matte_lbl'].grid(column=0, row=20, **east_grid_params)
-        self.cbox['matte_color'].grid(column=1, row=20, **west_grid_params)
+        self.slider['circle_r_max_lbl'].grid(column=0, row=4, **east_grid_params)
+        self.slider['circle_r_max'].grid(column=1, row=4, **slider_grid_params)
+
+        self.size_std['px_lbl'].grid(column=0, row=5, **east_grid_params)
+        self.size_std['px_entry'].grid(column=1, row=5, **west_grid_params)
+
+        # The label widget is gridded to the left, based on this widget's width.
+        self.cbox['size_std'].grid(column=1, row=5, **east_grid_params)
+
+        self.size_std['custom_entry'].grid(column=1, row=6, **east_grid_params)
+
+        self.cbox['matte_lbl'].grid(column=0, row=6, **east_grid_params)
+        self.cbox['matte_color'].grid(column=1, row=6, **west_grid_params)
 
         # Buttons are in the mainloop window, not in a Frame().
         self.button['process_matte'].grid(column=0, row=2, **button_grid_params)
@@ -2392,15 +2394,15 @@ class SetupApp(ViewImage):
         export_obj_w: int = self.button['export_objects'].winfo_reqwidth()
         save_results_w: int = self.button['save_results'].winfo_reqwidth()
 
-        self.cbox['morph_shape_lbl'].grid(column=1, row=2,
+        self.cbox['morph_shape_lbl'].grid(column=1, row=0,
                                           padx=morph_shape_padx,
                                           **east_params_relative)
 
-        self.cbox['size_std_lbl'].grid(column=1, row=19,
+        self.cbox['size_std_lbl'].grid(column=1, row=5,
                                        padx=size_std_padx,
                                        **east_params_relative)
 
-        self.size_std['custom_lbl'].grid(column=1, row=20,
+        self.size_std['custom_lbl'].grid(column=1, row=6,
                                          padx=custom_std_padx,
                                          **east_params_relative)
 
