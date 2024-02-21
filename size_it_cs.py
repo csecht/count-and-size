@@ -217,7 +217,6 @@ class ProcessImage(tk.Tk):
         #   MORPH_CLOSE is better for certain images, but generally is worse.
         #   MORPH_HITMISS helps to separate close objects by shrinking them.
         # morph_op HITMISS works best for colorseg, with a low kernel size.
-        # self.cvimg['redux_mask'] = cv2.morphologyEx(
         self.cvimg['redux_mask'] = cv2.morphologyEx(
             src=img,
             op=morph_op,
@@ -229,16 +228,12 @@ class ProcessImage(tk.Tk):
         self.update_image(tkimg_name='redux_mask',
                           cvimg_array=self.cvimg['redux_mask'])
 
-        # return redux_mask
-
     def matte_segmentation(self) -> None:
         """
         A segmentation method for use with mattes, e.g., green screen.
         """
 
-        # The shade of green screen cloth will need different upper and lower
-        #  color space bounds.
-
+        # Convert the input image to HSV colorspace for better color segmentation.
         hsv_img = cv2.cvtColor(src=self.cvimg['input'], code=cv2.COLOR_BGR2HSV)
 
         # see: https://stackoverflow.com/questions/47483951/
@@ -266,10 +261,7 @@ class ProcessImage(tk.Tk):
         self.cvimg['matte_objects'] = cv2.cvtColor(src=self.cvimg['matte_objects'],
                                                    code=cv2.COLOR_GRAY2BGR)
 
-        # Need a thicker line on larger images that are scaled down.
-        # self.line_thickness = self.line_thickness * 2
-
-        # Need to avoid contours colors that cannot be distinguished from
+        # Need to avoid contour colors that cannot be seen well against
         #  a black or white background.
         if self.cbox_val['annotation_color'].get() in 'white, black, dark blue':
             line_color = const.COLORS_CV['orange']
@@ -286,7 +278,7 @@ class ProcessImage(tk.Tk):
         self.update_image(tkimg_name='matte_objects',
                           cvimg_array=self.cvimg['matte_objects'])
 
-        # Now need to draw enclosing circles around watershed segments and
+        # Now need to draw enclosing circles around selected segments and
         #  annotate with object sizes in ViewImage.select_and_size_objects().
 
 
@@ -1156,7 +1148,7 @@ class SetupApp(ViewImage):
                 """
                 _sizes = ', '.join(str(i) for i in cmd_self.sorted_size_list)
                 utils.save_report_and_img(
-                    path2input=cmd_self.input_file_path,
+                    path2folder=cmd_self.input_file_path,
                     img2save=cmd_self.cvimg['sized'],
                     txt2save=cmd_self.report_txt + f'\n{_sizes}',
                     caller=utils.program_name(),
@@ -2035,7 +2027,7 @@ class SetupApp(ViewImage):
             click_info = (f'The displayed {image_name} image was saved at'
                           f' {self.scale_factor.get()} scale.')
 
-            utils.save_report_and_img(path2input=self.input_file_path,
+            utils.save_report_and_img(path2folder=self.input_file_path,
                                       img2save=tkimg,
                                       txt2save=click_info,
                                       caller=image_name)
@@ -2052,7 +2044,7 @@ class SetupApp(ViewImage):
                           f'the input image folder: {self.input_folder_name}\n'
                           'with a timestamp, at original pixel dimensions.\n\n')
 
-            utils.save_report_and_img(path2input=self.input_file_path,
+            utils.save_report_and_img(path2folder=self.input_file_path,
                                       img2save=cvimg,
                                       txt2save=click_info,
                                       caller=image_name)
@@ -2433,10 +2425,10 @@ class SetupApp(ViewImage):
 
     def grid_img_labels(self) -> None:
         """
-        Grid all image Labels inherited from ProcessImage().
-        Labels' 'master' argument for the img window is defined in
-        ProcessImage.setup_image_windows(). Label 'image' param is
-        updated with .configure() in each PI processing method.
+        Grid all image Labels in the dictionary attribute inherited from
+        ProcessImage(). Labels' 'master' argument for the img window are
+        defined in setup_image_windows(). A Label's 'image' argument is
+        updated with .configure() in PI() update_image().
         Called from __init__.
 
         Returns:

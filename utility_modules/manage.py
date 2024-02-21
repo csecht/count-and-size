@@ -87,16 +87,16 @@ def input_metrics(img: np.ndarray) -> dict:
     img_area: int = img.shape[0] * img.shape[1]
 
     gray_img: np.ndarray = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
-    fig_width: int = gray_img.shape[1]
+    fig_max_dimension: int = max(gray_img.shape[0], gray_img.shape[1])
 
     # Set maximum enclosing circle radius to 1/2 the shortest image dimension.
     max_circle_r: int = round(min(gray_img.shape) / 2)
 
-    line_thickness: int = max(round(fig_width * const.LINE_THICKNESS_FACTOR), 1)
+    line_thickness: int = max(round(fig_max_dimension * const.LINE_THICKNESS_FACTOR), 1)
 
     # Ideas for scaling: https://stackoverflow.com/questions/52846474/
     #   how-to-resize-text-for-cv2-puttext-according-to-the-image-size-in-opencv-python
-    font_scale: float = round(max(fig_width * const.SIZE_FACTOR, 0.20), 2)
+    font_scale: float = round(max(fig_max_dimension * const.SIZE_FACTOR, 0.20), 2)
 
     metrics = {
         'img_area': img_area,

@@ -151,7 +151,7 @@ def export_settings_to_json(path2folder: str,
         _fp.write(dumps(settings2save))
 
 
-def save_report_and_img(path2input: str,
+def save_report_and_img(path2folder: str,
                         img2save: Union[np.ndarray, ImageTk.PhotoImage],
                         txt2save: str,
                         caller: str,
@@ -161,19 +161,15 @@ def save_report_and_img(path2input: str,
     values. Save current result image or selected displayed image.
 
     Args:
-        path2input: The input image file path, as string.
+        path2folder: The input image file path, as string.
         img2save: The current resulting image array; can be a np.ndarray
             from cv2 or an ImageTk.PhotoImage from tkinter/PIL
         txt2save: The current image processing report.
         caller: Descriptive name of the calling script, function or
                 widget to insert in the file name, e.g. 'report',
                 'contrast', etc.
-        settings2save: a dictionary of settings values; optional call by
-                    the 'Export settings' Button() cmd; will be written
-                    to a json file to save.
     Returns: None
     """
-
     curr_time = datetime.now().strftime('%Y%m%d%I%M%S')
     time2print = datetime.now().strftime('%Y/%m/%d %I:%M:%S%p')
 
@@ -186,9 +182,9 @@ def save_report_and_img(path2input: str,
     # the default being 3. The higher value does high compression of the
     # image resulting in a smaller file size but a longer compression time.
 
-    img_ext = Path(path2input).suffix
-    img_name = Path(path2input).stem
-    img_folder = Path(path2input).parent
+    img_ext = Path(path2folder).suffix
+    img_name = Path(path2folder).stem
+    img_folder = Path(path2folder).parent
     saved_report_name = f'{img_name}_{caller}_Report.txt'
     report_file_path = Path(img_folder, saved_report_name)
     saved_img_name = f'{img_name}_{caller}_{curr_time}{img_ext}'
