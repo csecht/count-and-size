@@ -841,12 +841,13 @@ class ViewImage(ProcessImage):
                              color=(255, 255, 255),
                              thickness=cv2.FILLED)
 
-            # Note: this contour step provides a cleaner border around the segment.
+            # Note: this contour step provides a cleaner border around the
+            #  segment that includes less of the color matte.
             cv2.drawContours(image=mask,
                              contours=[_c],
                              contourIdx=-1,
                              color=(0, 0, 0),
-                             thickness=4)
+                             thickness=6)
 
             # Idea for extraction from: https://stackoverflow.com/questions/59432324/
             #  how-to-mask-image-with-binary-mask
@@ -880,7 +881,8 @@ class ViewImage(ProcessImage):
         """
 
         # Note: recall that *_val dictionaries are inherited from ProcessImage().
-        noise_iter: int = self.slider_val['noise_iter'].get()
+        _k: int = self.slider_val['noise_k'].get()
+        noise_k = (_k, _k)
         morph_op: str = self.cbox_val['morph_op'].get()
         morph_shape: str = self.cbox_val['morph_shape'].get()
         circle_r_min: int = self.slider_val['circle_r_min'].get()
@@ -889,12 +891,11 @@ class ViewImage(ProcessImage):
         rgb_range = f'{const.MATTE_COLOR[color][0]}--{const.MATTE_COLOR[color][1]}'
         num_matte_segments: int = len(self.matte_contours)
 
-        # Only odd kernel integers are used for processing.
-        _nk: int = self.slider_val['noise_k'].get()
-        if _nk == 0:
-            noise_k = 'noise reduction not applied'
+        _iter: int = self.slider_val['noise_iter'].get()
+        if _iter == 0:
+            noise_iter = 'noise reduction not applied'
         else:
-            noise_k = _nk
+            noise_iter = _iter
 
         size_std: str = self.cbox_val['size_std'].get()
         if size_std == 'Custom':
@@ -2141,8 +2142,8 @@ class SetupApp(ViewImage):
 
         self.slider['noise_k_lbl'].configure(text='Reduce noise, kernel size\n',
                                              **const.LABEL_PARAMETERS)
-        self.slider['noise_k'].configure(from_=1, to=51,
-                                         tickinterval=5,
+        self.slider['noise_k'].configure(from_=1, to=25,
+                                         tickinterval=4,
                                          length=scale_len,
                                          variable=self.slider_val['noise_k'],
                                          **const.SCALE_PARAMETERS)
@@ -2151,7 +2152,7 @@ class SetupApp(ViewImage):
                                                      '(affects segment size):',
                                                 **const.LABEL_PARAMETERS)
 
-        self.slider['noise_iter'].configure(from_=0, to=5,
+        self.slider['noise_iter'].configure(from_=0, to=4,
                                             tickinterval=1,
                                             variable=self.slider_val['noise_iter'],
                                             **const.SCALE_PARAMETERS)
@@ -2292,8 +2293,8 @@ class SetupApp(ViewImage):
         # Default settings are optimized for sample6.jpg input.
 
         # Set/Reset Scale widgets.
-        self.slider_val['noise_k'].set(3)
-        self.slider_val['noise_iter'].set(1)
+        self.slider_val['noise_k'].set(1)
+        self.slider_val['noise_iter'].set(0)
         self.slider_val['circle_r_min'].set(int(self.input_w / 100))
         self.slider_val['circle_r_max'].set(int(self.input_w / 5))
 
