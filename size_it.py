@@ -1951,21 +1951,22 @@ class SetupApp(ViewImage):
         else:
             tip_scaling_text = 'with Ctrl-← & Ctrl-→.'
 
-        tips.add_command(label='• Images are automatically scaled to fit on')
-        tips.add_command(label='     the screen. Scaling can be changed later')
-        tips.add_command(label=f'     {tip_scaling_text}')
-        tips.add_command(label='• Use a lighter font color with darker objects.')
-        tips.add_command(label='• Font and line color can be changed with')
-        tips.add_command(label=f'     {color_tip}.')
-        tips.add_command(label='• Font size can be changed with')
-        tips.add_command(label='     Ctrl-+ & Ctrl--(minus).')
-        tips.add_command(label='• Font and line thickness can be changed with')
-        tips.add_command(label='     Shift-Ctrl-+ & Shift-Ctrl--(minus).')
-        tips.add_command(label='• Use the INVERSE threshold type for dark')
-        tips.add_command(label='     objects on a light background.')
-        tips.add_command(label='• Enter or Return key also starts processing.')
-        tips.add_command(label="• More Tips are in the repository's README file.")
-        tips.add_command(label='• Esc or Ctrl-Q from any window exits the program.')
+        # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
+        tip_text = (
+            '• Images are auto-zoomed to fit windows at startup.',
+            f'     Zoom can be changed with {tip_scaling_text}',
+            f'• Font and line color can be changed with {color_tip}.',
+            '• Font size can be changed with Ctrl-+(plus) & -(minus).',
+            '• Boldness can be changed with Shift-Ctrl-+(plus) & -(minus).',
+            '• Use INVERSE threshold type for dark objects on a light background.'
+            '• Right-click to save an image at its displayed size.',
+            '• Shift-Right-click to save the image at it original size.',
+            '• Enter or Return key also starts processing.'
+            '• More Tips are in the repository\'s README file.',
+            '• Esc or Ctrl-Q from any window will exit the program.',
+        )
+        for _line in tip_text:
+            tips.add_command(label=_line, font=const.TIPS_FONT)
 
         help_menu.add_command(label='About',
                               command=lambda: utils.about_win(parent=start_win))
@@ -2036,6 +2037,7 @@ class SetupApp(ViewImage):
         self.config_entries()
         self.bind_annotation_styles()
         self.bind_scale_adjustment()
+        self.bind_saving_images()
         self.set_defaults()
         self.grid_widgets()
         self.grid_img_labels()
@@ -2819,6 +2821,59 @@ class SetupApp(ViewImage):
         self.bind_all('<Control-Right>', lambda _: _increase_scale_factor())
         self.bind_all('<Control-Left>', lambda _: _decrease_scale_factor())
 
+    def bind_saving_images(self) -> None:
+        """
+        Save individual displayed images to file with mouse clicks; either
+        at current tkimg scale or at original cvimg scale.
+
+        Returns: None
+        """
+
+        # Note: the only way to place these internals in call_cmd._Command is
+        #  to add an image=None parameter to call_cmd then pass the image_name
+        #  to the on_click,,, methods in _Command.
+        #  That seems a bit hacky, so just live with these internals.
+        def _on_click_save_tkimg(image_name: str) -> None:
+            tkimg = self.tkimg[image_name]
+
+            click_info = (f'The displayed {image_name} image was saved at'
+                          f' {self.scale_factor.get()} scale.')
+
+            utils.save_report_and_img(path2input=self.input_file_path,
+                                      img2save=tkimg,
+                                      txt2save=click_info,
+                                      caller=image_name)
+
+            _info = (f'\nThe result image, "{image_name}", was saved to\n'
+                     f'the input image folder: {self.input_folder_name}\n'
+                     f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
+            self.show_info_message(info=_info, color='black')
+
+        def _on_click_save_cvimg(image_name: str) -> None:
+            cvimg = self.cvimg[image_name]
+
+            click_info = (f'\nThe displayed {image_name} image was saved to\n'
+                          f'the input image folder: {self.input_folder_name}\n'
+                          'with a timestamp, at original pixel dimensions.\n\n')
+
+            utils.save_report_and_img(path2input=self.input_file_path,
+                                      img2save=cvimg,
+                                      txt2save=click_info,
+                                      caller=image_name)
+
+            self.show_info_message(info=click_info, color='black')
+
+        # Right click will save displayed tk image to file, at current scale.
+        # Shift right click saves (processed) cv image at full (original) scale.
+        # macOS right mouse button has a different event ID.
+        rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
+        shift_rt_click = '<Shift-Button-3>' if const.MY_OS in 'lin, win' else '<Shift-Button-2>'
+        for name, label in self.img_label.items():
+            label.bind(rt_click,
+                       lambda _, n=name: _on_click_save_tkimg(image_name=n))
+            label.bind(shift_rt_click,
+                       lambda _, n=name: _on_click_save_cvimg(image_name=n))
+
     def set_defaults(self) -> None:
         """
         Sets and resets selector widgets and keybind scaling functions
@@ -3110,16 +3165,6 @@ class SetupApp(ViewImage):
         self.update_image(tkimg_name='input',
                           cvimg_array=self.cvimg['input'])
 
-        # Right click will save displayed tk image to file, at current scale.
-        # Shift right click saves (processed) cv image at full (original) scale.
-        # macOS right mouse button has a different event ID.
-        rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
-        shift_rt_click = '<Shift-Button-3>' if const.MY_OS in 'lin, win' else '<Shift-Button-2>'
-        for name, label in self.img_label.items():
-            label.bind(rt_click,
-                       lambda _, n=name: self._on_click_save_tkimg(image_name=n))
-            label.bind(shift_rt_click,
-                       lambda _, n=name: self._on_click_save_cvimg(image_name=n))
         self.update()
 
         # Now is time to show the mainloop (self) report window that
