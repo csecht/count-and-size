@@ -195,10 +195,7 @@ class ProcessImage(tk.Tk):
             The *img* array with cv2.morphologyEx applied.
         """
 
-        # Need (sort of) kernel to be odd, to avoid an annoying shift of
-        #   the displayed image.
-        _k = self.slider_val['noise_k'].get()
-        noise_k = _k + 1 if _k % 2 == 0 else _k
+        noise_k = self.slider_val['noise_k'].get()
         iteration = self.slider_val['noise_iter'].get()
 
         # Need integers for the cv function parameters.
@@ -905,7 +902,7 @@ class ViewImage(ProcessImage):
         if _nk == 0:
             noise_k = 'noise reduction not applied'
         else:
-            noise_k = _nk + 1 if _nk % 2 == 0 else _nk
+            noise_k = _nk
 
         size_std: str = self.cbox_val['size_std'].get()
         if size_std == 'Custom':
@@ -1635,7 +1632,7 @@ class SetupApp(ViewImage):
         """
         Create menu instance and add pull-down menus.
         Args:
-            parent:
+            parent: The window object to place the menu bar.
 
         Returns: None
         """
@@ -1761,7 +1758,7 @@ class SetupApp(ViewImage):
                                   command=self.call_cmd().apply_default_settings,
                                   accelerator=f'{os_accelerator}+D')
 
-            help_menu.add_cascade(label='Tips...', menu=tips, font=const.MENU_FONT,)
+            help_menu.add_cascade(label='Tips...', menu=tips, font=const.MENU_FONT, )
 
             # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
             tip_text = (
@@ -2053,7 +2050,7 @@ class SetupApp(ViewImage):
 
             click_info = (f'\nThe displayed {image_name} image was saved to\n'
                           f'the input image folder: {self.input_folder_name}\n'
-                          'with a timestamp and original pixel dimensions.\n\n')
+                          'with a timestamp, at original pixel dimensions.\n\n')
 
             utils.save_report_and_img(path2input=self.input_file_path,
                                       img2save=cvimg,
@@ -2141,9 +2138,8 @@ class SetupApp(ViewImage):
         #  button release. Peak-local-max and circle radius params are
         #  used in process_matte(), which is called by one of the "Run" buttons.
 
-        self.slider['noise_k_lbl'].configure(text='Reduce noise, kernel size\n'
-                                                  '(only odd integers used):',
-                                             **const.LABEL_PARAMETERS)
+        self.slider['noise_k_lbl'].configure(text='Reduce noise, kernel size\n',
+                                             ** const.LABEL_PARAMETERS)
         self.slider['noise_k'].configure(from_=1, to=51,
                                          tickinterval=5,
                                          length=scale_len,
@@ -2151,7 +2147,7 @@ class SetupApp(ViewImage):
                                          **const.SCALE_PARAMETERS)
 
         self.slider['noise_iter_lbl'].configure(text='Reduce noise, iterations\n'
-                                                     '(0 may extend processing time):',
+                                                     '(affects segment size):',
                                                 **const.LABEL_PARAMETERS)
 
         self.slider['noise_iter'].configure(from_=0, to=5,
