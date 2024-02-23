@@ -1818,11 +1818,11 @@ class SetupApp(ViewImage):
                 '• Matte color selection can affect counts and sizes',
                 '      ...so can noise reduction.',
                 '• "Update" button may be needed after changing settings.',
-                '• Right-click to save an image at its displayed size.',
-                '• Shift-Right-click to save the image at it original size.',
+                '• Right-click to save an image at its displayed zoom size.',
+                '• Shift-Right-click to save the image at full scale.',
                 '• "Export objects" saves each selected object as an image.',
-                "• Noise reduction affects exported objects' edge fidelity.",
-                '• More Tips are in the repository\'s README file.',
+                "• Color and noise reduction settings affect export quality.",
+                "• More Tips are in the repository's README file.",
                 '• Esc or Ctrl-Q from any window will exit the program.',
             )
             for _line in tip_text:

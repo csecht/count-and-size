@@ -1272,7 +1272,7 @@ class ViewImage(ProcessImage):
         right_edge = self.cvimg['gray'].shape[1] - 1
 
         if not contour_pointset:
-            utils.no_objects_found_msg()
+            utils.no_objects_found_msg(caller=PROGRAM_NAME)
             return
 
         flag = False
@@ -1358,7 +1358,7 @@ class ViewImage(ProcessImage):
         if selected_sizes:
             self.sorted_size_list = sorted(selected_sizes)
         else:
-            utils.no_objects_found_msg()
+            utils.no_objects_found_msg(caller=PROGRAM_NAME)
 
         self.update_image(tkimg_name='sized',
                           cvimg_array=self.cvimg['sized'])
@@ -1367,7 +1367,7 @@ class ViewImage(ProcessImage):
         """
         Takes a list of contour segments, selects, masks and extracts
         each, to a bounding rectangle, for export of ROI to file.
-        Calls utility_modules/utils.export_segments().
+        Calls utility_modules/utils.export_each_segment().
         Called from Button command in configure_buttons().
 
         Returns: Integer count of exported segments.
@@ -1383,10 +1383,10 @@ class ViewImage(ProcessImage):
         else:  # user selected 'Cancel', which returns None, the default.
             return 0
 
-        # Grab current time to pass to utils.export_segments() module.
+        # Grab current time to pass to utils.export_each_segment() module.
         #  This is done here, outside the for loop, to avoid having the
         #  export timestamp change (by one or two seconds) during processing.
-        # The index count is also passed as a export_segments() argument.
+        # The index count is also passed as an export_each_segment() argument.
         time_now = datetime.now().strftime('%Y%m%d%I%M%S')
         roi_idx = 0
 
@@ -1484,10 +1484,10 @@ class ViewImage(ProcessImage):
                 else:  # is 'roi', so export segment's enlarged bounding box.
                     export_chosen = roi
 
-                utils.export_segments(path2folder=self.input_folder_path,
-                                      img2exp=export_chosen,
-                                      index=roi_idx,
-                                      timestamp=time_now)
+                utils.export_each_segment(path2folder=self.input_folder_path,
+                                          img2exp=export_chosen,
+                                          index=roi_idx,
+                                          timestamp=time_now)
             else:
                 print(f'There was a problem with segment # {roi_idx},'
                       ' so it was not exported.')
