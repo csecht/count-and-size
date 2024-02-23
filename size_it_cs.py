@@ -389,6 +389,7 @@ class ViewImage(ProcessImage):
         self.imported_settings: dict = {}
 
         self.num_obj_selected: int = 0
+        self.selected_sizes: List[float] = []
         self.report_txt: str = ''
 
     def set_auto_scale_factor(self) -> None:
@@ -659,7 +660,7 @@ class ViewImage(ProcessImage):
 
             return
 
-        selected_sizes: List[float] = []
+        self.selected_sizes: List[float] = []
         annotation_color: tuple = const.COLORS_CV[self.cbox_val['annotation_color'].get()]
 
         # The size range slider values are radii pixels. This is done b/c:
@@ -729,7 +730,7 @@ class ViewImage(ProcessImage):
             # Convert size strings to float, assuming that individual
             #  sizes listed in the report may be used in a spreadsheet
             #  or for other statistical analysis.
-            selected_sizes.append(float(size2display))
+            self.selected_sizes.append(float(size2display))
 
             # Need to properly center text in the circled object.
             ((txt_width, _), baseline) = cv2.getTextSize(
@@ -758,23 +759,33 @@ class ViewImage(ProcessImage):
 
         # The sorted size list is used for reporting individual sizes
         #   and size summary metrics.
-        if selected_sizes:
-            self.sorted_size_list = sorted(selected_sizes)
+        if self.selected_sizes:
+            self.sorted_size_list = sorted(self.selected_sizes)
         else:
             utils.no_objects_found_msg(caller=PROGRAM_NAME)
 
         self.update_image(tkimg_name='sized',
                           cvimg_array=self.cvimg['sized'])
 
-    def preview_export(self, export_img, import_img) -> tk.Toplevel:
+    def preview_export(self,
+                       export_img: tk.PhotoImage,
+                       import_img: tk.PhotoImage) -> tk.Toplevel:
+        """
+        Display a sample of the export image and the import image from
+        select_and_export_objects() in a Toplevel window.
+        Args:
+            export_img: A PhotoImage of an object segment for export.
+            import_img: A PhotoImage of the ROI input image.
 
+        Returns: A Toplevel window comparing input roi and its export.
+
+        """
         w_offset = int(self.screen_width * 0.50)
 
         sample_win = tk.Toplevel()
         sample_win.title('Sample: for export <- | -> as input')
-        sample_win.minsize(400, 150)
+        sample_win.minsize(width=400, height=150)
         sample_win.geometry(f'+{w_offset}+55')
-        sample_win.resizable(True, False)
         sample_win.columnconfigure(index=0, weight=1)
         sample_win.columnconfigure(index=1, weight=1)
         sample_win.config(**const.WINDOW_PARAMETERS)
@@ -811,6 +822,7 @@ class ViewImage(ProcessImage):
         bottom_edge = self.input_ht - 1
         right_edge = self.input_w - 1
         flag = False
+        first2export = True
         ok2export = False
 
         for _c in self.matte_contours:
@@ -884,23 +896,23 @@ class ViewImage(ProcessImage):
             if result is not None:
                 result[roi_mask == 0] = 255
 
-                if roi_idx == 1:
+                if first2export:
+                    first2export = False
                     mask_img = manage.tk_image(image=result, scale_factor=3.0)
                     roi_img = manage.tk_image(image=roi, scale_factor=3.0)
-
+                    size = self.selected_sizes[roi_idx - 1]
                     review_window = self.preview_export(export_img=mask_img, import_img=roi_img)
-
                     ok2export = messagebox.askokcancel(
                         parent=review_window,
                         title='Export preview (3X zoom)',
-                        message='Selected objects sample',
+                        message='Sampled from selected objects\n'
+                                f'#{roi_idx}, size: {size}.',
                         detail=f'OK: looks good, export all {self.num_obj_selected}'
                                ' selected objects.\n\n'
                                'Cancel: export nothing; try different\n'
                                'noise settings or matte color.')
 
                     review_window.destroy()
-
                     if ok2export:
                         continue
                     else:
