@@ -230,10 +230,10 @@ def save_report_and_img(path2folder: str,
               f'{data2save}')
 
 
-def export_segments(path2folder: str,
-                    img2exp: Union[np.ndarray, cv2.UMat],
-                    index: int,
-                    timestamp: str) -> None:
+def export_each_segment(path2folder: str,
+                        img2exp: Union[np.ndarray, cv2.UMat],
+                        index: int,
+                        timestamp: str) -> None:
     """
     Writes an image file for an individual contoured segments from a
     list of contour. File names include a timestamp and segment index

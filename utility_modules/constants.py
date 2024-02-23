@@ -290,11 +290,11 @@ else:  # is macOS
 PANEL_LEFT = dict(
     column=0, row=0,
     padx=5, pady=5,
-    sticky='nsew')
+    sticky='w')
 PANEL_RIGHT = dict(
     column=1, row=0,
     padx=5, pady=5,
-    sticky='nsew')
+    sticky='e')
 
 # Values are in mm units.
 # Value of 1.001 for 'None' is a hack to force 4 sig.fig as the default.
