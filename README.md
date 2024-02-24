@@ -108,7 +108,7 @@ When the "Process now" is clicked, the main settings and report window appears (
 
 Below, the resulting annotated image. Clicking the "Save settings & sized image" button exports the annotated image (at its original resolution), and the settings report, including the 31 individual sizes, to the input image's folder.
 
-![sample1 result](images/sample1_result_screenshot.png)
+![sample1 result](images/sample1_result_screenshot.jpg)
 
 Below, resulting annotated image for the input `sample2.jpg` and the text output of its saved settings. Objects were properly segmented by adjusting (from their defaults) the values for contrast, noise reduction, filter, and peak local maximum. Values for the selected size range and standard were then applied.
 
@@ -170,9 +170,11 @@ Object size metrics,   mean: 12.3, median: 12.2, range: 6.74--18.1
 `6.74, 7.98, 8.25, 8.71, 9.02, 9.04, 9.56, 9.59, 9.6, 9.8, 9.8, 9.88, 9.9, 9.95, 10.0, 10.0, 10.1, 10.1, 10.1, 10.2, 10.4, 10.4, 10.5, 10.5, 10.5, 10.6, 10.7, 10.7, 10.8, 10.8, 10.8, 10.9, 10.9, 10.9, 11.0, 11.1, 11.1, 11.2, 11.2, 11.2, 11.3, 11.3, 11.3, 11.3, 11.4, 11.4, 11.4, 11.5, 11.5, 11.5, 11.5, 11.6, 11.6, 11.7, 11.9, 11.9, 11.9, 12.0, 12.0, 12.1, 12.1, 12.1, 12.2, 12.2, 12.2, 12.2, 12.3, 12.3, 12.4, 12.4, 12.5, 12.5, 12.5, 12.5, 12.6, 12.7, 12.7, 12.7, 12.8, 12.8, 12.8, 12.8, 12.9, 12.9, 13.0, 13.0, 13.0, 13.2, 13.3, 13.3, 13.3, 13.3, 13.4, 13.5, 13.5, 13.6, 13.6, 13.7, 13.8, 14.0, 14.0, 14.2, 14.2, 14.3, 14.3, 14.4, 14.4, 14.4, 14.5, 14.5, 14.5, 14.6, 14.6, 14.7, 14.8, 14.8, 14.9, 15.1, 15.2, 15.3, 15.4, 15.5, 16.0, 16.2, 16.4, 16.9, 17.0, 17.4, 18.1`
 
 Below, relevant image processing steps in `size_it.py` are displayed in seven panes in four windows. Images update as settings are changed.
+
 ![all size_it image windows](images/all_image_windows.png)
 
-Below, `size_it_cs.py` settings window with menubar and result for green screen segmentation. Example image `sample6.jpg` was processed with these settings: Matte color: green3, Noise reduction ksize=3, iterations=1; morphology operator =cv2.MORPH_HITMISS, shape=cv2.MORPH_RECT, Selected size range: 5--375 pixels. Displayed sizes are millimeters. The white and black circles are hockey puck-sized standards (plastic cut-outs, 76 mm dia.). 
+Below, `size_it_cs.py` settings window with menubar and result for green screen segmentation. Example image `sample6.jpg` was processed with these settings: Matte color: green3, Noise reduction ksize=3, iterations=1; morphology operator =cv2.MORPH_HITMISS, shape=cv2.MORPH_RECT, Selected size range: 5--375 pixels. Displayed sizes are millimeters. The white and black circles are hockey puck-sized standards (plastic cut-outs, 76 mm dia.).
+
 ![size_it_cs settings](images/size_it_cs_settings_screenshot.png)
 ![sample6 result](images/sample6_result_screenshot.jpg)
 
@@ -239,6 +241,6 @@ All image files are from the author, C.S. Echt.
 | blue1       | (102, 140, 100) | (120, 255, 255) |
 | blue2       | (80, 140, 100)  | (120, 255, 255) |
 | white1      | (0, 0, 200)     | (0, 0, 255)     |
-| white2      | (0, 0, 200)     | (125, 60, 255]) |
+| white2      | (0, 0, 200)     | (125, 60, 255)  |
 | black1      | (0, 0, 0)       | (255, 120, 80)  |
 | black2      | (0, 0, 0)       | (255, 120, 140) |
