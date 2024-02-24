@@ -914,6 +914,11 @@ class ViewImage(ProcessImage):
 
                     review_window.destroy()
                     if ok2export:
+                        # Need to export this first sample before continuing.
+                        utils.export_each_segment(path2folder=self.input_folder_path,
+                                                  img2exp=result,
+                                                  index=roi_idx,
+                                                  timestamp=time_now)
                         continue
                     else:
                         return
