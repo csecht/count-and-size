@@ -905,8 +905,8 @@ class ViewImage(ProcessImage):
                     ok2export = messagebox.askokcancel(
                         parent=review_window,
                         title='Export preview (3X zoom)',
-                        message='Sampled from selected objects\n'
-                                f'#{roi_idx}, size: {size}.',
+                        message='Sampled from selected objects:\n'
+                                f'#{roi_idx}, size = {size}.',
                         detail=f'OK: looks good, export all {self.num_obj_selected}'
                                ' selected objects.\n\n'
                                'Cancel: export nothing; try different\n'
@@ -1040,8 +1040,8 @@ class ViewImage(ProcessImage):
             if self.cbox_val['size_std'].get() == 'Custom':
                 self.validate_custom_size_entry()
 
-        _info = '\n\nFinding objects...\n\n\n'
-        self.show_info_message(info=_info, color='blue')
+        # _info = '\n\nFinding objects...\n\n\n'
+        # self.show_info_message(info=_info, color='blue')
 
         self.widget_control('off')
         self.time_start: float = time()
@@ -1394,10 +1394,8 @@ class SetupApp(ViewImage):
                 cmd_self.widget_control('off')  # is turned 'on' in process_matte()
                 cmd_self.process_matte()
 
-                _info = ('\nSettings have been reset to their defaults.\n'
-                         'Check and adjust them if needed, then...\n'
-                         'Select a "Run" button to finalize updating the\n'
-                         'report and image results.\n')
+                _info = ('\n\nSettings have been reset to their defaults.\n'
+                         'Check and adjust if needed.\n\n')
                 cmd_self.show_info_message(info=_info, color='blue')
 
         return _Command
