@@ -269,7 +269,10 @@ class ProcessImage(tk.Tk):
         self.reduce_noise(matte_mask)
         self.cvimg['matte_objects'] = cv2.bitwise_not(self.cvimg['redux_mask'])
 
-        # This list is used in select_and_size_objects() and select_and_export_objects()
+        # matte_contours is used in select_and_size_objects() and select_and_export_objects(),
+        #  where selected contours are used to draw and size enclosing circles or
+        #  draw and export the ROI.
+        # The data type is a tuple of lists of contour pointsets.
         self.matte_contours, _ = cv2.findContours(
             image=np.uint8(self.cvimg['matte_objects']),
             mode=cv2.RETR_EXTERNAL,
@@ -353,6 +356,7 @@ class ProcessImage(tk.Tk):
         #  that conversion, but does a better job identifying segments with it.
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
+        # In this context, watershed_line=True is necessary to separate touching objects.
         watershed_img: np.ndarray = watershed(
             image=-transformed,
             markers=labeled_array,
@@ -361,7 +365,9 @@ class ProcessImage(tk.Tk):
             compactness=1.0,
             watershed_line=True)
 
-        # ws_basins are the contours to be passed to select_and_size_objects().
+        # ws_basins are the contours to be passed to select_and_size_objects(),
+        #  where selected contours are used to draw and size enclosing circles.
+        # The data type is a tuple of lists of contour pointsets.
         self.ws_basins, _ = cv2.findContours(image=np.uint8(watershed_img),
                                              mode=cv2.RETR_EXTERNAL,
                                              method=cv2.CHAIN_APPROX_NONE)

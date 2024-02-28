@@ -1753,7 +1753,7 @@ class SetupApp(ViewImage):
         configure_main_window
         _settings_dict
         configure_buttons
-        _need_to_click
+        need_to_click_run_ws_button
         config_sliders
         config_comboboxes
         config_entries
@@ -2558,18 +2558,18 @@ class SetupApp(ViewImage):
 
         # Combobox styles are set in manage.ttk_styles(), called in configure_buttons().
         self.cbox['morph_op_lbl'].config(text='Reduce noise, morphology operator:',
-                                        **const.LABEL_PARAMETERS)
+                                         **const.LABEL_PARAMETERS)
         self.cbox['morph_op'].config(textvariable=self.cbox_val['morph_op'],
-                                    width=18 + width_correction,
-                                    values=list(const.CV_MORPH_OP.keys()),
-                                    **const.COMBO_PARAMETERS)
+                                     width=18 + width_correction,
+                                     values=list(const.CV_MORPH_OP.keys()),
+                                     **const.COMBO_PARAMETERS)
 
         self.cbox['morph_shape_lbl'].config(text='... shape:',
-                                           **const.LABEL_PARAMETERS)
+                                            **const.LABEL_PARAMETERS)
         self.cbox['morph_shape'].config(textvariable=self.cbox_val['morph_shape'],
-                                       width=16 + width_correction,
-                                       values=list(const.CV_MORPH_SHAPE.keys()),
-                                       **const.COMBO_PARAMETERS)
+                                        width=16 + width_correction,
+                                        values=list(const.CV_MORPH_SHAPE.keys()),
+                                        **const.COMBO_PARAMETERS)
 
         self.cbox['filter_lbl'].config(text='Filter type:',
                                        **const.LABEL_PARAMETERS)
@@ -2673,6 +2673,7 @@ class SetupApp(ViewImage):
 
         Returns: None
         """
+
         def _display_annotation_action(action: str, value: str):
             _info = (f'\n\nA new annotation style was applied.\n'
                      f'{action} was changed to {value}.\n\n')

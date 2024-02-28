@@ -48,7 +48,7 @@ def about_win(parent: tk.Toplevel) -> None:
     Returns:
         None
     """
-    aboutwin = tk.Toplevel(master=parent)
+    aboutwin = tk.Toplevel(master=parent, bg=const.MASTER_BG)
     aboutwin.title('About Count & Size')
     aboutwin.minsize(width=400, height=200)
     aboutwin.focus_set()
