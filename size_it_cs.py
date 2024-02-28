@@ -53,10 +53,14 @@ try:
     import numpy as np
     import tkinter as tk
     from tkinter import ttk, messagebox, filedialog
+    from skimage.segmentation import watershed
+    from skimage.feature import peak_local_max
+    from scipy import ndimage
+
 except (ImportError, ModuleNotFoundError) as import_err:
     sys_exit(
         '*** One or more required Python packages were not found'
-        ' or need an update:\nOpenCV-Python, NumPy, tkinter (Tk/Tcl).\n\n'
+        ' or need an update:\nOpenCV-Python, NumPy, scikit-image, SciPy, tkinter (Tk/Tcl).\n\n'
         'To install: from the current folder, run this command'
         ' for the Python package installer (PIP):\n'
         '   python3 -m pip install -r requirements.txt\n\n'
@@ -99,6 +103,7 @@ class ProcessImage(tk.Tk):
     update_image
     reduce_noise
     matte_segmentation
+    watershed_segmentation
     """
 
     def __init__(self):
@@ -107,11 +112,14 @@ class ProcessImage(tk.Tk):
         # Note: The matching selector widgets for the following
         #  control variables are in ContourViewer __init__.
         self.slider_val = {
-            # For variables in config_sliders()...
+            # For Scale() widgets in config_sliders()...
             'noise_k': tk.IntVar(),
             'noise_iter': tk.IntVar(),
             'circle_r_min': tk.IntVar(),
             'circle_r_max': tk.IntVar(),
+            # For Scale() widgets in setup_ws_window()...
+            'plm_mindist': tk.IntVar(),
+            'plm_footprint': tk.IntVar(),
         }
 
         self.scale_factor = tk.DoubleVar()
@@ -153,6 +161,7 @@ class ProcessImage(tk.Tk):
         self.font_scale: float = 0
 
         self.matte_contours: tuple = ()
+        self.ws_basins: tuple = ()
         self.sorted_size_list: list = []
         self.unit_per_px = tk.DoubleVar()
         self.num_sigfig: int = 0
@@ -185,8 +194,8 @@ class ProcessImage(tk.Tk):
 
     def reduce_noise(self, img: np.ndarray) -> None:
         """
-        Reduce noise in the contrast adjust image erode and dilate actions
-        of cv2.morphologyEx operations.
+        Reduce noise in the matte mask image using erode and dilate
+        actions of cv2.morphologyEx operations.
         Called by matte_segmentation(). Calls update_image().
 
         Args:
@@ -237,7 +246,8 @@ class ProcessImage(tk.Tk):
 
     def matte_segmentation(self) -> None:
         """
-        A segmentation method for use with mattes, e.g., green screen.
+        An optional segmentation method to use on color matte masks,
+        e.g., green screen.
         """
 
         # Convert the input image to HSV colorspace for better color segmentation.
@@ -288,6 +298,73 @@ class ProcessImage(tk.Tk):
         # Now need to draw enclosing circles around selected segments and
         #  annotate with object sizes in ViewImage.select_and_size_objects().
 
+    def watershed_segmentation(self) -> None:
+        """
+        Separate groups of objects in a matte mask. Inverts the noise-reduced
+        mask, then applies a distance transform and watershed algorithm
+        to separate objects that are touching. Intended for use when the
+        color matte is not sufficient for complete object separation.
+
+        Returns: None
+        """
+
+        inv_img = cv2.bitwise_not(self.cvimg['redux_mask'])
+
+        min_dist = self.slider_val['plm_mindist'].get()
+        p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
+                           self.slider_val['plm_footprint'].get())
+        plm_kernel = np.ones(shape=p_kernel, dtype=np.uint8)
+
+        # Calculate the distance transform of the objects' masks by
+        #  replacing each foreground (non-zero) element with its
+        #  shortest distance to the background (any zero-valued element).
+        #  Returns a float64 ndarray.
+        # Note that maskSize=0 calculates the precise mask size only for
+        #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
+        transformed: np.ndarray = cv2.distanceTransform(
+            src=inv_img,
+            distanceType=cv2.DIST_L2,
+            maskSize=0)
+
+        local_max: ndimage = peak_local_max(image=transformed,
+                                            min_distance=min_dist,
+                                            exclude_border=False,  # True is min_dist
+                                            num_peaks=np.inf,
+                                            footprint=plm_kernel,
+                                            labels=inv_img,
+                                            num_peaks_per_label=np.inf,
+                                            p_norm=np.inf)  # Chebyshev distance
+        mask = np.zeros(shape=transformed.shape, dtype=bool)
+        # Set background to True (not zero: True or 1)
+        mask[tuple(local_max.T)] = True
+
+        # Note that markers are single px, colored in grayscale by their label index.
+        # Source: http://scipy-lectures.org/packages/scikit-image/index.html
+        # From the doc: labels: array of ints, of same shape as data without channels dimension.
+        #  Array of seed markers labeled with different positive integers for
+        #  different phases. Zero-labeled pixels are unlabeled pixels.
+        #  Negative labels correspond to inactive pixels that are not taken into
+        #  account (they are removed from the graph).
+        labeled_array, _ = ndimage.label(input=mask)
+        labeled_array[labeled_array == inv_img] = -1
+
+        # Note that the minus symbol with the image argument converts the
+        #  distance transform into a threshold. Watershed can work without
+        #  that conversion, but does a better job identifying segments with it.
+        # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
+        # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
+        watershed_img: np.ndarray = watershed(
+            image=-transformed,
+            markers=labeled_array,
+            connectivity=4,
+            mask=inv_img,
+            compactness=1.0)
+
+        # ws_basins are the contours to be passed to select_and_size_objects().
+        self.ws_basins, _ = cv2.findContours(image=np.uint8(watershed_img),
+                                             mode=cv2.RETR_EXTERNAL,
+                                             method=cv2.CHAIN_APPROX_NONE)
+
 
 class ViewImage(ProcessImage):
     """
@@ -299,15 +376,15 @@ class ViewImage(ProcessImage):
     delay_size_std_info_msg
     show_info_message
     configure_circle_r_sliders
-    _on_click_save_tkimg
-    _on_click_save_cvimg
     widget_control
     validate_px_size_entry
     validate_custom_size_entry
     set_size_standard
     select_and_size_objects
+    preview_export
     select_and_export_objects
     report_results
+    process_ws
     process_matte
     process_sizes
     """
@@ -336,6 +413,12 @@ class ViewImage(ProcessImage):
 
             'circle_r_max': tk.Scale(master=self.selectors_frame),
             'circle_r_max_lbl': tk.Label(master=self.selectors_frame),
+
+            'plm_mindist': tk.Scale(),
+            'plm_mindist_lbl': tk.Label(),
+
+            'plm_footprint': tk.Scale(),
+            'plm_footprint_lbl': tk.Label(),
         }
 
         self.cbox = {
@@ -377,6 +460,10 @@ class ViewImage(ProcessImage):
         self.info_txt = tk.StringVar()
         self.info_label = tk.Label(master=self, textvariable=self.info_txt)
 
+        # Defined in widget_control() to reset values that user may have
+        #  tried to change during prolonged processing times.
+        self.slider_values: list = []
+
         self.input_file_path: str = ''
         self.input_file_name: str = ''
         self.input_folder_name: str = ''
@@ -391,6 +478,8 @@ class ViewImage(ProcessImage):
         self.num_obj_selected: int = 0
         self.selected_sizes: List[float] = []
         self.report_txt: str = ''
+
+        self.ws_window = None
 
     def set_auto_scale_factor(self) -> None:
         """
@@ -412,8 +501,8 @@ class ViewImage(ProcessImage):
 
     def import_settings(self) -> None:
         """
-        The dictionary of saved settings, imported via json.loads(),
-        that are to be applied to a new image. Includes all settings
+        Uses a dictionary of saved settings, imported via json.loads(),
+        that are to be applied to the input image. Includes all settings
         except the scale_factor for window image size.
         """
 
@@ -429,11 +518,11 @@ class ViewImage(ProcessImage):
                   f'{oserr}')
 
         # Set/Reset Scale widgets.
-        for _name in self.slider_val:
+        for _name, _ in self.slider_val.items():
             self.slider_val[_name].set(self.imported_settings[_name])
 
         # Set/Reset Combobox widgets.
-        for _name in self.cbox_val:
+        for _name, _ in self.cbox_val.items():
             self.cbox_val[_name].set(self.imported_settings[_name])
 
         self.font_scale = self.imported_settings['font_scale']
@@ -493,8 +582,7 @@ class ViewImage(ProcessImage):
     def configure_circle_r_sliders(self) -> None:
         """
         Called from config_sliders() and open_input().
-        Returns:
-
+        Returns: None
         """
 
         # Note: this widget configuration method is here, instead of in
@@ -519,17 +607,60 @@ class ViewImage(ProcessImage):
 
     def widget_control(self, action: str) -> None:
         """
-        Simply show a spinning watch/wheel cursor during the short
-        processing time. No need to disable widgets for short intervals.
+        Used to disable settings widgets when segmentation is running.
+        Provides a watch cursor while widgets are disabled.
+        Gets Scale() values at time of disabling and resets them upon
+        enabling, thus preventing user click events retained in memory
+        during processing from changing slider position post-processing.
 
         Args:
-            action: Either 'off' or 'on'.
+            action: Either 'off' to disable widgets, or 'on' to enable.
+        Returns:
+            None
         """
 
         if action == 'off':
+            for _name, _w in self.slider.items():
+                _w.configure(state=tk.DISABLED)
+
+                # Grab the current slider values, in case user tries to change.
+                if isinstance(_w, tk.Scale):
+                    self.slider_values.append(self.slider_val[_name].get())
+            for _, _w in self.cbox.items():
+                _w.configure(state=tk.DISABLED)
+            for _, _w in self.button.items():
+                _w.grid_remove()
+            for _, _w in self.size_std.items():
+                if not isinstance(_w, tk.StringVar):
+                    _w.configure(state=tk.DISABLED)
+
             self.config(cursor='watch')
+            self.ws_window.config(cursor='watch')
+            self.update()
         else:  # is 'on'
+            idx = 0
+            for _name, _w in self.slider.items():
+                _w.configure(state=tk.NORMAL)
+
+                # Restore the slider values to overwrite any changes.
+                if self.slider_values and isinstance(_w, tk.Scale):
+                    self.slider_val[_name].set(self.slider_values[idx])
+                    idx += 1
+            for _, _w in self.cbox.items():
+                if isinstance(_w, tk.Label):
+                    _w.configure(state=tk.NORMAL)
+                else:  # is tk.Combobox
+                    _w.configure(state='readonly')
+            for _, _w in self.button.items():
+                _w.grid()
+            for _, _w in self.size_std.items():
+                if not isinstance(_w, tk.StringVar):
+                    _w.configure(state=tk.NORMAL)
+
             self.config(cursor='')
+            self.ws_window.config(cursor='')
+            self.update()
+            self.slider_values.clear()
 
     def validate_px_size_entry(self) -> None:
         """
@@ -634,22 +765,25 @@ class ViewImage(ProcessImage):
                 self.num_sigfig = min(utils.count_sig_fig(preset_std_size),
                                       utils.count_sig_fig(size_std_px))
 
-    def select_and_size_objects(self, contour_pointset: tuple) -> None:
+    def select_and_size_objects(self) -> None:
         """
         Select object contour ROI based on area size and position,
-        draw an enclosing circle around contours, then display them
-        on the input image. Objects are expected to be oblong so that
-        circle diameter can represent the object's length.
+        draw an enclosing circle around contours, then display the
+        diameter size over the input image. Objects are expected to be
+        oblong so that circle diameter can represent the object's length.
         Called by process_matte(), process_sizes(), bind_annotation_styles().
         Calls update_image().
-
-        Args:
-            contour_pointset: A tuple of contour coordinate lists
-            generated by matte_segmentation().
         Returns:
             None
         """
         self.cvimg['sized'] = self.cvimg['input'].copy()
+
+        # Need to determine whether the watershed algorithm is in use,
+        #  which is the case when the ws control window is visible.
+        if self.ws_window.wm_state() == 'normal':
+            contour_pointset = self.ws_basins
+        else:  # is 'withdrawn' or 'iconic'
+            contour_pointset = self.matte_contours
 
         # Note that with matte screens, the contour_pointset may contain
         #  a single element of the entire image, if no objects are found.
@@ -777,7 +911,7 @@ class ViewImage(ProcessImage):
             export_img: A PhotoImage of an object segment for export.
             import_img: A PhotoImage of the ROI input image.
 
-        Returns: A Toplevel window comparing input roi and its export.
+        Returns: A Toplevel window comparing input ROI to its export.
 
         """
         w_offset = int(self.screen_width * 0.50)
@@ -901,9 +1035,9 @@ class ViewImage(ProcessImage):
                     mask_img = manage.tk_image(image=result, scale_factor=3.0)
                     roi_img = manage.tk_image(image=roi, scale_factor=3.0)
                     size = self.selected_sizes[roi_idx - 1]
-                    review_window = self.preview_export(export_img=mask_img, import_img=roi_img)
+                    preview_window = self.preview_export(export_img=mask_img, import_img=roi_img)
                     ok2export = messagebox.askokcancel(
-                        parent=review_window,
+                        parent=preview_window,
                         title='Export preview (3X zoom)',
                         message='Sampled from selected objects:\n'
                                 f'#{roi_idx}, size = {size}.',
@@ -911,17 +1045,17 @@ class ViewImage(ProcessImage):
                                ' selected objects.\n\n'
                                'Cancel: export nothing; try different\n'
                                'noise settings or matte color.')
+                    preview_window.destroy()
 
-                    review_window.destroy()
                     if ok2export:
-                        # Need to export this first sample before continuing.
+                        # Need to export this first sample result before continuing.
                         utils.export_each_segment(path2folder=self.input_folder_path,
                                                   img2exp=result,
                                                   index=roi_idx,
                                                   timestamp=time_now)
                         continue
-                    else:
-                        return
+
+                    return
 
                 utils.export_each_segment(path2folder=self.input_folder_path,
                                           img2exp=result,
@@ -968,8 +1102,13 @@ class ViewImage(ProcessImage):
         color = self.cbox_val['matte_color'].get()
         rgb_range = f'{const.MATTE_COLOR[color][0]}--{const.MATTE_COLOR[color][1]}'
 
-        _num_seg: int = len(self.matte_contours)
-        num_matte_segments = 0 if _num_seg == 1 else _num_seg
+        if self.ws_window.wm_state() == 'normal':
+            num_segments = len(self.ws_basins)
+            ws_status = 'Yes'
+        else:  # is 'withdrawn' or 'iconic'
+            num_segments = len(self.matte_contours)
+            num_segments = 0 if num_segments == 1 else num_segments
+            ws_status = 'No'
 
         size_std: str = self.cbox_val['size_std'].get()
         if size_std == 'Custom':
@@ -1017,8 +1156,9 @@ class ViewImage(ProcessImage):
             f'{tab}cv2.morphologyEx iterations={noise_iter}\n'
             f'{tab}cv2.morphologyEx op={morph_op},\n'
             f'{divider}\n'
+            f'{"Watershed segments:".ljust(space)}{ws_status},\n'
             f'{"# Selected objects:".ljust(space)}{num_selected},'
-            f' out of {num_matte_segments} total segments\n'
+            f' out of {num_segments} total segments\n'
             f'{"Selected size range:".ljust(space)}{circle_r_min}--{circle_r_max} pixels\n'
             f'{"Selected size std.:".ljust(space)}{size_std}, with a diameter of'
             f' {size_std_size} {unit} units.\n'
@@ -1031,13 +1171,68 @@ class ViewImage(ProcessImage):
         utils.display_report(frame=self.report_frame,
                              report=self.report_txt)
 
+    def process_ws(self) -> None:
+        """
+        Calls matte and watershed segmentation method from ProcessImage(),
+        plus methods for annotation style, sizing, and reporting.
+        Runs watershed segmentation on the color matted, noise-reduced
+        mask image, then runs sizing, and reporting. To be used when the
+        input image has objects that are not well separated by the color
+        matte alone.
+        Called from Button command in setup_ws_window() and from
+        call.cmd().open_watershed_controls().
+
+        Returns: None
+        """
+
+        _info = '\n\nRunning the Watershed algorithm...\n\n\n'
+        self.show_info_message(info=_info, color='blue')
+
+        # Need to first check that entered size values are okay.
+        self.validate_px_size_entry()
+        if self.cbox_val['size_std'].get() == 'Custom':
+            self.validate_custom_size_entry()
+
+        self.widget_control('off')
+        self.time_start: float = time()
+
+        # Note that matte_segmentation() calls reduce_noise(), which sets
+        #  the self.cvimg['redux_mask'] array used in watershed_segmentation().
+        self.matte_segmentation()
+        self.watershed_segmentation()
+        self.select_and_size_objects()
+
+        # Record processing time for info_txt. When no contours are found,
+        #  its list has 1 element, so the elapsed time is considered n/a.
+        #  The sorted_size_list is cleared when no contours are found,
+        #    otherwise would retain the last run's sizes.
+        if len(self.ws_basins) <= 1:
+            self.elapsed = 'n/a'
+            self.sorted_size_list.clear()
+        else:
+            self.elapsed = round(time() - self.time_start, 3)
+
+        self.report_results()
+        self.widget_control('on')
+
+        _info = ('\n\nWatershed segmentation and sizing completed.\n'
+                 f'{self.elapsed} processing seconds elapsed.\n\n')
+        self.show_info_message(info=_info, color='blue')
+
+        self.delay_size_std_info_msg()
+
     def process_matte(self) -> None:
         """
-        Runs image segmentation processing methods from ProcessImage(),
+        Calls matte segmentation processing methods from ProcessImage(),
         plus methods for annotation style, sizing, and reporting.
 
         Returns: None
         """
+
+        # Need to clear the ws_basins tuple of lists when not ws used,
+        #  i.e., for reporting number of segments in report_results().
+        self.ws_basins = tuple()
+        self.ws_window.withdraw()
 
         # Need to first check that entered size values are okay.
         if not self.first_run:
@@ -1045,14 +1240,10 @@ class ViewImage(ProcessImage):
             if self.cbox_val['size_std'].get() == 'Custom':
                 self.validate_custom_size_entry()
 
-        # _info = '\n\nFinding objects...\n\n\n'
-        # self.show_info_message(info=_info, color='blue')
-
-        self.widget_control('off')
         self.time_start: float = time()
 
         self.matte_segmentation()
-        self.select_and_size_objects(contour_pointset=self.matte_contours)
+        self.select_and_size_objects()
 
         # Record processing time for info_txt. When no contours are found,
         #  its list has 1 element, so the elapsed time is considered n/a.
@@ -1065,7 +1256,7 @@ class ViewImage(ProcessImage):
             self.elapsed = round(time() - self.time_start, 3)
 
         self.report_results()
-        self.widget_control('on')
+        self.widget_control('on')  # ...just in case
 
         setting_type = 'Saved' if self.use_saved_settings else 'Default'
         if self.first_run:
@@ -1118,7 +1309,7 @@ class ViewImage(ProcessImage):
             print('Oops, an unrecognized process_sizes() caller argument\n'
                   f'was used: caller={caller}')
 
-        self.select_and_size_objects(contour_pointset=self.matte_contours)
+        self.select_and_size_objects()
         self.report_results()
         self.delay_size_std_info_msg()
 
@@ -1130,10 +1321,12 @@ class SetupApp(ViewImage):
     call_cmd
     call_start
     start_now
+    bind_keys
     setup_main_window
     setup_start_window
+    setup_ws_window
     configure_main_window
-    add_menu_bar
+    setup_menu_bar
     open_input
     check_for_saved_settings
     _delete_window_message
@@ -1142,6 +1335,7 @@ class SetupApp(ViewImage):
     bind_scale_adjustment
     bind_saving_images
     configure_buttons
+    need_to_click_run_ws_button
     config_sliders
     config_comboboxes
     config_entries
@@ -1221,6 +1415,41 @@ class SetupApp(ViewImage):
 
             # These methods are called from configure_buttons() and the
             # "File" menubar of add_menu_bar().
+
+            @staticmethod
+            def open_watershed_controls():
+                """
+                Opens the watershed controller window.
+                Calls ProcessImage.process_ws().
+                Called only from a keybinding in SetupApp.setup_main_window().
+                """
+                try:
+                    cmd_self.ws_window.deiconify()
+                    cmd_self.update()
+                    cmd_self.process_ws()
+                except AttributeError:
+                    print('From call_cmd().open_watershed_controls(), the ws window'
+                          ' cannot deiconify or run process_ws.')
+
+            @staticmethod
+            def process():
+                """
+                Calls process_ws() or process_matte() from the ProcessImage
+                class, depending on state of the ws_window.
+                Called from bindings for ws_window sliders and main_window
+                noise reduction sliders and comboboxes.
+                """
+
+                try:
+                    if cmd_self.ws_window.state() == 'normal':
+                        cmd_self.need_to_click_run_ws_button()
+                    else:  # is withdrawn or iconified
+                        cmd_self.process_matte()
+                except AttributeError:
+                    print('From call_cmd().process(), the ws_window'
+                          ' state cannot be determined, so will run process_matte().')
+                    cmd_self.process_matte()
+
             @staticmethod
             def save_results():
                 """
@@ -1261,6 +1490,7 @@ class SetupApp(ViewImage):
 
                     return
 
+                cmd_self.ws_window.withdraw()
                 cmd_self.process_matte()
 
             @staticmethod
@@ -1278,6 +1508,8 @@ class SetupApp(ViewImage):
                     'circle_r_min': cmd_self.slider_val['circle_r_min'].get(),
                     'circle_r_max': cmd_self.slider_val['circle_r_max'].get(),
                     'noise_k': cmd_self.slider_val['noise_k'].get(),
+                    'plm_mindist': cmd_self.slider_val['plm_mindist'].get(),
+                    'plm_footprint': cmd_self.slider_val['plm_footprint'].get(),
                     'size_std': cmd_self.cbox_val['size_std'].get(),
                     # 'scale': cmd_self.scale_factor.get(),
                     'px_val': cmd_self.size_std['px_val'].get(),
@@ -1306,15 +1538,14 @@ class SetupApp(ViewImage):
                 """Limit upper font size scale to a 5x increase."""
                 cmd_self.font_scale *= 1.1
                 cmd_self.font_scale = round(min(cmd_self.font_scale, 5), 2)
-                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
-                _display_annotation_action('Font scale', f'{cmd_self.font_scale}')
+                cmd_self.select_and_size_objects()
 
             @staticmethod
             def decrease_font_size() -> None:
                 """Limit lower font size scale to a 1/5 decrease."""
                 cmd_self.font_scale *= 0.9
                 cmd_self.font_scale = round(max(cmd_self.font_scale, 0.20), 2)
-                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
+                cmd_self.select_and_size_objects()
                 _display_annotation_action('Font scale', f'{cmd_self.font_scale}')
 
             @staticmethod
@@ -1322,7 +1553,7 @@ class SetupApp(ViewImage):
                 """Limit upper thickness to 15."""
                 cmd_self.line_thickness += 1
                 cmd_self.line_thickness = min(cmd_self.line_thickness, 15)
-                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
+                cmd_self.select_and_size_objects()
                 _display_annotation_action('Line thickness', f'{cmd_self.line_thickness}')
 
             @staticmethod
@@ -1330,7 +1561,7 @@ class SetupApp(ViewImage):
                 """Limit lower thickness to 1."""
                 cmd_self.line_thickness -= 1
                 cmd_self.line_thickness = max(cmd_self.line_thickness, 1)
-                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
+                cmd_self.select_and_size_objects()
                 _display_annotation_action('Line thickness', f'{cmd_self.line_thickness}')
 
             @staticmethod
@@ -1344,7 +1575,7 @@ class SetupApp(ViewImage):
                 else:
                     next_color = cv_colors[current_index + 1]
                 cmd_self.cbox_val['annotation_color'].set(next_color)
-                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
+                cmd_self.select_and_size_objects()
                 _display_annotation_action('Font color', f'{next_color}')
 
             @staticmethod
@@ -1357,7 +1588,7 @@ class SetupApp(ViewImage):
                     current_index = 1
                 preceding_color = cv_colors[current_index - 1]
                 cmd_self.cbox_val['annotation_color'].set(preceding_color)
-                cmd_self.select_and_size_objects(contour_pointset=cmd_self.matte_contours)
+                cmd_self.select_and_size_objects()
                 _display_annotation_action('Font color', f'{preceding_color}')
 
             @staticmethod
@@ -1396,7 +1627,7 @@ class SetupApp(ViewImage):
                 # Order of calls is important here.
                 cmd_self.set_auto_scale_factor()
                 cmd_self.set_defaults()
-                cmd_self.widget_control('off')  # is turned 'on' in process_matte()
+                # cmd_self.widget_control('off')  # is turned 'on' in process_matte()
                 cmd_self.process_matte()
 
                 _info = ('\n\nSettings have been reset to their defaults.\n'
@@ -1458,6 +1689,24 @@ class SetupApp(ViewImage):
         self.display_windows()
         self.first_run = False
 
+    def bind_keys(self, parent: Union[tk.Toplevel, 'SetupApp']) -> None:
+        """
+        Bind key commands to a window specified by *parent*.
+        Args:
+            parent: Either a Toplevel or the mainloop (self) window.
+        Returns: None
+        """
+
+        # Note: macOS Command-q will quit program without utils.quit_gui info msg.
+        c_key = 'Command' if const.MY_OS == 'dar' else 'Control'  # is 'lin' or 'win'.
+        parent.bind('<Escape>', func=lambda _: utils.quit_gui(mainloop=self))
+        parent.bind('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
+        parent.bind(f'<{f"{c_key}"}-m>', func=lambda _: self.process_matte())
+        parent.bind(f'<{f"{c_key}"}-w>', func=lambda _: self.call_cmd().open_watershed_controls())
+        parent.bind(f'<{f"{c_key}"}-s>', func=lambda _: self.call_cmd().save_results())
+        parent.bind(f'<{f"{c_key}"}-n>', func=lambda _: self.call_cmd().new_input())
+        parent.bind(f'<{f"{c_key}"}-d>', func=lambda _: self.call_cmd().apply_default_settings())
+
     def setup_main_window(self):
         """
         For clarity, remove from view the Tk mainloop window created
@@ -1481,23 +1730,14 @@ class SetupApp(ViewImage):
         #  This is needed b/c of the way different platforms' window
         #  managers position windows.
         w_offset = int(self.screen_width * 0.65)
-        self.geometry(f'+{w_offset}+0')
+        self.geometry(f'+{w_offset}+50')
         self.wm_minsize(width=450, height=450)
 
         # Need to provide exit info msg to Terminal.
         self.protocol(name='WM_DELETE_WINDOW',
                       func=lambda: utils.quit_gui(mainloop=self))
 
-        self.bind('<Escape>', func=lambda _: utils.quit_gui(mainloop=self))
-        self.bind('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
-        # ^^ Note: macOS Command-q will quit program without utils.quit_gui info msg.
-
-        c_key = 'Command' if const.MY_OS == 'dar' else 'Control'  # is 'lin' or 'win'.
-        self.bind(f'<{f"{c_key}"}-m>', func=lambda _: self.process_matte())
-        self.bind(f'<{f"{c_key}"}-s>', func=lambda _: self.call_cmd().save_results())
-        self.bind(f'<{f"{c_key}"}-n>', func=lambda _: self.call_cmd().new_input())
-        self.bind(f'<{f"{c_key}"}-d>', func=lambda _: self.call_cmd().apply_default_settings())
-
+        self.bind_keys(parent=self)
         self.setup_menu_bar(self)
 
     def setup_start_window(self) -> None:
@@ -1618,6 +1858,97 @@ class SetupApp(ViewImage):
         # ...and make all widgets active.
         color_label.config(state=tk.NORMAL)
         matte_label.config(state=tk.NORMAL)
+
+    def setup_ws_window(self) -> None:
+        """
+        Open a window with watershed (local peak) sliders and a run
+        watershed button. Includes widget configurations, grids,
+        keybindings, and a WM_DELETE_WINDOW protocol.
+
+        Returns: None
+        """
+        scale_len = int(self.screen_width * 0.20)
+        # Note that the system window manager will position the window where it
+        #  wants, despite what the geometry string is set to. So, just go with it.
+
+        # Window configuration is based on the main window, but with a dark bg
+        # To keep things tidy, the self.ws_window attribute is defined as
+        #  ws_window at the end of the method.
+        ws_window = tk.Toplevel(master=self)
+        ws_window.title('Watershed segmentation controls')
+        ws_window.resizable(width=False, height=False)
+        ws_window.columnconfigure(index=0, weight=1)
+        ws_window.columnconfigure(index=1, weight=1)
+        ws_window.config(bg=const.DARK_BG,
+                         highlightthickness=5,
+                         highlightcolor=const.COLORS_TK['yellow'],
+                         highlightbackground=const.DRAG_GRAY, )
+        self.bind_keys(parent=ws_window)
+
+        # Increase PLM values for larger files to reduce the number
+        #  of contours, thus decreasing startup/reset processing time.
+        if self.metrics['img_area'] > 6 * 10e5:
+            self.slider_val['plm_mindist'].set(200)
+            self.slider_val['plm_footprint'].set(9)
+        else:
+            self.slider_val['plm_mindist'].set(40)
+            self.slider_val['plm_footprint'].set(3)
+
+        self.slider['plm_mindist_lbl'] = tk.Label(master=ws_window,
+                                                  text='peak_local_max min_distance:',
+                                                  **const.LABEL_PARAMETERS)
+        self.slider['plm_mindist'] = tk.Scale(master=ws_window,
+                                              from_=1, to=500,
+                                              length=scale_len,
+                                              tickinterval=40,
+                                              variable=self.slider_val['plm_mindist'],
+                                              **const.SCALE_PARAMETERS)
+        self.slider['plm_footprint_lbl'] = tk.Label(master=ws_window,
+                                                    text='peak_local_max min_distance:',
+                                                    **const.LABEL_PARAMETERS)
+        self.slider['plm_footprint'] = tk.Scale(master=ws_window,
+                                                from_=1, to=50,
+                                                length=scale_len,
+                                                tickinterval=5,
+                                                variable=self.slider_val['plm_footprint'],
+                                                **const.SCALE_PARAMETERS)
+
+        ws_button = ttk.Button(master=ws_window,
+                               text='Run Watershed',
+                               command=self.process_ws,
+                               width=0,
+                               style='My.TButton')
+
+        self.slider['plm_mindist_lbl'].grid(column=0, row=0,
+                                            padx=(10, 5), pady=(10, 0),
+                                            sticky=tk.E)
+        self.slider['plm_mindist'].grid(column=1, row=0,
+                                        padx=(0, 10), pady=(10, 0),
+                                        sticky=tk.EW)
+        self.slider['plm_footprint_lbl'].grid(column=0, row=1,
+                                              padx=(10, 5), pady=(10, 0),
+                                              sticky=tk.E)
+        self.slider['plm_footprint'].grid(column=1, row=1,
+                                          padx=(0, 10), pady=(10, 0),
+                                          sticky=tk.EW)
+        ws_button.grid(column=1, row=2,
+                       padx=10, pady=10,
+                       sticky=tk.EW)
+
+        def _withdraw_ws_window():
+            c_key = 'Command' if const.MY_OS == 'dar' else 'Ctrl'  # is 'lin' or 'win'.
+            ws_window.wm_withdraw()
+            self.show_info_message(info='\n\nWatershed parameters window was withdrawn.\n'
+                                        'Watershed segmentation will not be be used until\n'
+                                        f'<{f"{c_key}"}-W brings the window back\n',
+                                   color='black')
+
+        ws_window.protocol(name='WM_DELETE_WINDOW',
+                           func=_withdraw_ws_window)
+
+        # The ws_window is hidden at startup, and is deiconified with a keybinding.
+        ws_window.wm_withdraw()
+        self.ws_window = ws_window
 
     def configure_main_window(self) -> None:
         """
@@ -1820,7 +2151,7 @@ class SetupApp(ViewImage):
                 '• Boldness can be changed with Shift-Ctrl-+(plus) & -(minus).',
                 '• Matte color selection can affect counts and sizes',
                 '      ...so can noise reduction.',
-                '• "Update" button may be needed after changing settings.',
+                '• Try Ctrl-W to separate clustered objects.',
                 '• Right-click to save an image at its displayed zoom size.',
                 '• Shift-Right-click to save the image at full scale.',
                 '• "Export objects" saves each selected object as an image.',
@@ -2002,6 +2333,7 @@ class SetupApp(ViewImage):
         # Allow image label panels in image windows to resize with window.
         #  Note that images don't proportionally resize, just their boundaries;
         #  images will remain anchored at their top left corners.
+        c_key = 'Command' if const.MY_OS == 'dar' else 'Control'  # is 'lin' or 'win'.
         for _name, _toplevel in self.tkimg_window.items():
             _toplevel.wm_withdraw()
             if icon_path:
@@ -2014,8 +2346,7 @@ class SetupApp(ViewImage):
             _toplevel.rowconfigure(index=0, weight=1)
             _toplevel.title(self.window_title[_name])
             _toplevel.config(**const.WINDOW_PARAMETERS)
-            _toplevel.bind('<Escape>', func=lambda _: utils.quit_gui(self))
-            _toplevel.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
+            self.bind_keys(parent=_toplevel)
 
     def bind_annotation_styles(self) -> None:
         """
@@ -2172,6 +2503,32 @@ class SetupApp(ViewImage):
             command=self.call_cmd().apply_default_settings,
             **button_params)
 
+    def need_to_click_run_ws_button(self, event=None) -> None:
+        """
+        Post notice when changing watershed parameters. Allows user to
+        adjust multiple parameters before running the watershed algorithm.
+        Called only from call_cmd().process().
+
+        Args:
+            event: The event that triggered the call.
+        """
+
+        # Update report with current plm_* slider values; don't wait
+        #  for the segmentation algorithm to run before updating.
+        self.report_results()
+
+        if self.slider_val['plm_footprint'].get() == 1:
+            _info = ('\nA peak_local_max footprint of 1 may run a long time.\n'
+                     'If that is not a problem, then increase the value\n'
+                     'before clicking the "Run watershed" button.\n\n')
+            self.show_info_message(info=_info, color='vermilion')
+        else:
+            _info = ('\nCtrl-W or click "Run watershed" to update\n'
+                     'selected and sized objects.\n\n\n')
+            self.show_info_message(info=_info, color='blue')
+
+        return event  # A formality.
+
     def config_sliders(self) -> None:
         """
         Configure arguments and mouse button bindings for all Scale
@@ -2188,11 +2545,6 @@ class SetupApp(ViewImage):
         #  Keep in mind that a long input file path in the report_frame
         #   may be longer than this set scale_len in the selectors_frame.
         scale_len = int(self.screen_width * 0.20)
-
-        # Scale() widgets for preprocessing (i.e., contrast, noise, filter,
-        #  and threshold) or size max/min are called by a mouse
-        #  button release. Peak-local-max and circle radius params are
-        #  used in process_matte(), which is called by one of the "Run" buttons.
 
         self.slider['noise_k_lbl'].configure(text='Reduce noise, kernel size\n',
                                              **const.LABEL_PARAMETERS)
@@ -2231,8 +2583,8 @@ class SetupApp(ViewImage):
             if 'circle_r' in _name:
                 _w.bind('<ButtonRelease-1>',
                         func=lambda _: self.process_sizes(caller='circle_r'))
-            else:  # is noise_k or noise_iter
-                _w.bind('<ButtonRelease-1>', func=lambda _: self.process_matte())
+            else:  # is noise_k, noise_iter, plm_footprint, or plm_mindist
+                _w.bind('<ButtonRelease-1>', func=lambda _: self.call_cmd().process())
 
     def config_comboboxes(self) -> None:
         """
@@ -2287,7 +2639,7 @@ class SetupApp(ViewImage):
                 _w.bind('<<ComboboxSelected>>',
                         func=lambda _: self.process_sizes(caller='size_std'))
             else:  # is morph_op or morph_shape
-                _w.bind('<<ComboboxSelected>>', func=lambda _: self.process_matte())
+                _w.bind('<<ComboboxSelected>>', func=lambda _: self.call_cmd().process())
 
     def config_entries(self) -> None:
         """
@@ -2354,7 +2706,7 @@ class SetupApp(ViewImage):
 
         # Set/Reset Combobox widgets.
         self.cbox_val['morph_op'].set('cv2.MORPH_HITMISS')  # cv2.MORPH_HITMISS == 7
-        self.cbox_val['morph_shape'].set('cv2.MORPH_CROSS')  # cv2.MORPH_CROSS == 1
+        self.cbox_val['morph_shape'].set('cv2.MORPH_ELLIPSE')  # cv2.MORPH_ELLIPSE == 2
         self.cbox_val['size_std'].set('None')
         self.set_color_defaults()
 
@@ -2567,6 +2919,7 @@ if __name__ == '__main__':
         #  start_now(), allow macOS implementation to flow well.
         app.setup_main_window()
         app.setup_start_window()
+        app.setup_ws_window()
 
         # The custom app icon is expected to be in the repository images folder.
         try:
