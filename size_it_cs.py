@@ -358,7 +358,8 @@ class ProcessImage(tk.Tk):
             markers=labeled_array,
             connectivity=4,
             mask=inv_img,
-            compactness=1.0)
+            compactness=1.0,
+            watershed_line=True)
 
         # ws_basins are the contours to be passed to select_and_size_objects().
         self.ws_basins, _ = cv2.findContours(image=np.uint8(watershed_img),
