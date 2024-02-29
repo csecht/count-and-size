@@ -787,7 +787,7 @@ class ViewImage(ProcessImage):
 
         # Need to determine whether the watershed algorithm is in use,
         #  which is the case when the ws control window is visible.
-        if self.ws_window.wm_state() == 'normal':
+        if self.ws_window.wm_state() in 'normal, zoomed':
             contour_pointset = self.ws_basins
         else:  # is 'withdrawn' or 'iconic'
             contour_pointset = self.matte_contours
@@ -1109,7 +1109,7 @@ class ViewImage(ProcessImage):
         color = self.cbox_val['matte_color'].get()
         rgb_range = f'{const.MATTE_COLOR[color][0]}--{const.MATTE_COLOR[color][1]}'
 
-        if self.ws_window.wm_state() == 'normal':
+        if self.ws_window.wm_state() in 'normal, zoomed':
             num_segments = len(self.ws_basins)
             ws_status = 'Yes'
         else:  # is 'withdrawn' or 'iconic'
@@ -1431,7 +1431,7 @@ class SetupApp(ViewImage):
                 """
                 try:
                     cmd_self.ws_window.deiconify()
-                    self.matte_segmentation()
+                    cmd_self.matte_segmentation()
                     cmd_self.process_ws()
                 except AttributeError:
                     print('From call_cmd().open_watershed_controls(), the ws window'
@@ -1447,7 +1447,7 @@ class SetupApp(ViewImage):
                 """
 
                 try:
-                    if cmd_self.ws_window.state() == 'normal':
+                    if cmd_self.ws_window.state() in 'normal, zoomed':
                         # Update report with current plm_* slider values; don't wait
                         #  for the segmentation algorithm to run before reporting settings.
                         cmd_self.report_results()
@@ -1941,7 +1941,7 @@ class SetupApp(ViewImage):
                                                 **const.SCALE_PARAMETERS)
 
         ws_button = ttk.Button(master=ws_window,
-                               text='Run Watershed (Ctrl-W)',
+                               text='Run Watershed',
                                command=self.process_ws,
                                width=0,
                                style='My.TButton')
