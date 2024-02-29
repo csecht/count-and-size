@@ -923,22 +923,22 @@ class ViewImage(ProcessImage):
         """
         w_offset = int(self.screen_width * 0.50)
 
-        sample_win = tk.Toplevel()
-        sample_win.title('Sample: for export <- | -> as input')
-        sample_win.minsize(width=400, height=150)
-        sample_win.geometry(f'+{w_offset}+55')
-        sample_win.columnconfigure(index=0, weight=1)
-        sample_win.columnconfigure(index=1, weight=1)
-        sample_win.config(**const.WINDOW_PARAMETERS)
-        sample_win.bind('<Escape>', func=lambda _: utils.quit_gui(self))
-        sample_win.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
+        preview_win = tk.Toplevel()
+        preview_win.title('Sample: for export <- | -> as input')
+        preview_win.minsize(width=400, height=150)
+        preview_win.geometry(f'+{w_offset}+55')
+        preview_win.columnconfigure(index=0, weight=1)
+        preview_win.columnconfigure(index=1, weight=1)
+        preview_win.config(**const.WINDOW_PARAMETERS)
+        preview_win.bind('<Escape>', func=lambda _: utils.quit_gui(self))
+        preview_win.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
 
-        l1 = tk.Label(master=sample_win, image=export_img, bg='red')
-        l2 = tk.Label(master=sample_win, image=import_img, bg='black')
+        l1 = tk.Label(master=preview_win, image=export_img, bg='red')
+        l2 = tk.Label(master=preview_win, image=import_img, bg='black')
         l1.grid(**const.PANEL_LEFT)
         l2.grid(**const.PANEL_RIGHT)
 
-        return sample_win
+        return preview_win
 
     def select_and_export_objects(self) -> None:
         """
@@ -1041,13 +1041,13 @@ class ViewImage(ProcessImage):
                     first2export = False
                     mask_img = manage.tk_image(image=result, scale_factor=3.0)
                     roi_img = manage.tk_image(image=roi, scale_factor=3.0)
-                    size = self.selected_sizes[roi_idx - 1]
+                    object_size = self.selected_sizes[roi_idx - 1]
                     preview_window = self.preview_export(export_img=mask_img, import_img=roi_img)
                     ok2export = messagebox.askokcancel(
                         parent=preview_window,
                         title='Export preview (3X zoom)',
                         message='Sampled from selected objects:\n'
-                                f'#{roi_idx}, size = {size}.',
+                                f'#{roi_idx}, size = {object_size}.',
                         detail=f'OK: looks good, export all {self.num_obj_selected}'
                                ' selected objects.\n\n'
                                'Cancel: export nothing; try different\n'
@@ -1203,8 +1203,11 @@ class ViewImage(ProcessImage):
         self.widget_control('off')
         self.time_start: float = time()
 
-        # The redux and matte segmentation pre-processing steps need to
-        #  run before watershed segmentation.
+        # The redux (noise reduction) and matte segmentation pre-processing
+        #  steps need to run before watershed segmentation. This is done in
+        #  self.call_cmd().open_watershed_controls() or self.call_cmd().process(),
+        #  which are called by the ws_window's "Run" button, redux widgets,
+        #  or a keyboard shortcut binding.
         self.watershed_segmentation()
         self.select_and_size_objects()
 
@@ -1940,8 +1943,9 @@ class SetupApp(ViewImage):
                                                 variable=self.slider_val['plm_footprint'],
                                                 **const.SCALE_PARAMETERS)
 
+        ws_key = 'command-W' if const.MY_OS == 'dar' else 'Ctrl-W'
         ws_button = ttk.Button(master=ws_window,
-                               text='Run Watershed',
+                               text=f'Run Watershed ({ws_key})',
                                command=self.process_ws,
                                width=0,
                                style='My.TButton')
@@ -2055,11 +2059,13 @@ class SetupApp(ViewImage):
             tip_scaling_text = 'with shift-control-← & shift-control-→.'
             plus_key = '+'
             minus_key = '-'
+            ws_key = 'command-W'
         else:
             color_tip = ' Ctrl-↑ & Ctrl-↓'
             tip_scaling_text = 'with Ctrl-← & Ctrl-→.'
             plus_key = '(plus)'
             minus_key = '(minus)'
+            ws_key = 'Ctrl-W'
 
         menubar = tk.Menu(master=parent)
         parent.config(menu=menubar)
@@ -2181,7 +2187,7 @@ class SetupApp(ViewImage):
                 '• Boldness can be changed with Shift-Ctrl-+(plus) & -(minus).',
                 '• Matte color selection can affect counts and sizes',
                 '      ...so can noise reduction.',
-                '• Try Ctrl-W to separate clustered objects.',
+                f'• Try {ws_key} to separate clustered objects.',
                 '• Right-click to save an image at its displayed zoom size.',
                 '• Shift-Right-click to save the image at full scale.',
                 '• "Export objects" saves each selected object as an image.',
