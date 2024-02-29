@@ -1203,9 +1203,8 @@ class ViewImage(ProcessImage):
         self.widget_control('off')
         self.time_start: float = time()
 
-        # Note that matte_segmentation() calls reduce_noise(), which sets
-        #  the self.cvimg['redux_mask'] array used in watershed_segmentation().
-        self.matte_segmentation()
+        # The redux and matte segmentation pre-processing steps need to
+        #  run before watershed segmentation.
         self.watershed_segmentation()
         self.select_and_size_objects()
 
@@ -1432,7 +1431,7 @@ class SetupApp(ViewImage):
                 """
                 try:
                     cmd_self.ws_window.deiconify()
-                    cmd_self.update()
+                    self.matte_segmentation()
                     cmd_self.process_ws()
                 except AttributeError:
                     print('From call_cmd().open_watershed_controls(), the ws window'
@@ -1449,8 +1448,29 @@ class SetupApp(ViewImage):
 
                 try:
                     if cmd_self.ws_window.state() == 'normal':
-                        cmd_self.need_to_click_run_ws_button()
-                    else:  # is withdrawn or iconified
+                        # Update report with current plm_* slider values; don't wait
+                        #  for the segmentation algorithm to run before reporting settings.
+                        cmd_self.report_results()
+
+                        # Note that matte_segmentation() calls reduce_noise(), and
+                        #  updates the pre-watershed images for live viewing when
+                        #  noise reduction settings change. PLM settings are not
+                        #  applied until the "Run watershed" button is clicked.
+                        cmd_self.matte_segmentation()
+
+                        # Preprocessing results have displayed, so the user can
+                        # now choose to run watershed.
+                        if cmd_self.slider_val['plm_footprint'].get() == 1:
+                            _info = ('\nA peak_local_max footprint of 1 may run a long time.\n'
+                                     'If that is a problem, then increase the value\n'
+                                     'before clicking the "Run watershed" button.\n\n')
+                            cmd_self.show_info_message(info=_info, color='vermilion')
+                        else:
+                            _info = ('\nClick "Run watershed" to update\n'
+                                     'selected and sized objects.\n\n\n')
+                            cmd_self.show_info_message(info=_info, color='blue')
+
+                    else:  # ws_window is withdrawn or iconified.
                         cmd_self.process_matte()
                 except AttributeError:
                     print('From call_cmd().process(), the ws_window'
@@ -1921,7 +1941,7 @@ class SetupApp(ViewImage):
                                                 **const.SCALE_PARAMETERS)
 
         ws_button = ttk.Button(master=ws_window,
-                               text='Run Watershed',
+                               text='Run Watershed (Ctrl-W)',
                                command=self.process_ws,
                                width=0,
                                style='My.TButton')
@@ -2141,7 +2161,10 @@ class SetupApp(ViewImage):
             help_menu = tk.Menu(master=parent, tearoff=0)
             tips = tk.Menu(master=parent, tearoff=0)
             menubar.add_cascade(label='Help', menu=help_menu)
-
+            help_menu.add_command(label='Improve segmentation...',
+                                  font=const.MENU_FONT,
+                                  command=self.call_cmd().open_watershed_controls,
+                                  accelerator=f'{os_accelerator}+W')
             help_menu.add_command(label='Apply default settings',
                                   font=const.MENU_FONT,
                                   command=self.call_cmd().apply_default_settings,
@@ -2509,32 +2532,6 @@ class SetupApp(ViewImage):
             text='Reset',
             command=self.call_cmd().apply_default_settings,
             **button_params)
-
-    def need_to_click_run_ws_button(self, event=None) -> None:
-        """
-        Post notice when changing watershed parameters. Allows user to
-        adjust multiple parameters before running the watershed algorithm.
-        Called only from call_cmd().process().
-
-        Args:
-            event: The event that triggered the call.
-        """
-
-        # Update report with current plm_* slider values; don't wait
-        #  for the segmentation algorithm to run before updating.
-        self.report_results()
-
-        if self.slider_val['plm_footprint'].get() == 1:
-            _info = ('\nA peak_local_max footprint of 1 may run a long time.\n'
-                     'If that is not a problem, then increase the value\n'
-                     'before clicking the "Run watershed" button.\n\n')
-            self.show_info_message(info=_info, color='vermilion')
-        else:
-            _info = ('\nCtrl-W or click "Run watershed" to update\n'
-                     'selected and sized objects.\n\n\n')
-            self.show_info_message(info=_info, color='blue')
-
-        return event  # A formality.
 
     def config_sliders(self) -> None:
         """
