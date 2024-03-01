@@ -170,8 +170,8 @@ def save_report_and_img(path2folder: str,
                 'contrast', etc.
     Returns: None
     """
-    curr_time = datetime.now().strftime('%Y%m%d%I%M%S')
-    time2print = datetime.now().strftime('%Y/%m/%d %I:%M:%S%p')
+    time_now = datetime.now().strftime(const.TIME_STAMP_FORMAT)
+    time2print = datetime.now().strftime(const.TIME_PRINT_FORMAT)
 
     # For JPEG file format the supported parameter is cv2.IMWRITE_JPEG_QUALITY
     # with a possible value between 0 and 100, the default value being 95.
@@ -187,7 +187,7 @@ def save_report_and_img(path2folder: str,
     img_folder = Path(path2folder).parent
     saved_report_name = f'{img_name}_{caller}_Report.txt'
     report_file_path = Path(img_folder, saved_report_name)
-    saved_img_name = f'{img_name}_{caller}_{curr_time}{img_ext}'
+    saved_img_name = f'{img_name}_{caller}_{time_now}{img_ext}'
     saved_img_path = f'{img_folder}/{saved_img_name}'
 
     if manage.arguments()['terminal']:
@@ -201,7 +201,7 @@ def save_report_and_img(path2folder: str,
                      f'{txt2save}')
 
     # Use this Path function for saving individual report files:
-    #   Path(f'{img_stem}_{caller}_settings{curr_time}.txt').write_text(data2save)
+    #   Path(f'{img_stem}_{caller}_settings{time_now}.txt').write_text(data2save)
     # Use this for appending multiple reports to single file:
     with open(report_file_path, mode='a', encoding='utf-8') as _fp:
         _fp.write(data2save)

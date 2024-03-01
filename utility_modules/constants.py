@@ -41,6 +41,10 @@ import numpy as np
 
 MY_OS: str = platform[:3]
 
+TIME_STAMP_FORMAT = '%Y%m%d%I%M%S'  # for file names, as: 20240301095308
+TIME_PRINT_FORMAT = '%c'  # as: Fri Mar  1 09:53:08 2024, is locale-dependent.
+# TIME_PRINT_FORMAT = '%Y-%m-%d %I:%M:%S %p'  # as: 2024-03-01 09:53:08 AM
+
 # The stub is a white square set in a black square to make it obvious when
 #  the code has a bug.
 STUB_ARRAY: np.ndarray = cv2.rectangle(np.zeros(shape=(200, 200), dtype="uint8"),
