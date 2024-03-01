@@ -301,9 +301,7 @@ def display_report(frame: tk.Frame, report: str) -> None:
     reporttxt.tag_add('leftmargin', '1.0', tk.END)
     reporttxt.configure(state=tk.DISABLED)
     reporttxt.see(index="end-1c linestart")
-    reporttxt.grid(column=0, row=0,
-                   columnspan=2,
-                   sticky=tk.NSEW)
+    reporttxt.grid(column=0, row=0, columnspan=2, sticky=tk.NSEW)
 
 
 def count_sig_fig(entry_number: Union[int, float, str]) -> int:

@@ -146,7 +146,6 @@ class ProcessImage(tk.Tk):
                             'redux_mask',
                             'matte_objects',
                             'sized')
-
         for _name in self.image_names:
             self.tkimg[_name] = tk.PhotoImage()
             self.cvimg[_name] = const.STUB_ARRAY
@@ -159,7 +158,6 @@ class ProcessImage(tk.Tk):
         self.metrics: dict = {}
         self.line_thickness: int = 0
         self.font_scale: float = 0
-
         self.matte_contours: tuple = ()
         self.ws_basins: tuple = ()
         self.sorted_size_list: list = []
@@ -273,10 +271,9 @@ class ProcessImage(tk.Tk):
         #  where selected contours are used to draw and size enclosing circles or
         #  draw and export the ROI.
         # The data type is a tuple of lists of contour pointsets.
-        self.matte_contours, _ = cv2.findContours(
-            image=np.uint8(self.cvimg['matte_objects']),
-            mode=cv2.RETR_EXTERNAL,
-            method=cv2.CHAIN_APPROX_NONE)
+        self.matte_contours, _ = cv2.findContours(image=np.uint8(self.cvimg['matte_objects']),
+                                                  mode=cv2.RETR_EXTERNAL,
+                                                  method=cv2.CHAIN_APPROX_NONE)
 
         self.cvimg['matte_objects'] = cv2.cvtColor(src=self.cvimg['matte_objects'],
                                                    code=cv2.COLOR_GRAY2BGR)
@@ -357,13 +354,12 @@ class ProcessImage(tk.Tk):
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # In this context, watershed_line=True is necessary to separate touching objects.
-        watershed_img: np.ndarray = watershed(
-            image=-transformed,
-            markers=labeled_array,
-            connectivity=4,
-            mask=inv_img,
-            compactness=1.0,
-            watershed_line=True)
+        watershed_img: np.ndarray = watershed(image=-transformed,
+                                              markers=labeled_array,
+                                              connectivity=4,
+                                              mask=inv_img,
+                                              compactness=1.0,
+                                              watershed_line=True)
 
         # ws_basins are the contours to be passed to select_and_size_objects(),
         #  where selected contours are used to draw and size enclosing circles.
@@ -723,13 +719,12 @@ class ViewImage(ProcessImage):
 
             # Need widget_control to prevent runaway sliders, if clicked.
             self.widget_control('off')
-            messagebox.showinfo(
-                title='Custom size',
-                detail='Enter a number > 0.\n'
-                       'Accepted types:\n'
-                       '  integer: 26, 2651, 2_651\n'
-                       '  decimal: 26.5, 0.265, .2\n'
-                       '  exponent: 2.6e10, 2.6e-2')
+            messagebox.showinfo(title='Custom size',
+                                detail='Enter a number > 0.\n'
+                                       'Accepted types:\n'
+                                       '  integer: 26, 2651, 2_651\n'
+                                       '  decimal: 26.5, 0.265, .2\n'
+                                       '  exponent: 2.6e10, 2.6e-2')
             self.size_std['custom_val'].set('0.0')
             self.widget_control('on')
 
@@ -2886,9 +2881,6 @@ class SetupApp(ViewImage):
         #  updating, but for consistency's sake the
         #  statement structure used to display and update processed
         #  images is used here.
-        # Note: here and throughout, use 'self' to scope the
-        #  ImageTk.PhotoImage image in the Class, otherwise it will/may
-        #  not display because of garbage collection.
         self.update_image(tkimg_name='input',
                           cvimg_array=self.cvimg['input'])
 
