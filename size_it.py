@@ -1387,7 +1387,7 @@ class ViewImage(ProcessImage):
         #  This is done here, outside the for loop, to avoid having the
         #  export timestamp change (by one or two seconds) during processing.
         # The index count is also passed as an export_each_segment() argument.
-        time_now = datetime.now().strftime('%Y%m%d%I%M%S')
+        time_now = datetime.now().strftime(const.TIME_STAMP_FORMAT)
         roi_idx = 0
 
         # Use the identical selection criteria as in select_and_size_objects().
