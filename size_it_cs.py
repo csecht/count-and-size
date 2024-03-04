@@ -1233,12 +1233,12 @@ class ViewImage(ProcessImage):
         Returns: None
         """
 
-        # Need to clear the ws_basins tuple of lists when not ws used,
-        #  i.e., for reporting number of segments in report_results().
+        # Need to clear the ws_basins tuple of contours when ws not used,
+        #  i.e., for reporting number of matte segments in report_results().
         self.ws_basins = tuple()
         self.ws_window.withdraw()
 
-        # Need to first check that entered size values are okay.
+        # Need to check that entered size values are okay.
         if not self.first_run:
             self.validate_px_size_entry()
             if self.cbox_val['size_std'].get() == 'Custom':
@@ -1325,7 +1325,7 @@ class SetupApp(ViewImage):
     call_cmd
     call_start
     start_now
-    bind_keys
+    bind_major_commands
     setup_main_window
     setup_start_window
     setup_ws_window
@@ -1402,19 +1402,20 @@ class SetupApp(ViewImage):
             Gives command-based methods access to all module methods and
             instance variables.
             Methods:
-                save_results
-                new_input
-                export_settings
-                export_objects
-                increase_font_size
-                decrease_font_size
-                increase_line_thickness
-                decrease_line_thickness
-                next_font_color
-                preceding_font_color
-                increase_scale_factor
-                decrease_scale_factor
-                apply_default_settings
+            open_watershed_controls
+            process
+            save_results
+            new_input
+            export_settings
+            increase_font_size
+            decrease_font_size
+            increase_line_thickness
+            decrease_line_thickness
+            next_font_color
+            preceding_font_color
+            increase_scale_factor
+            decrease_scale_factor
+            apply_default_settings
             """
 
             # These methods are called from configure_buttons() and the
@@ -1714,24 +1715,6 @@ class SetupApp(ViewImage):
         self.display_windows()
         self.first_run = False
 
-    def bind_keys(self, parent: Union[tk.Toplevel, 'SetupApp']) -> None:
-        """
-        Bind key commands to a window specified by *parent*.
-        Args:
-            parent: Either a Toplevel or the mainloop (self) window.
-        Returns: None
-        """
-
-        # Note: macOS Command-q will quit program without utils.quit_gui info msg.
-        c_key = 'Command' if const.MY_OS == 'dar' else 'Control'  # is 'lin' or 'win'.
-        parent.bind('<Escape>', func=lambda _: utils.quit_gui(mainloop=self))
-        parent.bind('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
-        parent.bind(f'<{f"{c_key}"}-m>', func=lambda _: self.process_matte())
-        parent.bind(f'<{f"{c_key}"}-w>', func=lambda _: self.call_cmd().open_watershed_controls())
-        parent.bind(f'<{f"{c_key}"}-s>', func=lambda _: self.call_cmd().save_results())
-        parent.bind(f'<{f"{c_key}"}-n>', func=lambda _: self.call_cmd().new_input())
-        parent.bind(f'<{f"{c_key}"}-d>', func=lambda _: self.call_cmd().apply_default_settings())
-
     def setup_main_window(self):
         """
         For clarity, remove from view the Tk mainloop window created
@@ -1762,7 +1745,7 @@ class SetupApp(ViewImage):
         self.protocol(name='WM_DELETE_WINDOW',
                       func=lambda: utils.quit_gui(mainloop=self))
 
-        self.bind_keys(parent=self)
+        self.bind_major_commands(parent=self)
         self.setup_menu_bar(self)
 
     def setup_start_window(self) -> None:
@@ -1908,7 +1891,7 @@ class SetupApp(ViewImage):
                          highlightthickness=5,
                          highlightcolor=const.COLORS_TK['yellow'],
                          highlightbackground=const.DRAG_GRAY, )
-        self.bind_keys(parent=ws_window)
+        self.bind_major_commands(parent=ws_window)
 
         # Increase PLM values for larger files to reduce the number
         #  of contours, thus decreasing startup/reset processing time.
@@ -2377,116 +2360,7 @@ class SetupApp(ViewImage):
             _toplevel.rowconfigure(index=0, weight=1)
             _toplevel.title(self.window_title[_name])
             _toplevel.config(**const.WINDOW_PARAMETERS)
-            self.bind_keys(parent=_toplevel)
-
-    def bind_annotation_styles(self) -> None:
-        """
-        Set key bindings to change font size, color, and line thickness
-        of annotations in the 'sized' cv2 image.
-        Called at startup.
-        Calls methods from the inner _Command class of self.call_cmd().
-
-        Returns: None
-        """
-
-        # Bindings are needed only for the settings and sized img windows,
-        #  but is simpler to use bind_all() which does not depend on widget focus.
-        # NOTE: On Windows, KP_* is not a recognized keysym string; works on Linux.
-        #  Windows keysyms 'plus' & 'minus' are for both keyboard and keypad.
-        self.bind_all('<Control-equal>',
-                      lambda _: self.call_cmd().increase_font_size())
-        self.bind_all('<Control-minus>',
-                      lambda _: self.call_cmd().decrease_font_size())
-        self.bind_all('<Control-KP_Subtract>',
-                      lambda _: self.call_cmd().decrease_font_size())
-
-        self.bind_all('<Shift-Control-plus>',
-                      lambda _: self.call_cmd().increase_line_thickness())
-        self.bind_all('<Shift-Control-KP_Add>',
-                      lambda _: self.call_cmd().increase_line_thickness())
-        self.bind_all('<Shift-Control-underscore>',
-                      lambda _: self.call_cmd().decrease_line_thickness())
-
-        self.bind_all('<Control-Up>',
-                      lambda _: self.call_cmd().next_font_color())
-        self.bind_all('<Control-Down>',
-                      lambda _: self.call_cmd().preceding_font_color())
-
-        # Need platform-specific keypad keysym.
-        if const.MY_OS == 'win':
-            self.bind_all('<Control-plus>',
-                          lambda _: self.call_cmd().increase_font_size())
-            self.bind_all('<Shift-Control-minus>',
-                          lambda _: self.call_cmd().decrease_line_thickness())
-        else:
-            self.bind_all('<Control-KP_Add>',
-                          lambda _: self.call_cmd().increase_font_size())
-            self.bind_all('<Shift-Control-KP_Subtract>',
-                          lambda _: self.call_cmd().decrease_line_thickness())
-
-    def bind_scale_adjustment(self) -> None:
-        """
-        The displayed image scale is set when an image is imported, but
-        can be adjusted in-real-time with these keybindings.
-
-        Returns: None
-        """
-
-        self.bind_all('<Control-Right>', lambda _: self.call_cmd().increase_scale_factor())
-        self.bind_all('<Control-Left>', lambda _: self.call_cmd().decrease_scale_factor())
-
-    def bind_saving_images(self) -> None:
-        """
-        Save individual displayed images to file with mouse clicks; either
-        at current tkimg scale or at original cvimg scale.
-
-        Returns: None
-        """
-
-        # Note: the only way to place these internals in call_cmd._Command is
-        #  to add an image=None parameter to call_cmd then pass the image_name
-        #  to the on_click,,, methods in _Command.
-        #  That seems a bit hacky, so just live with these internals.
-        def _on_click_save_tkimg(image_name: str) -> None:
-            tkimg = self.tkimg[image_name]
-
-            click_info = (f'The displayed {image_name} image was saved at'
-                          f' {self.scale_factor.get()} scale.')
-
-            utils.save_report_and_img(path2folder=self.input_file_path,
-                                      img2save=tkimg,
-                                      txt2save=click_info,
-                                      caller=image_name)
-
-            _info = (f'\nThe result image, "{image_name}", was saved to\n'
-                     f'the input image folder: {self.input_folder_name}\n'
-                     f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
-            self.show_info_message(info=_info, color='black')
-
-        def _on_click_save_cvimg(image_name: str) -> None:
-            cvimg = self.cvimg[image_name]
-
-            click_info = (f'\nThe displayed {image_name} image was saved to\n'
-                          f'the input image folder: {self.input_folder_name}\n'
-                          'with a timestamp, at original pixel dimensions.\n\n')
-
-            utils.save_report_and_img(path2folder=self.input_file_path,
-                                      img2save=cvimg,
-                                      txt2save=click_info,
-                                      caller=image_name)
-
-            self.show_info_message(info=click_info, color='black')
-
-        # Right click will save displayed tk image to file, at current scale.
-        # Shift right click saves (processed) cv image at full (original) scale.
-        # macOS right mouse button has a different event ID.
-        rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
-        shift_rt_click = '<Shift-Button-3>' if const.MY_OS in 'lin, win' else '<Shift-Button-2>'
-        for name, label in self.img_label.items():
-            label.bind(rt_click,
-                       lambda _, n=name: _on_click_save_tkimg(image_name=n))
-            label.bind(shift_rt_click,
-                       lambda _, n=name: _on_click_save_cvimg(image_name=n))
+            self.bind_major_commands(parent=_toplevel)
 
     def configure_buttons(self) -> None:
         """
@@ -2669,6 +2543,133 @@ class SetupApp(ViewImage):
             if isinstance(_w, tk.Entry):
                 _w.bind('<Return>', lambda _, n=_name: self.process_sizes(caller=n))
                 _w.bind('<KP_Enter>', lambda _, n=_name: self.process_sizes(caller=n))
+
+    def bind_major_commands(self, parent: Union[tk.Toplevel, 'SetupApp']) -> None:
+        """
+        Bind key commands to a window specified by *parent*.
+        Args:
+            parent: Either a Toplevel or the mainloop (self) window.
+        Returns: None
+        """
+
+        # Note: macOS Command-q will quit program without utils.quit_gui info msg.
+        c_key = 'Command' if const.MY_OS == 'dar' else 'Control'  # is 'lin' or 'win'.
+        parent.bind('<Escape>', func=lambda _: utils.quit_gui(mainloop=self))
+        parent.bind('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
+        parent.bind(f'<{f"{c_key}"}-m>', func=lambda _: self.process_matte())
+        parent.bind(f'<{f"{c_key}"}-w>', func=lambda _: self.call_cmd().open_watershed_controls())
+        parent.bind(f'<{f"{c_key}"}-s>', func=lambda _: self.call_cmd().save_results())
+        parent.bind(f'<{f"{c_key}"}-n>', func=lambda _: self.call_cmd().new_input())
+        parent.bind(f'<{f"{c_key}"}-d>', func=lambda _: self.call_cmd().apply_default_settings())
+
+    def bind_annotation_styles(self) -> None:
+        """
+        Set key bindings to change font size, color, and line thickness
+        of annotations in the 'sized' cv2 image.
+        Called at startup.
+        Calls methods from the inner _Command class of self.call_cmd().
+
+        Returns: None
+        """
+
+        # Bindings are needed only for the settings and sized img windows,
+        #  but is simpler to use bind_all() which does not depend on widget focus.
+        # NOTE: On Windows, KP_* is not a recognized keysym string; works on Linux.
+        #  Windows keysyms 'plus' & 'minus' are for both keyboard and keypad.
+        self.bind_all('<Control-equal>',
+                      lambda _: self.call_cmd().increase_font_size())
+        self.bind_all('<Control-minus>',
+                      lambda _: self.call_cmd().decrease_font_size())
+        self.bind_all('<Control-KP_Subtract>',
+                      lambda _: self.call_cmd().decrease_font_size())
+
+        self.bind_all('<Shift-Control-plus>',
+                      lambda _: self.call_cmd().increase_line_thickness())
+        self.bind_all('<Shift-Control-KP_Add>',
+                      lambda _: self.call_cmd().increase_line_thickness())
+        self.bind_all('<Shift-Control-underscore>',
+                      lambda _: self.call_cmd().decrease_line_thickness())
+
+        self.bind_all('<Control-Up>',
+                      lambda _: self.call_cmd().next_font_color())
+        self.bind_all('<Control-Down>',
+                      lambda _: self.call_cmd().preceding_font_color())
+
+        # Need platform-specific keypad keysym.
+        if const.MY_OS == 'win':
+            self.bind_all('<Control-plus>',
+                          lambda _: self.call_cmd().increase_font_size())
+            self.bind_all('<Shift-Control-minus>',
+                          lambda _: self.call_cmd().decrease_line_thickness())
+        else:
+            self.bind_all('<Control-KP_Add>',
+                          lambda _: self.call_cmd().increase_font_size())
+            self.bind_all('<Shift-Control-KP_Subtract>',
+                          lambda _: self.call_cmd().decrease_line_thickness())
+
+    def bind_scale_adjustment(self) -> None:
+        """
+        The displayed image scale is set when an image is imported, but
+        can be adjusted in-real-time with these keybindings.
+
+        Returns: None
+        """
+
+        self.bind_all('<Control-Right>', lambda _: self.call_cmd().increase_scale_factor())
+        self.bind_all('<Control-Left>', lambda _: self.call_cmd().decrease_scale_factor())
+
+    def bind_saving_images(self) -> None:
+        """
+        Save individual displayed images to file with mouse clicks; either
+        at current tkimg scale or at original cvimg scale.
+
+        Returns: None
+        """
+
+        # Note: the only way to place these internals in call_cmd._Command is
+        #  to add an image=None parameter to call_cmd then pass the image_name
+        #  to the on_click,,, methods in _Command.
+        #  That seems a bit hacky, so just live with these internals.
+        def _on_click_save_tkimg(image_name: str) -> None:
+            tkimg = self.tkimg[image_name]
+
+            click_info = (f'The displayed {image_name} image was saved at'
+                          f' {self.scale_factor.get()} scale.')
+
+            utils.save_report_and_img(path2folder=self.input_file_path,
+                                      img2save=tkimg,
+                                      txt2save=click_info,
+                                      caller=image_name)
+
+            _info = (f'\nThe result image, "{image_name}", was saved to\n'
+                     f'the input image folder: {self.input_folder_name}\n'
+                     f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
+            self.show_info_message(info=_info, color='black')
+
+        def _on_click_save_cvimg(image_name: str) -> None:
+            cvimg = self.cvimg[image_name]
+
+            click_info = (f'\nThe displayed {image_name} image was saved to\n'
+                          f'the input image folder: {self.input_folder_name}\n'
+                          'with a timestamp, at original pixel dimensions.\n\n')
+
+            utils.save_report_and_img(path2folder=self.input_file_path,
+                                      img2save=cvimg,
+                                      txt2save=click_info,
+                                      caller=image_name)
+
+            self.show_info_message(info=click_info, color='black')
+
+        # Right click will save displayed tk image to file, at current scale.
+        # Shift right click saves (processed) cv image at full (original) scale.
+        # macOS right mouse button has a different event ID.
+        rt_click = '<Button-3>' if const.MY_OS in 'lin, win' else '<Button-2>'
+        shift_rt_click = '<Shift-Button-3>' if const.MY_OS in 'lin, win' else '<Shift-Button-2>'
+        for name, label in self.img_label.items():
+            label.bind(rt_click,
+                       lambda _, n=name: _on_click_save_tkimg(image_name=n))
+            label.bind(shift_rt_click,
+                       lambda _, n=name: _on_click_save_cvimg(image_name=n))
 
     def set_color_defaults(self):
         """
