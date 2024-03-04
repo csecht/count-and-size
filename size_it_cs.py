@@ -639,7 +639,6 @@ class ViewImage(ProcessImage):
 
             self.config(cursor='watch')
             self.ws_window.config(cursor='watch')
-            self.update()
         else:  # is 'on'
             idx = 0
             for _name, _w in self.slider.items():
@@ -662,8 +661,11 @@ class ViewImage(ProcessImage):
 
             self.config(cursor='')
             self.ws_window.config(cursor='')
-            self.update()
             self.slider_values.clear()
+
+        # Use update(), not update_idletasks, here to improve promptness
+        #  of windows' response.
+        self.update()
 
     def validate_px_size_entry(self) -> None:
         """
@@ -1439,8 +1441,9 @@ class SetupApp(ViewImage):
             @staticmethod
             def process():
                 """
-                Calls process_ws() or process_matte() from the ProcessImage
-                class, depending on state of the ws_window.
+                Calls process_matte() or shows a prompt to run watershed
+                segregation from the ProcessImage class, depending on state
+                of the ws_window watershed controller.
                 Called from bindings for ws_window sliders and main_window
                 noise reduction sliders and comboboxes.
                 """
@@ -1883,6 +1886,8 @@ class SetupApp(ViewImage):
         # To keep things tidy, the self.ws_window attribute is defined as
         #  ws_window at the end of the method.
         ws_window = tk.Toplevel(master=self)
+        ws_window.wm_withdraw()
+
         ws_window.title('Watershed segmentation controls')
         ws_window.resizable(width=False, height=False)
         ws_window.columnconfigure(index=0, weight=1)
@@ -1891,7 +1896,6 @@ class SetupApp(ViewImage):
                          highlightthickness=5,
                          highlightcolor=const.COLORS_TK['yellow'],
                          highlightbackground=const.DRAG_GRAY, )
-        self.bind_major_commands(parent=ws_window)
 
         # Increase PLM values for larger files to reduce the number
         #  of contours, thus decreasing startup/reset processing time.
@@ -1956,7 +1960,6 @@ class SetupApp(ViewImage):
                            func=_withdraw_ws_window)
 
         # The ws_window is hidden at startup, and is deiconified with a keybinding.
-        ws_window.wm_withdraw()
         self.ws_window = ws_window
 
     def configure_main_window(self) -> None:
@@ -2292,7 +2295,7 @@ class SetupApp(ViewImage):
                  'Esc or Ctrl-Q keys will quit the program.\n\n')
         self.show_info_message(info=_info, color='vermilion')
 
-        self.update()
+        self.update_idletasks()
 
         # Give user time to read the _info before resetting it to
         #  the previous info text.
@@ -2360,7 +2363,6 @@ class SetupApp(ViewImage):
             _toplevel.rowconfigure(index=0, weight=1)
             _toplevel.title(self.window_title[_name])
             _toplevel.config(**const.WINDOW_PARAMETERS)
-            self.bind_major_commands(parent=_toplevel)
 
     def configure_buttons(self) -> None:
         """
@@ -2554,13 +2556,13 @@ class SetupApp(ViewImage):
 
         # Note: macOS Command-q will quit program without utils.quit_gui info msg.
         c_key = 'Command' if const.MY_OS == 'dar' else 'Control'  # is 'lin' or 'win'.
-        parent.bind('<Escape>', func=lambda _: utils.quit_gui(mainloop=self))
-        parent.bind('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
-        parent.bind(f'<{f"{c_key}"}-m>', func=lambda _: self.process_matte())
-        parent.bind(f'<{f"{c_key}"}-w>', func=lambda _: self.call_cmd().open_watershed_controls())
-        parent.bind(f'<{f"{c_key}"}-s>', func=lambda _: self.call_cmd().save_results())
-        parent.bind(f'<{f"{c_key}"}-n>', func=lambda _: self.call_cmd().new_input())
-        parent.bind(f'<{f"{c_key}"}-d>', func=lambda _: self.call_cmd().apply_default_settings())
+        parent.bind_all('<Escape>', func=lambda _: utils.quit_gui(mainloop=self))
+        parent.bind_all('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
+        parent.bind_all(f'<{f"{c_key}"}-m>', func=lambda _: self.process_matte())
+        parent.bind_all(f'<{f"{c_key}"}-w>', func=lambda _: self.call_cmd().open_watershed_controls())
+        parent.bind_all(f'<{f"{c_key}"}-s>', func=lambda _: self.call_cmd().save_results())
+        parent.bind_all(f'<{f"{c_key}"}-n>', func=lambda _: self.call_cmd().new_input())
+        parent.bind_all(f'<{f"{c_key}"}-d>', func=lambda _: self.call_cmd().apply_default_settings())
 
     def bind_annotation_styles(self) -> None:
         """
@@ -2885,12 +2887,12 @@ class SetupApp(ViewImage):
         self.update_image(tkimg_name='input',
                           cvimg_array=self.cvimg['input'])
 
-        self.update()
-
         # Now is time to show the mainloop (self) report window that
         #  was hidden in setup_main_window().
         #  Deiconifying here stacks it on top of all windows at startup.
+        #  Update() here speeds up display of image windows at startup.
         self.wm_deiconify()
+        self.update()
 
 
 def run_checks() -> None:
