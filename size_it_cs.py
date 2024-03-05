@@ -1740,7 +1740,7 @@ class SetupApp(ViewImage):
         # Make geometry offset a function of the screen width.
         #  This is needed b/c of the way different platforms' window
         #  managers position windows.
-        w_offset = int(self.screen_width * 0.65)
+        w_offset = int(self.screen_width * 0.60)
         self.geometry(f'+{w_offset}+50')
         self.wm_minsize(width=450, height=450)
 
