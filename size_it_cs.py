@@ -166,9 +166,7 @@ class ProcessImage(tk.Tk):
         self.time_start: float = 0
         self.elapsed: Union[float, int, str] = 0
 
-    def update_image(self,
-                     tkimg_name: str,
-                     cvimg_array: np.ndarray) -> None:
+    def update_image(self, image_name: str) -> None:
         """
         Process a cv2 image array to use as a tk PhotoImage and update
         (configure) its window label for immediate display, at scale.
@@ -176,19 +174,18 @@ class ProcessImage(tk.Tk):
         display an image.
 
         Args:
-            tkimg_name: The key name used in the tkimg and img_label
-                        dictionaries.
-            cvimg_array: The new cv2 processed numpy image array.
+            image_name: An item name used in the image_name tuple, for
+                use as key in tkimg, cvimg, and img_label dictionaries.
 
         Returns:
             None
         """
 
-        self.tkimg[tkimg_name] = manage.tk_image(
-            image=cvimg_array,
+        self.tkimg[image_name] = manage.tk_image(
+            image=self.cvimg[image_name],
             scale_factor=self.scale_factor.get()
         )
-        self.img_label[tkimg_name].configure(image=self.tkimg[tkimg_name])
+        self.img_label[image_name].configure(image=self.tkimg[image_name])
 
     def reduce_noise(self, img: np.ndarray) -> None:
         """
@@ -205,8 +202,7 @@ class ProcessImage(tk.Tk):
         iteration = self.slider_val['noise_iter'].get()
         if iteration == 0:
             self.cvimg['redux_mask'] = img
-            self.update_image(tkimg_name='redux_mask',
-                              cvimg_array=self.cvimg['redux_mask'])
+            self.update_image(image_name='redux_mask')
 
             return
 
@@ -239,8 +235,7 @@ class ProcessImage(tk.Tk):
             borderType=cv2.BORDER_DEFAULT,
         )
 
-        self.update_image(tkimg_name='redux_mask',
-                          cvimg_array=self.cvimg['redux_mask'])
+        self.update_image(image_name='redux_mask')
 
     def matte_segmentation(self) -> None:
         """
@@ -292,8 +287,7 @@ class ProcessImage(tk.Tk):
                          thickness=self.line_thickness,
                          lineType=cv2.LINE_AA)
 
-        self.update_image(tkimg_name='matte_objects',
-                          cvimg_array=self.cvimg['matte_objects'])
+        self.update_image(image_name='matte_objects')
 
         # Now need to draw enclosing circles around selected segments and
         #  annotate with object sizes in ViewImage.select_and_size_objects().
@@ -792,8 +786,7 @@ class ViewImage(ProcessImage):
         # Note that with matte screens, the contour_pointset may contain
         #  a single element of the entire image, if no objects are found.
         if contour_pointset is None or len(contour_pointset) == 1:
-            self.update_image(tkimg_name='sized',
-                              cvimg_array=self.cvimg['sized'])
+            self.update_image(image_name='sized')
             utils.no_objects_found_msg(caller=PROGRAM_NAME)
 
             return
@@ -902,8 +895,7 @@ class ViewImage(ProcessImage):
         else:
             utils.no_objects_found_msg(caller=PROGRAM_NAME)
 
-        self.update_image(tkimg_name='sized',
-                          cvimg_array=self.cvimg['sized'])
+        self.update_image(image_name='sized')
 
     def preview_export(self,
                        export_img: tk.PhotoImage,
@@ -1396,8 +1388,7 @@ class SetupApp(ViewImage):
             self.show_info_message(info=_info, color='black')
 
             for _n in self.image_names:
-                self.update_image(tkimg_name=_n,
-                                  cvimg_array=self.cvimg[_n])
+                self.update_image(image_name=_n)
 
         class _Command:
             """
@@ -1510,8 +1501,7 @@ class SetupApp(ViewImage):
                 """
                 if cmd_self.open_input(parent=cmd_self):
                     cmd_self.check_for_saved_settings()
-                    cmd_self.update_image(tkimg_name='input',
-                                          cvimg_array=cmd_self.cvimg['input'])
+                    cmd_self.update_image(image_name='input')
                 else:  # User canceled input selection or closed messagebox window.
                     _info = '\n\nNo new input file was selected.\n\n\n'
                     cmd_self.show_info_message(info=_info, color='vermilion')
@@ -2885,8 +2875,7 @@ class SetupApp(ViewImage):
         #  updating, but for consistency's sake the
         #  statement structure used to display and update processed
         #  images is used here.
-        self.update_image(tkimg_name='input',
-                          cvimg_array=self.cvimg['input'])
+        self.update_image(image_name='input')
 
         # Now is time to show the mainloop (self) report window that
         #  was hidden in setup_main_window().
