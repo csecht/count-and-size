@@ -983,7 +983,7 @@ class ViewImage(ProcessImage):
 
         if (self.size_std['px_val'].get() == '1' and
                 self.cbox_val['size_std'].get() == 'None'):
-            app.after(ms=6000, func=_show_msg)
+            self.after(ms=6000, func=_show_msg)
 
     def show_info_message(self, info: str, color: str) -> None:
         """
@@ -1774,11 +1774,6 @@ class SetupApp(ViewImage):
         self.tkimg_window: dict = {}
         self.window_title: dict = {}
 
-        # This order of events, when coordinated with the calls in
-        #  start_now(), allow macOS implementation to flow well.
-        self.setup_main_window()
-        self.setup_start_window()
-
     def setup_main_window(self):
         """
         For clarity, remove from view the Tk mainloop window created
@@ -2072,7 +2067,7 @@ class SetupApp(ViewImage):
 
         # Give user time to read the _info before resetting it to
         #  the previous info text.
-        app.after(ms=6000)
+        self.after(ms=6000)
         self.show_info_message(info=prev_txt, color=prev_fg)
 
     def setup_image_windows(self) -> None:
@@ -3191,23 +3186,37 @@ def run_checks() -> None:
     manage.arguments()
 
 
-if __name__ == '__main__':
+def main() -> None:
+    """
+    Main function to launch the program. Initializes SetupApp() and
+    sets up the mainloop window and all other windows and widgets.
+    Through inheritance, SetupApp() also initializes ProcessImage(),
+    which initializes ProcessImage() that inherits Tk, thus creating the
+    mainloop window for settings and reporting.
 
-    run_checks()
+    Returns:
+            None
+    """
+    print(f'{PROGRAM_NAME} has launched...')
+    app = SetupApp()
+    app.title(f'{PROGRAM_NAME} Report & Settings')
+    app.setup_main_window()
+    app.setup_start_window()
+
+    # The custom app icon is expected to be in the program's images folder.
+    try:
+        icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
+        app.wm_iconphoto(True, icon)
+    except tk.TclError as err:
+        print('Cannot display program icon, so it will be blank or the tk default.\n'
+              f'tk error message: {err}')
 
     try:
-        print(f'{PROGRAM_NAME} has launched...')
-        app = SetupApp()
-        app.title(f'{PROGRAM_NAME} Report & Settings')
-
-        # The custom app icon is expected to be in the repository images folder.
-        try:
-            icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
-            app.wm_iconphoto(True, icon)
-        except tk.TclError as err:
-            print('Cannot display program icon, so it will be blank or the tk default.\n'
-                  f'tk error message: {err}')
-
         app.mainloop()
     except KeyboardInterrupt:
         print('*** User quit the program from Terminal command line. ***\n')
+
+
+if __name__ == '__main__':
+    run_checks()
+    main()

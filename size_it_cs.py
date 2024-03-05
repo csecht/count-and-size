@@ -556,7 +556,7 @@ class ViewImage(ProcessImage):
 
         if (self.size_std['px_val'].get() == '1' and
                 self.cbox_val['size_std'].get() == 'None'):
-            app.after(ms=6000, func=_show_msg)
+            self.after(ms=6000, func=_show_msg)
 
     def show_info_message(self, info: str, color: str) -> None:
         """
@@ -1071,7 +1071,7 @@ class ViewImage(ProcessImage):
                 _info = (f'\n\nThere was a problem with segment # {roi_idx},\n'
                          'so it was not exported.\n\n')
                 self.show_info_message(info=_info, color='vermilion')
-                app.after(500)
+                self.after(500)
 
         if ok2export:
             _info = (f'\n{self.num_obj_selected} selected objects were individually\n'
@@ -1401,7 +1401,7 @@ class SetupApp(ViewImage):
 
         class _Command:
             """
-            Gives command-based methods access to all module methods and
+            Gives command-based methods access to all script methods and
             instance variables.
             Methods:
             open_watershed_controls
@@ -1879,15 +1879,16 @@ class SetupApp(ViewImage):
         Returns: None
         """
         scale_len = int(self.screen_width * 0.20)
+
+        # The ws_window is hidden at startup, and is deiconified with a keybinding.
         # Note that the system window manager will position the window where it
         #  wants, despite what the geometry string is set to. So, just go with it.
-
-        # Window configuration is based on the main window, but with a dark bg
         # To keep things tidy, the self.ws_window attribute is defined as
         #  ws_window at the end of the method.
         ws_window = tk.Toplevel(master=self)
         ws_window.wm_withdraw()
 
+        # Window configuration is based on the main window, but with a dark bg
         ws_window.title('Watershed segmentation controls')
         ws_window.resizable(width=False, height=False)
         ws_window.columnconfigure(index=0, weight=1)
@@ -1959,7 +1960,6 @@ class SetupApp(ViewImage):
         ws_window.protocol(name='WM_DELETE_WINDOW',
                            func=_withdraw_ws_window)
 
-        # The ws_window is hidden at startup, and is deiconified with a keybinding.
         self.ws_window = ws_window
 
     def configure_main_window(self) -> None:
@@ -2299,7 +2299,7 @@ class SetupApp(ViewImage):
 
         # Give user time to read the _info before resetting it to
         #  the previous info text.
-        app.after(ms=6000)
+        self.after(ms=6000)
         self.show_info_message(info=prev_txt, color=prev_fg)
 
     def setup_image_windows(self) -> None:
@@ -2559,10 +2559,12 @@ class SetupApp(ViewImage):
         parent.bind_all('<Escape>', func=lambda _: utils.quit_gui(mainloop=self))
         parent.bind_all('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
         parent.bind_all(f'<{f"{c_key}"}-m>', func=lambda _: self.process_matte())
-        parent.bind_all(f'<{f"{c_key}"}-w>', func=lambda _: self.call_cmd().open_watershed_controls())
+        parent.bind_all(f'<{f"{c_key}"}-w>',
+                        func=lambda _: self.call_cmd().open_watershed_controls())
         parent.bind_all(f'<{f"{c_key}"}-s>', func=lambda _: self.call_cmd().save_results())
         parent.bind_all(f'<{f"{c_key}"}-n>', func=lambda _: self.call_cmd().new_input())
-        parent.bind_all(f'<{f"{c_key}"}-d>', func=lambda _: self.call_cmd().apply_default_settings())
+        parent.bind_all(f'<{f"{c_key}"}-d>',
+                        func=lambda _: self.call_cmd().apply_default_settings())
 
     def bind_annotation_styles(self) -> None:
         """
@@ -2912,28 +2914,35 @@ def run_checks() -> None:
     manage.arguments()
 
 
-if __name__ == '__main__':
+def main() -> None:
+    """
+    Main function to launch the program. Initializes SetupApp() and
+    sets up the mainloop window and all other windows and widgets.
+    Through inheritance, SetupApp() also initializes ProcessImage(),
+    which initializes ProcessImage() that inherits Tk, thus creating the
+    mainloop window for settings and reporting.
+    """
+    print(f'{PROGRAM_NAME} has launched...')
+    app = SetupApp()
+    app.title(f'{PROGRAM_NAME} Report & Settings')
+    app.setup_main_window()
+    app.setup_start_window()
+    app.setup_ws_window()
 
-    run_checks()
+    # The custom app icon is expected to be in the program's images folder.
+    try:
+        icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
+        app.wm_iconphoto(True, icon)
+    except tk.TclError as err:
+        print('Cannot display program icon, so it will be blank or the tk default.\n'
+              f'tk error message: {err}')
 
     try:
-        print(f'{PROGRAM_NAME} has launched...')
-        app = SetupApp()
-        app.title(f'{PROGRAM_NAME} Report & Settings')
-        # This order of events, when coordinated with the calls in
-        #  start_now(), allow macOS implementation to flow well.
-        app.setup_main_window()
-        app.setup_start_window()
-        app.setup_ws_window()
-
-        # The custom app icon is expected to be in the repository images folder.
-        try:
-            icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
-            app.wm_iconphoto(True, icon)
-        except tk.TclError as err:
-            print('Cannot display program icon, so it will be blank or the tk default.\n'
-                  f'tk error message: {err}')
-
         app.mainloop()
     except KeyboardInterrupt:
         print('*** User quit the program from Terminal command line. ***\n')
+
+
+if __name__ == '__main__':
+    run_checks()
+    main()
