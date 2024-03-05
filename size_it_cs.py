@@ -1740,7 +1740,7 @@ class SetupApp(ViewImage):
         # Make geometry offset a function of the screen width.
         #  This is needed b/c of the way different platforms' window
         #  managers position windows.
-        w_offset = int(self.screen_width * 0.65)
+        w_offset = int(self.screen_width * 0.60)
         self.geometry(f'+{w_offset}+50')
         self.wm_minsize(width=450, height=450)
 
@@ -1753,11 +1753,10 @@ class SetupApp(ViewImage):
 
     def setup_start_window(self) -> None:
         """
-        Set up a basic Toplevel, then prompt for an input file, then
-        proceed with configuring the window's widgets to set initial
-        parameters of display scale, font color, and threshold type
-        (inverse vs. not). A button will then trigger image processing
-        steps to begin. Window is destroyed once button is used.
+        Set up a basic Toplevel, prompt for an input file, set initial matte
+        color and initial result annotation color. A button will then trigger
+        image processing steps, launch the main window, and destroy the start
+        window.
 
         Returns:
             None
