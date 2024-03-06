@@ -550,7 +550,7 @@ class ViewImage(ProcessImage):
 
         if (self.size_std['px_val'].get() == '1' and
                 self.cbox_val['size_std'].get() == 'None'):
-            self.after(ms=6000, func=_show_msg)
+            self.after(ms=7777, func=_show_msg)
 
     def show_info_message(self, info: str, color: str) -> None:
         """
@@ -1063,7 +1063,7 @@ class ViewImage(ProcessImage):
                 _info = (f'\n\nThere was a problem with segment # {roi_idx},\n'
                          'so it was not exported.\n\n')
                 self.show_info_message(info=_info, color='vermilion')
-                self.after(500)
+                self.after(ms=500)
 
         if ok2export:
             _info = (f'\n{self.num_obj_selected} selected objects were individually\n'
@@ -1181,7 +1181,7 @@ class ViewImage(ProcessImage):
         Returns: None
         """
 
-        _info = '\n\nRunning the Watershed algorithm...\n\n\n'
+        _info = '\n\nRunning Watershed segmentation...\n\n\n'
         self.show_info_message(info=_info, color='blue')
 
         # Need to first check that entered size values are okay.
@@ -1319,7 +1319,7 @@ class SetupApp(ViewImage):
     call_cmd
     call_start
     start_now
-    bind_major_commands
+    bind_main_commands
     setup_main_window
     setup_start_window
     setup_ws_window
@@ -1494,7 +1494,9 @@ class SetupApp(ViewImage):
             def new_input():
                 """
                 Reads a new image file for preprocessing.
-                Calls open_input(), show_info_message().
+                Calls open_input(), update_image(), ws_window.withdraw()
+                cmd_self & process_matte(), or show_info_message() &
+                delay_size_std_info_msg().
                 Called from keybinding, menu, and button commands.
 
                 Returns: None
@@ -1738,7 +1740,7 @@ class SetupApp(ViewImage):
         self.protocol(name='WM_DELETE_WINDOW',
                       func=lambda: utils.quit_gui(mainloop=self))
 
-        self.bind_major_commands(parent=self)
+        self.bind_main_commands(parent=self)
         self.setup_menu_bar(self)
 
     def setup_start_window(self) -> None:
@@ -1917,7 +1919,7 @@ class SetupApp(ViewImage):
 
         ws_key = 'command-W' if const.MY_OS == 'dar' else 'Ctrl-W'
         ws_button = ttk.Button(master=ws_window,
-                               text=f'Run Watershed ({ws_key})',
+                               text=f'Run Watershed segmentation ({ws_key})',
                                command=self.process_ws,
                                width=0,
                                style='My.TButton')
@@ -2288,7 +2290,7 @@ class SetupApp(ViewImage):
 
         # Give user time to read the _info before resetting it to
         #  the previous info text.
-        self.after(ms=6000)
+        self.after(ms=7777)
         self.show_info_message(info=prev_txt, color=prev_fg)
 
     def setup_image_windows(self) -> None:
@@ -2535,7 +2537,7 @@ class SetupApp(ViewImage):
                 _w.bind('<Return>', lambda _, n=_name: self.process_sizes(caller=n))
                 _w.bind('<KP_Enter>', lambda _, n=_name: self.process_sizes(caller=n))
 
-    def bind_major_commands(self, parent: Union[tk.Toplevel, 'SetupApp']) -> None:
+    def bind_main_commands(self, parent: Union[tk.Toplevel, 'SetupApp']) -> None:
         """
         Bind key commands to a window specified by *parent*.
         Args:
