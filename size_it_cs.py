@@ -1418,13 +1418,16 @@ class SetupApp(ViewImage):
             def open_watershed_controls():
                 """
                 Opens the watershed controller window.
-                Calls ProcessImage.process_ws().
-                Called only from a keybinding in SetupApp.setup_main_window().
+                Calls matte_segmentation().
+                Called from a keybinding and the Help menu in
+                SetupApp.setup_main_window().
                 """
+
+                # Note that the only way to run the watershed algorithm is
+                # with the 'Run' button in the ws_window.
                 try:
                     cmd_self.ws_window.deiconify()
                     cmd_self.matte_segmentation()
-                    cmd_self.process_ws()
                 except AttributeError:
                     print('From call_cmd().open_watershed_controls(), the ws window'
                           ' cannot deiconify or run process_ws.')
