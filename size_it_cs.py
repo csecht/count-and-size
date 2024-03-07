@@ -1920,9 +1920,8 @@ class SetupApp(ViewImage):
                                                 variable=self.slider_val['plm_footprint'],
                                                 **const.SCALE_PARAMETERS)
 
-        ws_key = 'command-W' if const.MY_OS == 'dar' else 'Ctrl-W'
         ws_button = ttk.Button(master=ws_window,
-                               text=f'Run Watershed segmentation ({ws_key})',
+                               text=f'Run Watershed segmentation',
                                command=self.process_ws,
                                width=0,
                                style='My.TButton')
@@ -2913,7 +2912,9 @@ def main() -> None:
     sets up the mainloop window and all other windows and widgets.
     Through inheritance, SetupApp() also initializes ProcessImage(),
     which initializes ProcessImage() that inherits Tk, thus creating the
-    mainloop window for settings and reporting.
+    mainloop window for settings and reporting. With this structure,
+    instance attributes and methods are available to all classes only
+    where needed.
     """
     print(f'{PROGRAM_NAME} has launched...')
     app = SetupApp()
