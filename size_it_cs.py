@@ -1737,7 +1737,7 @@ class SetupApp(ViewImage):
         #  managers position windows.
         w_offset = int(self.screen_width * 0.60)
         self.geometry(f'+{w_offset}+50')
-        self.wm_minsize(width=450, height=450)
+        self.wm_minsize(width=500, height=450)
 
         # Need to provide exit info msg to Terminal.
         self.protocol(name='WM_DELETE_WINDOW',
@@ -2478,7 +2478,7 @@ class SetupApp(ViewImage):
         self.cbox['morph_op_lbl'].config(text='Reduce noise, morphology operator:',
                                          **const.LABEL_PARAMETERS)
         self.cbox['morph_op'].config(textvariable=self.cbox_val['morph_op'],
-                                     width=18 + width_correction,
+                                     width=16 + width_correction,
                                      values=list(const.CV_MORPH_OP.keys()),
                                      **const.COMBO_PARAMETERS)
 
@@ -2525,7 +2525,8 @@ class SetupApp(ViewImage):
         """
 
         self.size_std['px_entry'].config(textvariable=self.size_std['px_val'],
-                                         width=6)
+                                         width=5,
+                                         font=const.WIDGET_FONT,)
         self.size_std['px_lbl'].config(text='Enter px diameter of size standard:',
                                        **const.LABEL_PARAMETERS)
 
