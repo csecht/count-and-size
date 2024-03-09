@@ -154,7 +154,7 @@ class ProcessImage(tk.Tk):
         #  but is used in all Class methods here.
         self.img_label: dict = {}
 
-        # metrics dict is populated in ViewImage.open_input().
+        # metrics dict is populated in SetupApp.open_input().
         self.metrics: dict = {}
         self.line_thickness: int = 0
         self.font_scale: float = 0
@@ -1823,6 +1823,7 @@ class SetupApp(ViewImage):
                                         command=lambda: self.call_start(start_win))
 
         self.set_color_defaults()
+        self.cbox_val['matte_color'].set('green2')
 
         # Grid start win widgets; sorted by row.
         padding = dict(padx=5, pady=5)
@@ -2675,6 +2676,7 @@ class SetupApp(ViewImage):
         widgets used in both start and main windows.
         Called from set_start_window() and set_defaults().
 
+
         Returns: None
         """
 
@@ -2686,7 +2688,10 @@ class SetupApp(ViewImage):
             self.use_saved_settings = False
             return
 
-        self.cbox_val['matte_color'].set('green2')
+        # Note that the matte color, cbox_val['matte_color'], starting
+        #  default is set in setup_start_window().
+        #  It is not set here because it would use that default in the
+        #  main window, thus overriding any start window user preference.
         self.cbox_val['annotation_color'].set('yellow')
 
     def set_defaults(self) -> None:
