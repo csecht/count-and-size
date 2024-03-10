@@ -227,6 +227,7 @@ class ProcessImage(tk.Tk):
         #   MORPH_CLOSE is better for certain images, but generally is worse.
         #   MORPH_HITMISS helps to separate close objects by shrinking them.
         # morph_op HITMISS works best for colorseg, with a low kernel size.
+        # cvimg['redux_mask'] is used in matte_segmentation() and watershed_segmentation().
         self.cvimg['redux_mask'] = cv2.morphologyEx(
             src=img,
             op=morph_op,
@@ -374,6 +375,7 @@ class ViewImage(ProcessImage):
     show_info_message
     configure_circle_r_sliders
     widget_control
+    noise_widget_control
     validate_px_size_entry
     validate_custom_size_entry
     set_size_standard
@@ -653,6 +655,10 @@ class ViewImage(ProcessImage):
                 if not isinstance(_w, tk.StringVar):
                     _w.configure(state=tk.NORMAL)
 
+            # Need to keep the noise reduction widgets disabled when
+            #  iterations are zero.
+            self.noise_widget_control()
+
             self.config(cursor='')
             self.ws_window.config(cursor='')
             self.slider_values.clear()
@@ -660,6 +666,35 @@ class ViewImage(ProcessImage):
         # Use update(), not update_idletasks, here to improve promptness
         #  of windows' response.
         self.update()
+
+    def noise_widget_control(self) -> None:
+        """
+        Disables noise reduction settings widgets when iterations are
+        zero and enable when not. Used to refine the broad actions of
+        widget_control(action='on').
+        Called from widget_control(), process_matte(), _Command.process().
+
+        Returns:
+            None
+        """
+
+        if self.slider_val['noise_iter'].get() == 0:
+            for _name, _w in self.cbox.items():
+                if 'morph' in _name:
+                    _w.configure(state=tk.DISABLED)
+            for _name, _w in self.slider.items():
+                if 'noise_k' in _name:
+                    _w.configure(state=tk.DISABLED)
+        else:  # is > 0, so now relevant.
+            # Need to re-enable the noise reduction widgets, but is simplest
+            #  to re-enable all widgets.
+            for _, _w in self.cbox.items():
+                if isinstance(_w, tk.Label):
+                    _w.configure(state=tk.NORMAL)
+                else:  # is tk.Combobox
+                    _w.configure(state='readonly')
+            for _, _w in self.slider.items():
+                _w.configure(state=tk.NORMAL)
 
     def validate_px_size_entry(self) -> None:
         """
@@ -676,13 +711,13 @@ class ViewImage(ProcessImage):
         except ValueError:
 
             # Need widget_control to prevent runaway sliders, if clicked.
-            self.widget_control('off')
+            self.widget_control(action='off')
             _post = ('Enter only integers > 0 for the pixel diameter.\n'
                      f'{size_std_px} was entered. Defaulting to 1.')
             messagebox.showerror(title='Invalid entry',
                                  detail=_post)
             self.size_std['px_val'].set('1')
-            self.widget_control('on')
+            self.widget_control(action='on')
 
     def validate_custom_size_entry(self) -> None:
         """
@@ -714,7 +749,7 @@ class ViewImage(ProcessImage):
         except ValueError:
 
             # Need widget_control to prevent runaway sliders, if clicked.
-            self.widget_control('off')
+            self.widget_control(action='off')
             messagebox.showinfo(title='Custom size',
                                 detail='Enter a number > 0.\n'
                                        'Accepted types:\n'
@@ -722,7 +757,7 @@ class ViewImage(ProcessImage):
                                        '  decimal: 26.5, 0.265, .2\n'
                                        '  exponent: 2.6e10, 2.6e-2')
             self.size_std['custom_val'].set('0.0')
-            self.widget_control('on')
+            self.widget_control(action='on')
 
     def set_size_standard(self) -> None:
         """
@@ -1189,7 +1224,8 @@ class ViewImage(ProcessImage):
         if self.cbox_val['size_std'].get() == 'Custom':
             self.validate_custom_size_entry()
 
-        self.widget_control('off')
+        self.widget_control(action='off')
+
         self.time_start: float = time()
 
         # The redux (noise reduction) and matte segmentation pre-processing
@@ -1211,7 +1247,7 @@ class ViewImage(ProcessImage):
             self.elapsed = round(time() - self.time_start, 3)
 
         self.report_results()
-        self.widget_control('on')
+        self.widget_control(action='on')
 
         _info = ('\n\nWatershed segmentation and sizing completed.\n'
                  f'{self.elapsed} processing seconds elapsed.\n\n')
@@ -1238,8 +1274,10 @@ class ViewImage(ProcessImage):
             if self.cbox_val['size_std'].get() == 'Custom':
                 self.validate_custom_size_entry()
 
-        self.time_start: float = time()
+        # For clarity, disable noise widgets when they are irrelevant.
+        self.noise_widget_control()
 
+        self.time_start: float = time()
         self.matte_segmentation()
         self.select_and_size_objects()
 
@@ -1254,7 +1292,6 @@ class ViewImage(ProcessImage):
             self.elapsed = round(time() - self.time_start, 3)
 
         self.report_results()
-        self.widget_control('on')  # ...just in case
 
         setting_type = 'Saved' if self.use_saved_settings else 'Default'
         if self.first_run:
@@ -1453,6 +1490,9 @@ class SetupApp(ViewImage):
                         #  noise reduction settings change. PLM settings are not
                         #  applied until the "Run watershed" button is clicked.
                         cmd_self.matte_segmentation()
+
+                        # For clarity, disable noise widgets when they are irrelevant.
+                        cmd_self.noise_widget_control()
 
                         # Preprocessing results have displayed, so the user can
                         # now choose to run watershed.
@@ -2421,7 +2461,8 @@ class SetupApp(ViewImage):
         #   may be longer than this set scale_len in the selectors_frame.
         scale_len = int(self.screen_width * 0.20)
 
-        self.slider['noise_k_lbl'].configure(text='Reduce noise, kernel size\n',
+        self.slider['noise_k_lbl'].configure(text='... kernel size\n'
+                                             '(can affect object sizes):',
                                              **const.LABEL_PARAMETERS)
         self.slider['noise_k'].configure(from_=1, to=25,
                                          tickinterval=4,
@@ -2429,8 +2470,8 @@ class SetupApp(ViewImage):
                                          variable=self.slider_val['noise_k'],
                                          **const.SCALE_PARAMETERS)
 
-        self.slider['noise_iter_lbl'].configure(text='Reduce noise, iterations\n'
-                                                     '(affects segment size):',
+        self.slider['noise_iter_lbl'].configure(text='... iterations\n'
+                                                     '(Zero disables noise reduction):',
                                                 **const.LABEL_PARAMETERS)
 
         self.slider['noise_iter'].configure(from_=0, to=4,
@@ -2476,7 +2517,7 @@ class SetupApp(ViewImage):
         width_correction = 2 if const.MY_OS == 'win' else 0  # is Linux or macOS
 
         # Combobox styles are set in manage.ttk_styles(), called in configure_buttons().
-        self.cbox['morph_op_lbl'].config(text='Reduce noise, morphology operator:',
+        self.cbox['morph_op_lbl'].config(text='Reduce noise, morph. operator:',
                                          **const.LABEL_PARAMETERS)
         self.cbox['morph_op'].config(textvariable=self.cbox_val['morph_op'],
                                      width=16 + width_correction,
