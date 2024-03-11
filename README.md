@@ -34,7 +34,7 @@ Results can be saved to a text report of parameter settings, object count, indiv
 object sizes, and sample size mean and range, along with an annotated
 image file of labeled objects. Segmented objects can also be saved as individual image files.
 
-All modules can be executed on Linux, Windows, and macOS platforms. `size_it.py` is derived from the `contour_it.py` module of the opencv-contour-utils2 GitHub repository. `size_it_cs.py` is derived from `size_it.py`.
+All scripts can be executed on Linux, Windows, and macOS platforms. `size_it.py` is derived from the `contour_it.py` script of the opencv-contour-utils2 GitHub repository. `size_it_cs.py` is patterned after `size_it.py`.
 
 <sub>Project inspired by code from Adrian Rosebrock:
 https://pyimagesearch.com/2016/03/28/measuring-size-of-objects-in-an-image-with-opencv/

@@ -195,8 +195,7 @@ class ProcessImage(tk.Tk):
 
         Args:
             img: The color matte mask from matte_segmentation().
-        Returns:
-            The *img* array with cv2.morphologyEx applied.
+        Returns: None
         """
 
         iteration = self.slider_val['noise_iter'].get()
@@ -242,6 +241,8 @@ class ProcessImage(tk.Tk):
         """
         An optional segmentation method to use on color matte masks,
         e.g., green screen.
+
+        Returns: None
         """
 
         # Convert the input image to HSV colorspace for better color segmentation.
@@ -255,7 +256,7 @@ class ProcessImage(tk.Tk):
         #   BGR colorspace range boundaries to use for HSV color discrimination.
         # Note that cv2.inRange thresholds all elements within the
         # color bounds to white and everything else to black.
-        lower, upper = const.MATTE_COLOR[self.cbox_val['matte_color'].get()]
+        lower, upper = const.MATTE_COLOR_RANGE[self.cbox_val['matte_color'].get()]
         matte_mask = cv2.inRange(src=hsv_img, lowerb=lower, upperb=upper)
 
         # Run the mask through noise reduction, then use inverse of image for
@@ -348,7 +349,8 @@ class ProcessImage(tk.Tk):
         #  that conversion, but does a better job identifying segments with it.
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_compact_watershed.html
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
-        # In this context, watershed_line=True is necessary to separate touching objects.
+        # compactness=1.0 based on: DOI:10.1109/ICPR.2014.181
+        # Watershed_line=True is necessary to separate touching objects.
         watershed_img: np.ndarray = watershed(image=-transformed,
                                               markers=labeled_array,
                                               connectivity=4,
@@ -517,11 +519,11 @@ class ViewImage(ProcessImage):
                   f'{oserr}')
 
         # Set/Reset Scale widgets.
-        for _name, _ in self.slider_val.items():
+        for _name in self.slider_val:
             self.slider_val[_name].set(self.imported_settings[_name])
 
         # Set/Reset Combobox widgets.
-        for _name, _ in self.cbox_val.items():
+        for _name in self.cbox_val:
             self.cbox_val[_name].set(self.imported_settings[_name])
 
         self.font_scale = self.imported_settings['font_scale']
@@ -1130,8 +1132,8 @@ class ViewImage(ProcessImage):
         morph_shape: str = self.cbox_val['morph_shape'].get()
         circle_r_min: int = self.slider_val['circle_r_min'].get()
         circle_r_max: int = self.slider_val['circle_r_max'].get()
-        color = self.cbox_val['matte_color'].get()
-        rgb_range = f'{const.MATTE_COLOR[color][0]}--{const.MATTE_COLOR[color][1]}'
+        color: str = self.cbox_val['matte_color'].get()
+        lo, hi = const.MATTE_COLOR_RANGE[color]
 
         if self.ws_window.wm_state() in 'normal, zoomed':
             num_segments = len(self.ws_basins)
@@ -1181,7 +1183,7 @@ class ViewImage(ProcessImage):
             f'\nImage: {self.input_file_path}\n'
             f'Image size, pixels (w x h): {self.input_w}x{self.input_ht}\n'
             f'{divider}\n'
-            f'{"Matte color:".ljust(space)}{color}, RGB range: {rgb_range}\n'
+            f'{"Matte color:".ljust(space)}{color}, RGB range: {lo}--{hi}\n'
             f'{"Noise reduction:".ljust(space)}cv2.getStructuringElement ksize={noise_k},\n'
             f'{tab}cv2.getStructuringElement shape={morph_shape}\n'
             f'{tab}cv2.morphologyEx iterations={noise_iter}\n'
@@ -1274,7 +1276,8 @@ class ViewImage(ProcessImage):
             if self.cbox_val['size_std'].get() == 'Custom':
                 self.validate_custom_size_entry()
 
-        # For clarity, disable noise widgets when they are irrelevant.
+        # For clarity, disable noise widgets when they are irrelevant,
+        #  as when noise reduction iterations are zero.
         self.noise_widget_control()
 
         self.time_start: float = time()
@@ -1489,9 +1492,9 @@ class SetupApp(ViewImage):
                         #  updates the pre-watershed images for live viewing when
                         #  noise reduction settings change. PLM settings are not
                         #  applied until the "Run watershed" button is clicked.
+                        # For clarity, disable noise widgets when they are irrelevant,
+                        #  as when noise reduction iterations are zero.
                         cmd_self.matte_segmentation()
-
-                        # For clarity, disable noise widgets when they are irrelevant.
                         cmd_self.noise_widget_control()
 
                         # Preprocessing results have displayed, so the user can
@@ -1850,7 +1853,7 @@ class SetupApp(ViewImage):
                                text='Matte color:',
                                **const.LABEL_PARAMETERS)
         matte_cbox = ttk.Combobox(master=start_win,
-                                  values=list(const.MATTE_COLOR.keys()),
+                                  values=list(const.MATTE_COLOR_RANGE.keys()),
                                   textvariable=self.cbox_val['matte_color'],
                                   width=11,
                                   height=14,
@@ -1962,7 +1965,7 @@ class SetupApp(ViewImage):
                                                 **const.SCALE_PARAMETERS)
 
         ws_button = ttk.Button(master=ws_window,
-                               text=f'Run Watershed segmentation',
+                               text='Run Watershed segmentation',
                                command=self.process_ws,
                                width=0,
                                style='My.TButton')
@@ -2357,7 +2360,7 @@ class SetupApp(ViewImage):
         self.window_title = {
             'input': 'Input image',
             'redux_mask': 'Mask with reduced noise',
-            'matte_objects': f'Color matte segments',
+            'matte_objects': 'Color matte segments',
             'sized': 'Selected & Sized objects',
         }
 
@@ -2384,7 +2387,6 @@ class SetupApp(ViewImage):
         # Allow image label panels in image windows to resize with window.
         #  Note that images don't proportionally resize, just their boundaries;
         #  images will remain anchored at their top left corners.
-        c_key = 'Command' if const.MY_OS == 'dar' else 'Control'  # is 'lin' or 'win'.
         for _name, _toplevel in self.tkimg_window.items():
             _toplevel.wm_withdraw()
             if icon_path:
@@ -2542,7 +2544,7 @@ class SetupApp(ViewImage):
                                       **const.LABEL_PARAMETERS)
         self.cbox['matte_color'].config(textvariable=self.cbox_val['matte_color'],
                                         width=10 + width_correction,
-                                        values=list(const.MATTE_COLOR.keys()),
+                                        values=list(const.MATTE_COLOR_RANGE.keys()),
                                         **const.COMBO_PARAMETERS)
 
         # Now bind functions to all Comboboxes.
