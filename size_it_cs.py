@@ -1392,7 +1392,6 @@ class SetupApp(ViewImage):
         self.tkimg_window: dict = {}
         self.window_title: dict = {}
 
-        # Used only in the start window.
         self.start_process_btn_txt = tk.StringVar()
 
     def call_cmd(self):
@@ -1410,7 +1409,6 @@ class SetupApp(ViewImage):
         # Inner class concept adapted from:
         # https://stackoverflow.com/questions/719705/
         #   what-is-the-purpose-of-pythons-inner-classes/722175
-        cmd_self = self
         cv_colors = list(const.COLORS_CV.keys())
 
         def _display_annotation_action(action: str, value: str):
@@ -1418,12 +1416,15 @@ class SetupApp(ViewImage):
                      f'{action} was changed to {value}.\n\n')
             self.show_info_message(info=_info, color='black')
 
-        def _apply_new_scale():
+        def _display_scale_action(value: float):
             """
             The scale_factor is applied in ProcessImage.update_image()
-            Called from _Command.increase_scale, _Command.decrease_scale,
+            Called from _Command.increase_scale, _Command.decrease_scale.
+
+            Args:
+                 value: the scale factor update to display, as float.
             """
-            _sf = round(self.scale_factor.get(), 2)
+            _sf = round(value, 2)
             _info = f'\n\nA new scale factor of {_sf} was applied.\n\n\n'
             self.show_info_message(info=_info, color='black')
 
@@ -1466,8 +1467,8 @@ class SetupApp(ViewImage):
                 # Note that the only way to run the watershed algorithm is
                 # with the 'Run' button in the ws_window.
                 try:
-                    cmd_self.ws_window.deiconify()
-                    cmd_self.matte_segmentation()
+                    self.ws_window.deiconify()
+                    self.matte_segmentation()
                 except AttributeError:
                     print('From call_cmd().open_watershed_controls(), the ws window'
                           ' cannot deiconify or run process_ws.')
@@ -1483,10 +1484,10 @@ class SetupApp(ViewImage):
                 """
 
                 try:
-                    if cmd_self.ws_window.state() in 'normal, zoomed':
+                    if self.ws_window.state() in 'normal, zoomed':
                         # Update report with current plm_* slider values; don't wait
                         #  for the segmentation algorithm to run before reporting settings.
-                        cmd_self.report_results()
+                        self.report_results()
 
                         # Note that matte_segmentation() calls reduce_noise(), and
                         #  updates the pre-watershed images for live viewing when
@@ -1494,27 +1495,27 @@ class SetupApp(ViewImage):
                         #  applied until the "Run watershed" button is clicked.
                         # For clarity, disable noise widgets when they are irrelevant,
                         #  as when noise reduction iterations are zero.
-                        cmd_self.matte_segmentation()
-                        cmd_self.noise_widget_control()
+                        self.matte_segmentation()
+                        self.noise_widget_control()
 
                         # Preprocessing results have displayed, so the user can
                         # now choose to run watershed.
-                        if cmd_self.slider_val['plm_footprint'].get() == 1:
+                        if self.slider_val['plm_footprint'].get() == 1:
                             _info = ('\nA peak_local_max footprint of 1 may run a long time.\n'
                                      'If that is a problem, then increase the value\n'
                                      'before clicking the "Run watershed" button.\n\n')
-                            cmd_self.show_info_message(info=_info, color='vermilion')
+                            self.show_info_message(info=_info, color='vermilion')
                         else:
                             _info = ('\nClick "Run watershed" to update\n'
                                      'selected and sized objects.\n\n\n')
-                            cmd_self.show_info_message(info=_info, color='blue')
+                            self.show_info_message(info=_info, color='blue')
 
                     else:  # ws_window is withdrawn or iconified.
-                        cmd_self.process_matte()
+                        self.process_matte()
                 except AttributeError:
                     print('From call_cmd().process(), the ws_window'
                           ' state cannot be determined, so will run process_matte().')
-                    cmd_self.process_matte()
+                    self.process_matte()
 
             @staticmethod
             def save_results():
@@ -1524,41 +1525,41 @@ class SetupApp(ViewImage):
                 Calls utils.save_report_and_img(), show_info_message().
                 Called from keybinding, menu, and button commands.
                 """
-                _sizes = ', '.join(str(i) for i in cmd_self.sorted_size_list)
+                _sizes = ', '.join(str(i) for i in self.sorted_size_list)
                 utils.save_report_and_img(
-                    path2folder=cmd_self.input_file_path,
-                    img2save=cmd_self.cvimg['sized'],
-                    txt2save=cmd_self.report_txt + f'\n{_sizes}',
+                    path2folder=self.input_file_path,
+                    img2save=self.cvimg['sized'],
+                    txt2save=self.report_txt + f'\n{_sizes}',
                     caller=PROGRAM_NAME,
                 )
 
                 _info = ('\n\nSettings report and result image were saved to\n'
-                         f'the input image folder: {cmd_self.input_folder_name}\n\n')
-                cmd_self.show_info_message(info=_info, color='blue')
+                         f'the input image folder: {self.input_folder_name}\n\n')
+                self.show_info_message(info=_info, color='blue')
 
             @staticmethod
             def new_input():
                 """
                 Reads a new image file for preprocessing.
                 Calls open_input(), update_image(), ws_window.withdraw()
-                cmd_self & process_matte(), or show_info_message() &
+                self & process_matte(), or show_info_message() &
                 delay_size_std_info_msg().
                 Called from keybinding, menu, and button commands.
 
                 Returns: None
                 """
-                if cmd_self.open_input(parent=cmd_self):
-                    cmd_self.check_for_saved_settings()
-                    cmd_self.update_image(image_name='input')
+                if self.open_input(parent=self):
+                    self.check_for_saved_settings()
+                    self.update_image(image_name='input')
                 else:  # User canceled input selection or closed messagebox window.
                     _info = '\n\nNo new input file was selected.\n\n\n'
-                    cmd_self.show_info_message(info=_info, color='vermilion')
-                    cmd_self.delay_size_std_info_msg()
+                    self.show_info_message(info=_info, color='vermilion')
+                    self.delay_size_std_info_msg()
 
                     return
 
-                cmd_self.ws_window.withdraw()
-                cmd_self.process_matte()
+                self.ws_window.withdraw()
+                self.process_matte()
 
             @staticmethod
             def export_settings():
@@ -1569,93 +1570,93 @@ class SetupApp(ViewImage):
                 """
 
                 settings_dict = {
-                    'noise_iter': cmd_self.slider_val['noise_iter'].get(),
-                    'morph_op': cmd_self.cbox_val['morph_op'].get(),
-                    'morph_shape': cmd_self.cbox_val['morph_shape'].get(),
-                    'circle_r_min': cmd_self.slider_val['circle_r_min'].get(),
-                    'circle_r_max': cmd_self.slider_val['circle_r_max'].get(),
-                    'noise_k': cmd_self.slider_val['noise_k'].get(),
-                    'plm_mindist': cmd_self.slider_val['plm_mindist'].get(),
-                    'plm_footprint': cmd_self.slider_val['plm_footprint'].get(),
-                    'size_std': cmd_self.cbox_val['size_std'].get(),
-                    # 'scale': cmd_self.scale_factor.get(),
-                    'px_val': cmd_self.size_std['px_val'].get(),
-                    'custom_val': cmd_self.size_std['custom_val'].get(),
-                    'annotation_color': cmd_self.cbox_val['annotation_color'].get(),
-                    'font_scale': cmd_self.font_scale,
-                    'line_thickness': cmd_self.line_thickness,
-                    'matte_color': cmd_self.cbox_val['matte_color'].get(),
+                    'noise_iter': self.slider_val['noise_iter'].get(),
+                    'morph_op': self.cbox_val['morph_op'].get(),
+                    'morph_shape': self.cbox_val['morph_shape'].get(),
+                    'circle_r_min': self.slider_val['circle_r_min'].get(),
+                    'circle_r_max': self.slider_val['circle_r_max'].get(),
+                    'noise_k': self.slider_val['noise_k'].get(),
+                    'plm_mindist': self.slider_val['plm_mindist'].get(),
+                    'plm_footprint': self.slider_val['plm_footprint'].get(),
+                    'size_std': self.cbox_val['size_std'].get(),
+                    # 'scale': self.scale_factor.get(),
+                    'px_val': self.size_std['px_val'].get(),
+                    'custom_val': self.size_std['custom_val'].get(),
+                    'annotation_color': self.cbox_val['annotation_color'].get(),
+                    'font_scale': self.font_scale,
+                    'line_thickness': self.line_thickness,
+                    'matte_color': self.cbox_val['matte_color'].get(),
                 }
 
                 utils.export_settings_to_json(
-                    path2folder=cmd_self.input_folder_path,
+                    path2folder=self.input_folder_path,
                     settings2save=settings_dict,
                     called_by_cs=True)
 
                 _info = ('\nSettings have been exported to folder:\n'
-                         f'{cmd_self.input_folder_name}\n'
+                         f'{self.input_folder_name}\n'
                          'and are available to use with "New input" or at\n'
                          'startup. Previous settings file was overwritten.\n')
-                cmd_self.show_info_message(info=_info, color='blue')
+                self.show_info_message(info=_info, color='blue')
 
             # These methods are called from the "Style" menu of add_menu_bar()
             #  and as bindings from setup_main_window() or bind_annotation_styles().
             @staticmethod
             def increase_font_size() -> None:
                 """Limit upper font size scale to a 5x increase."""
-                cmd_self.font_scale *= 1.1
-                cmd_self.font_scale = round(min(cmd_self.font_scale, 5), 2)
-                cmd_self.select_and_size_objects()
+                self.font_scale *= 1.1
+                self.font_scale = round(min(self.font_scale, 5), 2)
+                self.select_and_size_objects()
 
             @staticmethod
             def decrease_font_size() -> None:
                 """Limit lower font size scale to a 1/5 decrease."""
-                cmd_self.font_scale *= 0.9
-                cmd_self.font_scale = round(max(cmd_self.font_scale, 0.20), 2)
-                cmd_self.select_and_size_objects()
-                _display_annotation_action('Font scale', f'{cmd_self.font_scale}')
+                self.font_scale *= 0.9
+                self.font_scale = round(max(self.font_scale, 0.20), 2)
+                self.select_and_size_objects()
+                _display_annotation_action('Font scale', f'{self.font_scale}')
 
             @staticmethod
             def increase_line_thickness() -> None:
                 """Limit upper thickness to 15."""
-                cmd_self.line_thickness += 1
-                cmd_self.line_thickness = min(cmd_self.line_thickness, 15)
-                cmd_self.select_and_size_objects()
-                _display_annotation_action('Line thickness', f'{cmd_self.line_thickness}')
+                self.line_thickness += 1
+                self.line_thickness = min(self.line_thickness, 15)
+                self.select_and_size_objects()
+                _display_annotation_action('Line thickness', f'{self.line_thickness}')
 
             @staticmethod
             def decrease_line_thickness() -> None:
                 """Limit lower thickness to 1."""
-                cmd_self.line_thickness -= 1
-                cmd_self.line_thickness = max(cmd_self.line_thickness, 1)
-                cmd_self.select_and_size_objects()
-                _display_annotation_action('Line thickness', f'{cmd_self.line_thickness}')
+                self.line_thickness -= 1
+                self.line_thickness = max(self.line_thickness, 1)
+                self.select_and_size_objects()
+                _display_annotation_action('Line thickness', f'{self.line_thickness}')
 
             @staticmethod
             def next_font_color() -> None:
                 """Go to the next color key in const.COLORS_CV.keys."""
-                current_color: str = cmd_self.cbox_val['annotation_color'].get()
+                current_color: str = self.cbox_val['annotation_color'].get()
                 current_index = cv_colors.index(current_color)
                 # Need to stop increasing idx at the end of colors list.
                 if current_index == len(cv_colors) - 1:
                     next_color = cv_colors[len(cv_colors) - 1]
                 else:
                     next_color = cv_colors[current_index + 1]
-                cmd_self.cbox_val['annotation_color'].set(next_color)
-                cmd_self.select_and_size_objects()
+                self.cbox_val['annotation_color'].set(next_color)
+                self.select_and_size_objects()
                 _display_annotation_action('Font color', f'{next_color}')
 
             @staticmethod
             def preceding_font_color() -> None:
                 """Go to the prior color key in const.COLORS_CV.keys."""
-                current_color: str = cmd_self.cbox_val['annotation_color'].get()
+                current_color: str = self.cbox_val['annotation_color'].get()
                 current_index = cv_colors.index(current_color)
                 # Need to stop decreasing idx at the beginning of colors list.
                 if current_index == 0:
                     current_index = 1
                 preceding_color = cv_colors[current_index - 1]
-                cmd_self.cbox_val['annotation_color'].set(preceding_color)
-                cmd_self.select_and_size_objects()
+                self.cbox_val['annotation_color'].set(preceding_color)
+                self.select_and_size_objects()
                 _display_annotation_action('Font color', f'{preceding_color}')
 
             @staticmethod
@@ -1667,7 +1668,7 @@ class SetupApp(ViewImage):
                 scale_factor *= 1.1
                 scale_factor = round(min(scale_factor, 5), 2)
                 self.scale_factor.set(scale_factor)
-                _apply_new_scale()
+                _display_scale_action(value=scale_factor)
 
             @staticmethod
             def decrease_scale_factor() -> None:
@@ -1678,7 +1679,7 @@ class SetupApp(ViewImage):
                 scale_factor *= 0.9
                 scale_factor = round(max(scale_factor, 0.10), 2)
                 self.scale_factor.set(scale_factor)
-                _apply_new_scale()
+                _display_scale_action(value=scale_factor)
 
             # This method is called from the "Help" menu of add_menu_bar()
             #  and from configure_buttons() and setup_main_window().
@@ -1692,14 +1693,14 @@ class SetupApp(ViewImage):
                 """
 
                 # Order of calls is important here.
-                cmd_self.set_auto_scale_factor()
-                cmd_self.set_defaults()
-                # cmd_self.widget_control('off')  # is turned 'on' in process_matte()
-                cmd_self.process_matte()
+                self.set_auto_scale_factor()
+                self.set_defaults()
+                # self.widget_control('off')  # is turned 'on' in process_matte()
+                self.process_matte()
 
                 _info = ('\n\nSettings have been reset to their defaults.\n'
                          'Check and adjust if needed.\n\n')
-                cmd_self.show_info_message(info=_info, color='blue')
+                self.show_info_message(info=_info, color='blue')
 
         return _Command
 
@@ -1803,6 +1804,7 @@ class SetupApp(ViewImage):
         # Need style of the ttk.Button to match main window button style.
         manage.ttk_styles(mainloop=self)
 
+        # Button text is set to 'Processing started, wait...' in call_start().
         self.start_process_btn_txt.set('Process now')
 
         # Window basics:
