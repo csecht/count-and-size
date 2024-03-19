@@ -179,6 +179,15 @@ COLORS_TK = {
     'green': 'green1',  # not color-blind compatible
 }
 
+# Need tk to match system's default white shade.
+if MY_OS == 'dar':  # macOS
+    COLORS_TK['tk_white'] = 'white'
+elif MY_OS == 'lin':  # Linux (Ubuntu)
+    COLORS_TK['tk_white'] = 'grey85'
+else:  # platform is 'win'  # Windows (10, 11?)
+    COLORS_TK['tk_white'] = 'grey95'
+
+
 # Used with size_it_cs.py, color screens (mattes).
 MATTE_COLOR_RANGE = {
     'green1': (np.array([36, 25, 25]), np.array([70, 255, 255])),
