@@ -2099,17 +2099,17 @@ class SetupApp(ViewImage):
 
     def main_got_focus(self) -> None:
         """Give menu bar headings normal color when app has focus."""
-        self.menubar.entryconfig("File", foreground='black', state=tk.NORMAL)
-        self.menubar.entryconfig("Annotation styles", foreground='black', state=tk.NORMAL)
-        self.menubar.entryconfig("View", foreground='black', state=tk.NORMAL)
-        self.menubar.entryconfig("Help", foreground='black', state=tk.NORMAL)
+        self.menubar.entryconfig("File", state=tk.NORMAL)
+        self.menubar.entryconfig("Annotation styles", state=tk.NORMAL)
+        self.menubar.entryconfig("View", state=tk.NORMAL)
+        self.menubar.entryconfig("Help", state=tk.NORMAL)
 
     def main_lost_focus(self) -> None:
         """Give menu bar headings grey-out color when app looses focus."""
-        self.menubar.entryconfig("File", foreground='grey', state=tk.DISABLED)
-        self.menubar.entryconfig("Annotation styles", foreground='black', state=tk.DISABLED)
-        self.menubar.entryconfig("View", foreground='grey', state=tk.DISABLED)
-        self.menubar.entryconfig("Help", foreground='grey', state=tk.DISABLED)
+        self.menubar.entryconfig("File", state=tk.DISABLED)
+        self.menubar.entryconfig("Annotation styles", state=tk.DISABLED)
+        self.menubar.entryconfig("View", state=tk.DISABLED)
+        self.menubar.entryconfig("Help", state=tk.DISABLED)
 
     def setup_menu_bar(self) -> None:
         """
