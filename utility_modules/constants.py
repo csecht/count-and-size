@@ -224,7 +224,6 @@ if MY_OS == 'lin':
     REPORT_FONT = 'DejaVu Sans Mono', 9
     MENU_FONT = 'TkMenuFont', 9
     TIPS_FONT = 'TkTooltipFont', 8
-    COLORS_TK['tk_white'] = 'grey85'
     radio_params = dict(
         fg=COLORS_TK['yellow'],
         activebackground='gray50',  # Default is 'white'.
@@ -235,15 +234,12 @@ elif MY_OS == 'win':
     REPORT_FONT = 'Consolas', 9
     MENU_FONT = 'TkMenuFont', 8
     TIPS_FONT = 'TkTooltipFont', 7
-
-    COLORS_TK['tk_white'] = 'grey95'
     radio_params = dict(fg='black')
 else:  # is macOS
     WIDGET_FONT = 'TkTooltipFont', 10
     REPORT_FONT = 'Andale Mono', 10
     MENU_FONT = 'TkMenuFont', 12
     TIPS_FONT = 'TkTooltipFont', 10
-    COLORS_TK['tk_white'] = 'white'
     radio_params = dict(fg='black')
 
 MASTER_BG = 'gray80'
@@ -276,13 +272,15 @@ RADIO_PARAMETERS = dict(
     **radio_params  # are OS-specific.
 )
 
+# Color-in the main (self) window and give it a yellow border;
+#  border highlightcolor changes to grey with loss of focus.
 WINDOW_PARAMETERS = dict(
-    bg=MASTER_BG,
+    bg=DARK_BG,
     # bg=COLORS_TK['sky blue'],  # for development
     highlightthickness=5,
     highlightcolor=COLORS_TK['yellow'],
     highlightbackground=DRAG_GRAY,
-)
+    padx=3, pady=3,)
 
 # Here 'font' sets the shown value; font in the pull-down values
 #   is set by option_add in ContourViewer.setup_styles()

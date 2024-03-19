@@ -44,7 +44,7 @@ def about_win(parent: tk.Toplevel) -> None:
     Called from SetupApp window "About" button.
 
     Args:
-        parent: The Toplevel name that is calling.
+        parent: The Toplevel or Class name that is calling.
     Returns:
         None
     """

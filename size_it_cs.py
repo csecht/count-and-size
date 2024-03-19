@@ -1396,13 +1396,6 @@ class SetupApp(ViewImage):
 
         self.menubar = tk.Menu()
 
-        # # Need to grey-out menu bar headings and View log button when
-        # #   another application has focus.
-        # #   source: https://stackoverflow.com/questions/18089068/
-        # #   tk-tkinter-detect-application-lost-focus
-        # self.bind_all('<FocusIn>', self.main_got_focus)
-        # self.bind_all('<FocusOut>', self.main_lost_focus)
-
     def call_cmd(self):
         """
         Groups methods that are shared by buttons, menus, and
@@ -1557,7 +1550,7 @@ class SetupApp(ViewImage):
 
                 Returns: None
                 """
-                if self.open_input(parent=self):
+                if self.open_input(parent=self.master):
                     self.check_for_saved_settings()
                     self.update_image(image_name='input')
                 else:  # User canceled input selection or closed messagebox window.
@@ -1824,12 +1817,7 @@ class SetupApp(ViewImage):
         start_win.title('First, select an input image file')
         start_win.wm_resizable(width=True, height=False)
         start_win.wm_minsize(width=500, height=100)
-        start_win.config(relief='raised',
-                         bg=const.DARK_BG,
-                         # bg=const.COLORS_TK['sky blue'],  # for development
-                         highlightthickness=3,
-                         highlightcolor=const.COLORS_TK['yellow'],
-                         highlightbackground=const.DRAG_GRAY)
+        start_win.config(**const.WINDOW_PARAMETERS)
         start_win.columnconfigure(index=0, weight=1)
         start_win.columnconfigure(index=1, weight=1)
 
@@ -1865,7 +1853,6 @@ class SetupApp(ViewImage):
 
         help_menu.add_command(label='About',
                               command=lambda: utils.about_win(parent=start_win))
-
 
         # Window widgets:
         # Provide a placeholder window header for input file info.
@@ -1928,7 +1915,7 @@ class SetupApp(ViewImage):
         # For macOS: Need to have the filedialog be a child of
         #   start_win as 'self'.
         if const.MY_OS == 'dar':
-            self.open_input(parent=self)
+            self.open_input(parent=self.master)
         else:  # is Linux or Windows
             self.open_input(parent=start_win)
 
@@ -1968,10 +1955,7 @@ class SetupApp(ViewImage):
         ws_window.resizable(width=False, height=False)
         ws_window.columnconfigure(index=0, weight=1)
         ws_window.columnconfigure(index=1, weight=1)
-        ws_window.config(bg=const.DARK_BG,
-                         highlightthickness=5,
-                         highlightcolor=const.COLORS_TK['yellow'],
-                         highlightbackground=const.DRAG_GRAY, )
+        ws_window.config(**const.WINDOW_PARAMETERS)
 
         # Increase PLM values for larger files to reduce the number
         #  of contours, thus decreasing startup/reset processing time.
@@ -2045,9 +2029,8 @@ class SetupApp(ViewImage):
             None
         """
 
-        # Color-in the main (self) window and give it a yellow border;
-        #  border highlightcolor changes to grey with loss of focus.
         self.config(**const.WINDOW_PARAMETERS)
+        self.config(bg=const.MASTER_BG,)
         self.config(menu=self.menubar)
 
         # Default Frame() arguments work fine to display report text.
@@ -2241,7 +2224,7 @@ class SetupApp(ViewImage):
             tips.add_command(label=_line, font=const.TIPS_FONT)
 
         help_menu.add_command(label='About',
-                              command=lambda: utils.about_win(parent=self))
+                              command=lambda: utils.about_win(parent=self.master))
 
     def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
         """
