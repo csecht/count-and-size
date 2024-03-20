@@ -209,7 +209,9 @@ It is also possible to include an option in `size_it` to apply OpenCV's camera c
 15. When the `size_it_cs.py` result has segmented groups of touching or overlapping objects, it may be possible to completely separate objects using the watershed algorithm. Try Ctrl-W or Help > Improve segmentation... to bring up the watershed control window. Adjusting the PLM sliders in that window and the noise reduction sliders in the main window may be needed to achieve better separation.
 
 ### Known Issues:
-When running Random Walker segmentation, e.g., on the images/example/sample1.jpg image file, and the annotated sizing results give too-small circles in the objects (and diamond shaped segments in the "Segmented objects" window), there will be a Terminal warning, "UserWarning: "cg_mg" not available...". To remedy, run this command from the Terminal: `pip install pyamg` to install the PyAMG package. Although `pyamg` is listed in requirements.txt, its absence is not flagged because it is not (and cannot be) used as an imported module package.
+When running Random Walker segmentation in `size_it.py`, e.g., on the images/example/sample1.jpg image file, and the annotated sizing results give too-small circles in the objects (and diamond shaped segments in the "Segmented objects" window), there will be a Terminal warning, "UserWarning: "cg_mg" not available...". To remedy, run this command from the Terminal: `pip install pyamg` to install the PyAMG package. Although `pyamg` is listed in requirements.txt, its absence is not flagged because it is not (and cannot be) used as an imported module package.
+
+For macOS, if an expected window does not appear, or the startup seems stalled, you may need to click the Python Launcher icon in the Dock to make windows visible. This is a known issue with tkinter on macOS. See: https://www.python.org/download/mac/tcltk/
 
 ### Attributions
 All image files are from the author, C.S. Echt.
