@@ -1356,32 +1356,32 @@ class SetupApp(ViewImage):
     """
     The mainloop Class that configures windows and widgets.
     Methods:
+    _delete_window_message
+    bind_annotation_styles
+    bind_main_commands
+    bind_saving_images
+    bind_scale_adjustment
+    bind_focus_actions
     call_cmd
     call_start
-    start_now
-    bind_main_commands
-    setup_main_window
-    setup_start_window
-    setup_ws_window
-    configure_main_window
-    setup_menu_bar
-    open_input
     check_for_saved_settings
-    _delete_window_message
-    setup_image_windows
-    bind_annotation_styles
-    bind_scale_adjustment
-    bind_saving_images
-    configure_buttons
-    need_to_click_run_ws_button
-    config_sliders
     config_comboboxes
     config_entries
+    config_sliders
+    configure_buttons
+    configure_main_window
+    display_windows
+    grid_img_labels
+    grid_widgets
+    open_input
     set_color_defaults
     set_defaults
-    grid_widgets
-    grid_img_labels
-    display_windows
+    setup_image_windows
+    setup_main_window
+    setup_main_menu
+    setup_start_window
+    setup_ws_window
+    start_now
     """
 
     def __init__(self):
@@ -1391,10 +1391,9 @@ class SetupApp(ViewImage):
         #   tk.Toplevel as values; don't want tk windows created here.
         self.tkimg_window: dict = {}
         self.window_title: dict = {}
+        self.menubar = tk.Menu()
 
         self.start_process_btn_txt = tk.StringVar()
-
-        self.menubar = tk.Menu()
 
     def call_cmd(self):
         """
@@ -1744,6 +1743,7 @@ class SetupApp(ViewImage):
         self.config_entries()
         self.bind_annotation_styles()
         self.bind_scale_adjustment()
+        self.bind_focus_actions()
         self.bind_saving_images()
         if not self.use_saved_settings:
             self.set_defaults()
@@ -1790,7 +1790,6 @@ class SetupApp(ViewImage):
                       func=lambda: utils.quit_gui(mainloop=self))
 
         self.bind_main_commands(parent=self)
-        self.setup_menu_bar()
 
     def setup_start_window(self) -> None:
         """
@@ -1860,8 +1859,6 @@ class SetupApp(ViewImage):
             master=start_win,
             text='Image: waiting to be selected...\nSize: TBD',
             **const.LABEL_PARAMETERS)
-
-        # self.setup_menu_bar(start_win)
 
         color_label = tk.Label(master=start_win,
                                text='Annotation font color:',
@@ -2080,33 +2077,12 @@ class SetupApp(ViewImage):
         #  display_windows() after all image windows so that, at startup,
         #  it stacks on top.
 
-    def main_got_focus(self) -> None:
-        """Give menu bar headings normal color when app has focus."""
-        self.menubar.entryconfig("File", state=tk.NORMAL)
-        self.menubar.entryconfig("Annotation styles", state=tk.NORMAL)
-        self.menubar.entryconfig("View", state=tk.NORMAL)
-        self.menubar.entryconfig("Help", state=tk.NORMAL)
-
-    def main_lost_focus(self) -> None:
-        """Give menu bar headings grey-out color when app looses focus."""
-        self.menubar.entryconfig("File", state=tk.DISABLED)
-        self.menubar.entryconfig("Annotation styles", state=tk.DISABLED)
-        self.menubar.entryconfig("View", state=tk.DISABLED)
-        self.menubar.entryconfig("Help", state=tk.DISABLED)
-
-    def setup_menu_bar(self) -> None:
+    def setup_main_menu(self) -> None:
         """
         Create menu instance and add pull-down menus.
 
         Returns: None
         """
-
-        # Need to grey-out menu bar headings and View log button when
-        #   another application has focus.
-        #   source: https://stackoverflow.com/questions/18089068/
-        #   tk-tkinter-detect-application-lost-focus
-        self.bind('<FocusIn>', lambda _: self.main_got_focus())
-        self.bind('<FocusOut>', lambda _: self.main_lost_focus())
 
         # Accelerators use key binds from setup_main_window() and
         #   bind_annotation_styles().
@@ -2135,7 +2111,16 @@ class SetupApp(ViewImage):
         )
 
         file = tk.Menu(**menu_params)
+        style = tk.Menu(**menu_params)
+        view = tk.Menu(**menu_params)
+        help_menu = tk.Menu(**menu_params)
+        tips = tk.Menu(**menu_params)
+
+        # Note: these labels need to match those in bind_focus_actions().
         self.menubar.add_cascade(label='File', menu=file)
+        self.menubar.add_cascade(label='Annotation styles', menu=style)
+        self.menubar.add_cascade(label='View', menu=view)
+        self.menubar.add_cascade(label='Help', menu=help_menu)
 
         file.add_command(label='Save results',
                          command=self.call_cmd().save_results,
@@ -2154,8 +2139,6 @@ class SetupApp(ViewImage):
                          #   b/c cannot override that system's native Command-Q,
                          accelerator=f'{os_accelerator}+Q')
 
-        style = tk.Menu(**menu_params)
-        self.menubar.add_cascade(label="Annotation styles", menu=style)
         style.add_command(label='Increase font size',
                           command=self.call_cmd().increase_font_size,
                           accelerator=f'{os_accelerator}+{plus_key}')
@@ -2175,8 +2158,6 @@ class SetupApp(ViewImage):
                           command=self.call_cmd().preceding_font_color,
                           accelerator=f'{os_accelerator}+↓')
 
-        view = tk.Menu(**menu_params)
-        self.menubar.add_cascade(label="View", menu=view)
         view.add_command(label='Zoom images out',
                          command=self.call_cmd().decrease_scale_factor,
                          accelerator=f'{os_accelerator}+←')
@@ -2191,9 +2172,6 @@ class SetupApp(ViewImage):
                          command=self.process_matte,
                          accelerator=f'{os_accelerator}+M')
 
-        help_menu = tk.Menu(**menu_params)
-        tips = tk.Menu(tearoff=0)
-        self.menubar.add_cascade(label='Help', menu=help_menu)
         help_menu.add_command(label='Improve segmentation...',
                               command=self.call_cmd().open_watershed_controls,
                               accelerator=f'{os_accelerator}+W')
@@ -2202,7 +2180,6 @@ class SetupApp(ViewImage):
                               accelerator=f'{os_accelerator}+D')
 
         help_menu.add_cascade(label='Tips...', menu=tips)
-
         # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
         tip_text = (
             '• Images are auto-zoomed to fit windows at startup.',
@@ -2610,6 +2587,26 @@ class SetupApp(ViewImage):
         parent.bind_all(f'<{f"{c_key}"}-d>',
                         func=lambda _: self.call_cmd().apply_default_settings())
 
+    def bind_focus_actions(self) -> None:
+        """
+        Give menu bar headings normal color when main has focus and
+        grey-out when not.
+        """
+
+        # Note: these need to match the menu labels used in setup_main_menu().
+        cascade_labels = ('File', 'Annotation styles', 'View', 'Help')
+
+        def _got_focus() -> None:
+            for _lbl in cascade_labels:
+                self.menubar.entryconfig(_lbl, state=tk.NORMAL)
+
+        def _lost_focus() -> None:
+            for _lbl in cascade_labels:
+                self.menubar.entryconfig(_lbl, state=tk.DISABLED)
+
+        self.bind('<FocusIn>', lambda _: _got_focus())
+        self.bind('<FocusOut>', lambda _: _lost_focus())
+
     def bind_annotation_styles(self) -> None:
         """
         Set key bindings to change font size, color, and line thickness
@@ -2975,6 +2972,9 @@ def main() -> None:
     app = SetupApp()
     app.title(f'{PROGRAM_NAME} Report & Settings')
     app.setup_main_window()
+    # For proper menu functions, setup_main_menu() must be called in main(),
+    #   after setup_main_window().
+    app.setup_main_menu()
     app.setup_start_window()
     app.setup_ws_window()
 
