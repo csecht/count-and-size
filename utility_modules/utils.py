@@ -37,18 +37,16 @@ if const.MY_OS == 'win':
     from ctypes import windll
 
 
-def about_win(parent: tk.Toplevel) -> None:
+def about_win() -> None:
     """
     Basic information about the package in scrolling text in a new
     Toplevel window. Closes when the calling *parent* closes.
     Called from SetupApp window "About" button.
 
-    Args:
-        parent: The Toplevel or Class name that is calling.
     Returns:
         None
     """
-    aboutwin = tk.Toplevel(master=parent, bg=const.MASTER_BG)
+    aboutwin = tk.Toplevel(bg=const.MASTER_BG)
     aboutwin.title('About Count & Size')
     aboutwin.minsize(width=400, height=200)
     aboutwin.focus_set()

@@ -1851,7 +1851,7 @@ class SetupApp(ViewImage):
         menubar.add_cascade(label='Help', menu=help_menu)
 
         help_menu.add_command(label='About',
-                              command=lambda: utils.about_win(parent=start_win))
+                              command=utils.about_win)
 
         # Window widgets:
         # Provide a placeholder window header for input file info.
@@ -2201,7 +2201,7 @@ class SetupApp(ViewImage):
             tips.add_command(label=_line, font=const.TIPS_FONT)
 
         help_menu.add_command(label='About',
-                              command=lambda: utils.about_win(parent=self.master))
+                              command=utils.about_win)
 
     def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
         """
@@ -2589,23 +2589,33 @@ class SetupApp(ViewImage):
 
     def bind_focus_actions(self) -> None:
         """
-        Give menu bar headings normal color when main has focus and
-        grey-out when not.
+        Configure menu bar headings with normal color when main has focus
+        and grey-out when not. Called at startup from start_now().
         """
 
         # Note: these need to match the menu labels used in setup_main_menu().
         cascade_labels = ('File', 'Annotation styles', 'View', 'Help')
 
-        def _got_focus() -> None:
-            for _lbl in cascade_labels:
-                self.menubar.entryconfig(_lbl, state=tk.NORMAL)
+        def _got_focus(event) -> None:
+            try:
+                for _lbl in cascade_labels:
+                    self.menubar.entryconfig(index=_lbl, state=tk.NORMAL)
+            except tk.TclError:
+                print('ignoring macOS Tcl focus error')
 
-        def _lost_focus() -> None:
+        def _lost_focus(event) -> None:
             for _lbl in cascade_labels:
-                self.menubar.entryconfig(_lbl, state=tk.DISABLED)
+                self.menubar.entryconfig(index=_lbl, state=tk.DISABLED)
 
-        self.bind('<FocusIn>', lambda _: _got_focus())
-        self.bind('<FocusOut>', lambda _: _lost_focus())
+        # Because we are retaining the macOS default menu bar, the menu
+        #  headings are not greyed out when the main window loses focus,
+        #  and remain active when any window has focus.
+        if const.MY_OS == 'dar':
+            self.bind_all('<FocusIn>', _got_focus)
+            self.bind_all('<FocusOut>', _lost_focus)
+        else:
+            self.bind('<FocusIn>', _got_focus)
+            self.bind('<FocusOut>', _lost_focus)
 
     def bind_annotation_styles(self) -> None:
         """
