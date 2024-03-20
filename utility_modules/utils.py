@@ -376,15 +376,19 @@ def quit_gui(mainloop: tk.Tk, confirm=True) -> None:
     if confirm:
         # Need use the parent parameter to place the message window in
         #  front of the window or widget that has focus.
-        really_quit = messagebox.askyesno(
-            parent=mainloop.focus_get(),
-            title="Confirm Exit",
-            detail='Are you sure you want to quit?')
+        try:
+            really_quit = messagebox.askyesno(
+                parent=mainloop.focus_get(),
+                title="Confirm Exit",
+                detail='Are you sure you want to quit?')
+            if really_quit:
+                _do_quit()
+            else:
+                return
 
-        if really_quit:
-            _do_quit()
-        else:
-            return
+        except (tk.TclError, KeyError):
+            print('No need to press the quit key twice. Simply confirm or cancel.')
+
     else:
         _do_quit()
 
