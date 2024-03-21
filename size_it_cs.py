@@ -2167,7 +2167,8 @@ class SetupApp(ViewImage):
         """
         Provides an open file dialog to select an initial or new input
         image file. Also sets a scale slider value for the displayed img.
-        Called from setup_start_window() or "New input" button.
+        Called from setup_start_window() and _Commands.new_input via
+        "New input" button.
         Args:
             parent: The window or mainloop Class over which to place the
                 file dialog, e.g., start_win or self.
@@ -2192,7 +2193,8 @@ class SetupApp(ViewImage):
         # If so, open it, and proceed. If user selects "Cancel" instead of
         #  selecting a file, then quit if at the start window, otherwise
         #  simply close the filedialog (default action) because this was
-        #  called from the "New input" button in the mainloop (self) window.
+        #  called from the "New input" button in the mainloop tk toplevel
+        #  window (== self.master).
         # Need to call quit_gui() without confirmation b/c a confirmation
         #  dialog answer of "No" throws an error during file input.
 
@@ -2207,9 +2209,9 @@ class SetupApp(ViewImage):
                 self.input_folder_path = str(Path(self.input_file_path).parent)
                 self.input_folder_name = str(Path(self.input_file_path).parts[-2])
                 self.settings_file_path = Path(self.input_folder_path, const.CS_SETTINGS_FILE_NAME)
-            elif parent != self:
+            elif parent != self.master:
                 utils.quit_gui(mainloop=self, confirm=False)
-            else:  # no input and parent is self (app).
+            else:  # no input and parent is self.master (app tk.Toplevel).
                 return False
         except cv2.error as cverr:
             msg = f'File: {self.input_file_name} cannot be used.'
