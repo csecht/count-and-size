@@ -538,11 +538,12 @@ class ViewImage(ProcessImage):
 
     def delay_size_std_info_msg(self) -> None:
         """
-        When no size standard values ar entered, after a few seconds,
-        display the size standard instructions in the mainloop (app)
-        window. Internal function calls show_info_message().
+        When no size standard values are entered  display, after a few
+        seconds, size standard instructions in the mainloop (app)
+        window.
         Called from process_ws(), process_matte(), process_sizes(), and
         configure_buttons._new_input().
+        Internal function calls show_info_message().
 
         Returns: None
         """
@@ -1406,7 +1407,10 @@ class SetupApp(ViewImage):
         #   tk.Toplevel as values; don't want tk windows created here.
         self.tkimg_window: dict = {}
         self.window_title: dict = {}
+
+        # Attributes defined in setup_main_menu().
         self.menubar = tk.Menu()
+        self.menu_labels: tuple = ()
         self.menu: dict = {}
 
         self.start_process_btn_txt = tk.StringVar()
@@ -2067,18 +2071,13 @@ class SetupApp(ViewImage):
             font=const.MENU_FONT,
         )
 
-        # Note that these keys are used as labels in bind_focus_actions().
-        self.menu = {
-            'File': tk.Menu(**menu_params),
-            'Style': tk.Menu(**menu_params),
-            'View': tk.Menu(**menu_params),
-            'Help': tk.Menu(**menu_params),
-        }
+        # Note: these labels are also used in bind_focus_actions().
+        self.menu_labels = ('File', 'Style', 'View', 'Help')
 
-        self.menubar.add_cascade(label='File', menu=self.menu['File'])
-        self.menubar.add_cascade(label='Style', menu=self.menu['Style'])
-        self.menubar.add_cascade(label='View', menu=self.menu['View'])
-        self.menubar.add_cascade(label='Help', menu=self.menu['Help'])
+        self.menu = {_l: tk.Menu(**menu_params) for _l in self.menu_labels}
+
+        for _l in self.menu_labels:
+            self.menubar.add_cascade(label=_l, menu=self.menu[_l])
 
         self.menu['File'].add_command(label='Save results',
                                       command=self.call_cmd().save_results,
@@ -2618,13 +2617,13 @@ class SetupApp(ViewImage):
         def _got_focus(_) -> None:
             """The '_' is a placeholder for an event parameter."""
             try:
-                for label in self.menu.keys():
+                for label in self.menu_labels:
                     self.menubar.entryconfig(index=label, state=tk.NORMAL)
             except tk.TclError:
                 print('ignoring macOS Tcl entryconfig focus error')
 
         def _lost_focus(_) -> None:
-            for label in self.menu.keys():
+            for label in self.menu_labels:
                 self.menubar.entryconfig(index=label, state=tk.DISABLED)
 
         # Because we are retaining the macOS default menu bar, the menu
