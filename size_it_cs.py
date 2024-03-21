@@ -488,6 +488,7 @@ class ViewImage(ProcessImage):
         needed for images to fit easily on the screen, either 1/3
         screen px width or 2/3 screen px height, depending
         on input image orientation.
+        Called from open_input() and _Command.apply_default_settings().
 
         Returns: None
         """
@@ -505,6 +506,9 @@ class ViewImage(ProcessImage):
         Uses a dictionary of saved settings, imported via json.loads(),
         that are to be applied to the input image. Includes all settings
         except the scale_factor for window image size.
+        Called from check_for_saved_settings(), set_cololr_defaults().
+
+        Returns: None
         """
 
         try:
@@ -537,7 +541,7 @@ class ViewImage(ProcessImage):
         When no size standard values ar entered, after a few seconds,
         display the size standard instructions in the mainloop (app)
         window. Internal function calls show_info_message().
-        Called from process_matte(), process_sizes(), and
+        Called from process_ws(), process_matte(), process_sizes(), and
         configure_buttons._new_input().
 
         Returns: None
@@ -566,8 +570,7 @@ class ViewImage(ProcessImage):
                    const.COLORS_TK dictionary or as a Tk compatible fg
                    color string, i.e. hex code or X11 named color.
 
-        Returns:
-            None
+        Returns: None
         """
         self.info_txt.set(info)
 
@@ -582,6 +585,8 @@ class ViewImage(ProcessImage):
 
     def configure_circle_r_sliders(self) -> None:
         """
+        Adjust the Scale() widgets for circle radius min and max based
+        on the input image size.
         Called from config_sliders() and open_input().
         Returns: None
         """
@@ -674,10 +679,10 @@ class ViewImage(ProcessImage):
         Disables noise reduction settings widgets when iterations are
         zero and enable when not. Used to refine the broad actions of
         widget_control(action='on').
-        Called from widget_control(), process_matte(), _Command.process().
+        Called by widget_control(), process_matte(), _Command.process().
+        Calls widget_control().
 
-        Returns:
-            None
+        Returns: None
         """
 
         if self.slider_val['noise_iter'].get() == 0:
@@ -702,7 +707,10 @@ class ViewImage(ProcessImage):
         """
         Check whether pixel size Entry() value is a positive integer.
         Post a message if the entry is not valid.
+        Called by set_size_standard() process_ws(), process_matte().
         Calls widget_control().
+
+        Returns: None
         """
 
         size_std_px: str = self.size_std['px_val'].get()
@@ -725,7 +733,10 @@ class ViewImage(ProcessImage):
         """
         Check whether custom size Entry() value is a real number.
         Post a message if the entry is not valid.
+        Called by set_size_standard() process_ws(), process_matte().
         Calls widget_control().
+
+        Returns: None
         """
         custom_size: str = self.size_std['custom_val'].get()
         size_std_px: str = self.size_std['px_val'].get()
@@ -750,7 +761,7 @@ class ViewImage(ProcessImage):
                                       utils.count_sig_fig(size_std_px))
         except ValueError:
 
-            # Need widget_control to prevent runaway sliders, if clicked.
+            # Need widget_control() to prevent runaway sliders, if clicked.
             self.widget_control(action='off')
             messagebox.showinfo(title='Custom size',
                                 detail='Enter a number > 0.\n'
@@ -766,7 +777,9 @@ class ViewImage(ProcessImage):
         Assign a unit conversion factor to the observed pixel diameter
         of the chosen size standard and calculate the number of
         significant figures for preset or custom size entries.
-        Called from process_matte(), process_sizes(), __init__.
+        Called from start_now(), process_sizes().
+        Calls validate_px_size_entry(), validate_custom_size_entry(),
+        and utils.count_sig_fig().
 
         Returns: None
         """
@@ -806,10 +819,10 @@ class ViewImage(ProcessImage):
         draw an enclosing circle around contours, then display the
         diameter size over the input image. Objects are expected to be
         oblong so that circle diameter can represent the object's length.
-        Called by process_matte(), process_sizes(), bind_annotation_styles().
-        Calls update_image().
-        Returns:
-            None
+        Called by process*() methods and annotation methods in call_cmd().
+        Calls to_p.to_precision() and update_image().
+
+        Returns: None
         """
         self.cvimg['sized'] = self.cvimg['input'].copy()
 
@@ -938,8 +951,8 @@ class ViewImage(ProcessImage):
                        export_img: tk.PhotoImage,
                        import_img: tk.PhotoImage) -> tk.Toplevel:
         """
-        Display a sample of the export image and the import image from
-        select_and_export_objects() in a Toplevel window.
+        Display a sample of the export image and import image, from
+        select_and_export_objects(), in a Toplevel window.
         Args:
             export_img: A PhotoImage of an object segment for export.
             import_img: A PhotoImage of the ROI input image.
@@ -970,8 +983,10 @@ class ViewImage(ProcessImage):
         """
         Takes a list of contour segments, selects, masks and extracts
         each, to a bounding rectangle, for export of ROI to file.
+        Generates a preview window for the first segment, then asks for
+        user confirmation to export all selected segments.
         Calls utility_modules/utils.export_each_segment().
-        Called from Button command in configure_buttons().
+        Called from setup_main_menu() and configure_buttons().
 
         Returns: None
         """
@@ -1113,9 +1128,9 @@ class ViewImage(ProcessImage):
         Write the current settings and cv metrics in a Text widget of
         the report_frame. Same text is printed in Terminal from "Save"
         button.
-        Called from process_matte(), process_sizes(), __init__.
-        Returns:
-            None
+        Called from process_ws(), process_matte(), process_sizes(), process().
+
+        Returns: None
         """
 
         # Note: recall that *_val dictionaries are inherited from ProcessImage().
@@ -2018,66 +2033,6 @@ class SetupApp(ViewImage):
 
         self.ws_window = ws_window
 
-    def configure_main_window(self) -> None:
-        """
-        Settings and report window (mainloop, self) keybindings,
-        configurations, and grids for contour settings and reporting frames.
-
-        Returns:
-            None
-        """
-
-        self.config(**const.WINDOW_PARAMETERS)
-        self.config(bg=const.MASTER_BG, )
-        self.config(menu=self.menubar)
-
-        # Default Frame() arguments work fine to display report text.
-        # bg won't show when grid sticky EW for tk.Text; see utils.display_report().
-        self.selectors_frame.configure(relief='raised',
-                                       bg=const.DARK_BG,
-                                       # bg=const.COLORS_TK['sky blue'],  # for development
-                                       borderwidth=5)
-
-        # Allow Frames and widgets to resize with main window.
-        #  Row 0 is the report, row1 selectors, rows 2,3,4 are for Buttons().
-        self.rowconfigure(index=0, weight=1)
-        self.rowconfigure(index=1, weight=1)
-
-        # Keep the report scrollbar active in the resized frame.
-        self.report_frame.rowconfigure(index=0, weight=1)
-
-        # Expect there to be 6 rows in the selectors Frame.
-        for i in range(7):
-            self.selectors_frame.rowconfigure(index=i, weight=1)
-
-        self.columnconfigure(index=0, weight=1)
-        self.columnconfigure(index=1, weight=1)
-        self.report_frame.columnconfigure(index=0, weight=1)
-
-        # Allow only sliders, not their labels, to expand with window.
-        self.selectors_frame.columnconfigure(index=1, weight=1)
-
-        self.report_frame.grid(column=0, row=0,
-                               columnspan=2,
-                               padx=(5, 5), pady=(5, 5),
-                               sticky=tk.NSEW)
-        self.selectors_frame.grid(column=0, row=1,
-                                  columnspan=2,
-                                  padx=5, pady=(0, 5),
-                                  ipadx=4, ipady=4,
-                                  sticky=tk.NSEW)
-
-        # Width should fit any text expected without causing WINDOW shifting.
-        self.info_label.config(font=const.WIDGET_FONT,
-                               width=50,  # width should fit any text expected without
-                               justify='right',
-                               bg=const.MASTER_BG,  # use 'pink' for development
-                               fg='black')
-
-        # Note: the main window (mainloop, self, app) is deiconified in
-        #  display_windows() after all image windows so that, at startup,
-        #  it stacks on top.
-
     def setup_main_menu(self) -> None:
         """
         Create main (app) menu instance and hierarchical menus.
@@ -2091,8 +2046,7 @@ class SetupApp(ViewImage):
         #   bind_annotation_styles() and must be platform-specific.
         os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
 
-        # Unicode arrow symbols: left \u2190, right \u2192
-        # Unicode arrow symbols: up \u2101, down \u2193
+        # Unicode arrow symbols: left \u2190, right \u2192, up \u2101, down \u2193
         if const.MY_OS == 'dar':
             color_tip = 'shift-control-↑ & shift-control-↓'
             tip_scaling_text = 'with shift-control-← & shift-control-→.'
@@ -2176,6 +2130,7 @@ class SetupApp(ViewImage):
                                       command=self.process_matte,
                                       accelerator=f'{os_accelerator}+M')
 
+        # The Help menu lists a cascade of Tips as a submenu.
         self.menu['Help'].add_command(label='Improve segmentation...',
                                       command=self.call_cmd().open_watershed_controls,
                                       accelerator=f'{os_accelerator}+W')
@@ -2387,6 +2342,66 @@ class SetupApp(ViewImage):
             _toplevel.rowconfigure(index=0, weight=1)
             _toplevel.title(self.window_title[_name])
             _toplevel.config(**const.WINDOW_PARAMETERS)
+
+    def configure_main_window(self) -> None:
+        """
+        Settings and report window (mainloop, self) keybindings,
+        configurations, and grids for contour settings and reporting frames.
+
+        Returns:
+            None
+        """
+
+        self.config(**const.WINDOW_PARAMETERS)
+        self.config(bg=const.MASTER_BG, )
+        self.config(menu=self.menubar)
+
+        # Default Frame() arguments work fine to display report text.
+        # bg won't show when grid sticky EW for tk.Text; see utils.display_report().
+        self.selectors_frame.configure(relief='raised',
+                                       bg=const.DARK_BG,
+                                       # bg=const.COLORS_TK['sky blue'],  # for development
+                                       borderwidth=5)
+
+        # Allow Frames and widgets to resize with main window.
+        #  Row 0 is the report, row1 selectors, rows 2,3,4 are for Buttons().
+        self.rowconfigure(index=0, weight=1)
+        self.rowconfigure(index=1, weight=1)
+
+        # Keep the report scrollbar active in the resized frame.
+        self.report_frame.rowconfigure(index=0, weight=1)
+
+        # Expect there to be 6 rows in the selectors Frame.
+        for i in range(7):
+            self.selectors_frame.rowconfigure(index=i, weight=1)
+
+        self.columnconfigure(index=0, weight=1)
+        self.columnconfigure(index=1, weight=1)
+        self.report_frame.columnconfigure(index=0, weight=1)
+
+        # Allow only sliders, not their labels, to expand with window.
+        self.selectors_frame.columnconfigure(index=1, weight=1)
+
+        self.report_frame.grid(column=0, row=0,
+                               columnspan=2,
+                               padx=(5, 5), pady=(5, 5),
+                               sticky=tk.NSEW)
+        self.selectors_frame.grid(column=0, row=1,
+                                  columnspan=2,
+                                  padx=5, pady=(0, 5),
+                                  ipadx=4, ipady=4,
+                                  sticky=tk.NSEW)
+
+        # Width should fit any text expected without causing WINDOW shifting.
+        self.info_label.config(font=const.WIDGET_FONT,
+                               width=50,  # width should fit any text expected without
+                               justify='right',
+                               bg=const.MASTER_BG,  # use 'pink' for development
+                               fg='black')
+
+        # Note: the main window (mainloop, self, app) is deiconified in
+        #  display_windows() after all image windows so that, at startup,
+        #  it stacks on top.
 
     def configure_buttons(self) -> None:
         """

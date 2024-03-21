@@ -301,7 +301,7 @@ else:  # is macOS
         takefocus=False,
         state='readonly')
 
-# Grid arguments to place Label images in image windows.
+# Grid arguments to position tk.Label images in their windows.
 PANEL_LEFT = dict(
     column=0, row=0,
     padx=5, pady=5,

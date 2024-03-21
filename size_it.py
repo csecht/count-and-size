@@ -1964,7 +1964,7 @@ class SetupApp(ViewImage):
             tips.add_command(label=_line, font=const.TIPS_FONT)
 
         help_menu.add_command(label='About',
-                              command=lambda: utils.about_win(parent=start_win))
+                              command=utils.about_win)
 
         # Grid start win widgets; sorted by row.
         padding = dict(padx=5, pady=5)
@@ -2060,7 +2060,7 @@ class SetupApp(ViewImage):
 
         _info = ('\nThat window cannot be closed from its window bar.\n'
                  'Minimize it if it is in the way.\n'
-                 'Esc or Ctrl-Q keys will quit the program.\n\n')
+                 'Esc or Ctrl-Q keys can quit the program.\n\n')
         self.show_info_message(info=_info, color='vermilion')
 
         self.update()

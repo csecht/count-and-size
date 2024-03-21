@@ -40,8 +40,9 @@ if const.MY_OS == 'win':
 def about_win() -> None:
     """
     Basic information about the package in scrolling text in a new
-    Toplevel window. Closes when the calling *parent* closes.
-    Called from SetupApp window "About" button.
+    Toplevel window.
+    Generally called from a "Help->About" menu.
+    Calls manage.arguments() to get the about text.
 
     Returns:
         None
