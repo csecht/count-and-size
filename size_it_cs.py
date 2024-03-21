@@ -1392,6 +1392,7 @@ class SetupApp(ViewImage):
         self.tkimg_window: dict = {}
         self.window_title: dict = {}
         self.menubar = tk.Menu()
+        self.menu: dict = {}
 
         self.start_process_btn_txt = tk.StringVar()
 
@@ -2027,7 +2028,7 @@ class SetupApp(ViewImage):
         """
 
         self.config(**const.WINDOW_PARAMETERS)
-        self.config(bg=const.MASTER_BG,)
+        self.config(bg=const.MASTER_BG, )
         self.config(menu=self.menubar)
 
         # Default Frame() arguments work fine to display report text.
@@ -2079,13 +2080,15 @@ class SetupApp(ViewImage):
 
     def setup_main_menu(self) -> None:
         """
-        Create menu instance and add pull-down menus.
+        Create main (app) menu instance and hierarchical menus.
+        For proper menu functions, must be called in main(), and after
+        setup_main_window().
 
         Returns: None
         """
 
-        # Accelerators use key binds from setup_main_window() and
-        #   bind_annotation_styles().
+        # Accelerators use key binds from bind_main_commands() and
+        #   bind_annotation_styles() and must be platform-specific.
         os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
 
         # Unicode arrow symbols: left \u2190, right \u2192
@@ -2110,76 +2113,78 @@ class SetupApp(ViewImage):
             font=const.MENU_FONT,
         )
 
-        file = tk.Menu(**menu_params)
-        style = tk.Menu(**menu_params)
-        view = tk.Menu(**menu_params)
-        help_menu = tk.Menu(**menu_params)
-        tips = tk.Menu(**menu_params)
+        # Note that these keys are used as labels in bind_focus_actions().
+        self.menu = {
+            'File': tk.Menu(**menu_params),
+            'Style': tk.Menu(**menu_params),
+            'View': tk.Menu(**menu_params),
+            'Help': tk.Menu(**menu_params),
+        }
 
-        # Note: these labels need to match those in bind_focus_actions().
-        self.menubar.add_cascade(label='File', menu=file)
-        self.menubar.add_cascade(label='Annotation styles', menu=style)
-        self.menubar.add_cascade(label='View', menu=view)
-        self.menubar.add_cascade(label='Help', menu=help_menu)
+        self.menubar.add_cascade(label='File', menu=self.menu['File'])
+        self.menubar.add_cascade(label='Style', menu=self.menu['Style'])
+        self.menubar.add_cascade(label='View', menu=self.menu['View'])
+        self.menubar.add_cascade(label='Help', menu=self.menu['Help'])
 
-        file.add_command(label='Save results',
-                         command=self.call_cmd().save_results,
-                         accelerator=f'{os_accelerator}+S')
-        file.add_command(label='Export objects individually...',
-                         command=self.select_and_export_objects)
-        file.add_command(label='New input...',
-                         command=self.call_cmd().new_input,
-                         accelerator=f'{os_accelerator}+N')
-        file.add_command(label='Export current settings',
-                         command=self.call_cmd().export_settings)
-        file.add(tk.SEPARATOR)
-        file.add_command(label='Quit',
-                         command=lambda: utils.quit_gui(self),
-                         # macOS doesn't recognize 'Command+Q' as an accelerator
-                         #   b/c cannot override that system's native Command-Q,
-                         accelerator=f'{os_accelerator}+Q')
+        self.menu['File'].add_command(label='Save results',
+                                      command=self.call_cmd().save_results,
+                                      accelerator=f'{os_accelerator}+S')
+        self.menu['File'].add_command(label='Export objects individually...',
+                                      command=self.select_and_export_objects)
+        self.menu['File'].add_command(label='New input...',
+                                      command=self.call_cmd().new_input,
+                                      accelerator=f'{os_accelerator}+N')
+        self.menu['File'].add_command(label='Export current settings',
+                                      command=self.call_cmd().export_settings)
+        self.menu['File'].add(tk.SEPARATOR)
+        self.menu['File'].add_command(label='Quit',
+                                      command=lambda: utils.quit_gui(mainloop=self),
+                                      # macOS doesn't recognize 'Command+Q' as an accelerator
+                                      #   b/c cannot override that system's native Command-Q,
+                                      accelerator=f'{os_accelerator}+Q')
 
-        style.add_command(label='Increase font size',
-                          command=self.call_cmd().increase_font_size,
-                          accelerator=f'{os_accelerator}+{plus_key}')
-        style.add_command(label='Decrease font size',
-                          command=self.call_cmd().decrease_font_size,
-                          accelerator=f'{os_accelerator}+{minus_key}')
-        style.add_command(label='Increase line thickness',
-                          command=self.call_cmd().increase_line_thickness,
-                          accelerator=f'Shift+{os_accelerator}+{plus_key}')
-        style.add_command(label='Decrease line thickness',
-                          command=self.call_cmd().decrease_line_thickness,
-                          accelerator=f'Shift+{os_accelerator}+{minus_key}')
-        style.add_command(label='Next color',
-                          command=self.call_cmd().next_font_color,
-                          accelerator=f'{os_accelerator}+↑')
-        style.add_command(label='Prior color',
-                          command=self.call_cmd().preceding_font_color,
-                          accelerator=f'{os_accelerator}+↓')
+        self.menu['Style'].add_command(label='Increase font size',
+                                       command=self.call_cmd().increase_font_size,
+                                       accelerator=f'{os_accelerator}+{plus_key}')
+        self.menu['Style'].add_command(label='Decrease font size',
+                                       command=self.call_cmd().decrease_font_size,
+                                       accelerator=f'{os_accelerator}+{minus_key}')
+        self.menu['Style'].add_command(label='Increase line thickness',
+                                       command=self.call_cmd().increase_line_thickness,
+                                       accelerator=f'Shift+{os_accelerator}+{plus_key}')
+        self.menu['Style'].add_command(label='Decrease line thickness',
+                                       command=self.call_cmd().decrease_line_thickness,
+                                       accelerator=f'Shift+{os_accelerator}+{minus_key}')
+        self.menu['Style'].add_command(label='Next color',
+                                       command=self.call_cmd().next_font_color,
+                                       accelerator=f'{os_accelerator}+↑')
+        self.menu['Style'].add_command(label='Prior color',
+                                       command=self.call_cmd().preceding_font_color,
+                                       accelerator=f'{os_accelerator}+↓')
 
-        view.add_command(label='Zoom images out',
-                         command=self.call_cmd().decrease_scale_factor,
-                         accelerator=f'{os_accelerator}+←')
-        view.add_command(label='Zoom images in',
-                         command=self.call_cmd().increase_scale_factor,
-                         accelerator=f'{os_accelerator}+→')
+        self.menu['View'].add_command(label='Zoom images out',
+                                      command=self.call_cmd().decrease_scale_factor,
+                                      accelerator=f'{os_accelerator}+←')
+        self.menu['View'].add_command(label='Zoom images in',
+                                      command=self.call_cmd().increase_scale_factor,
+                                      accelerator=f'{os_accelerator}+→')
         # Note that 'Update "Color matte segments"' is needed to just
         #  update the contour color and line thickness of segments image.
         #  Everything else is already up-to-date, but still need to run
         #  process_matte().
-        view.add_command(label='Update "Color matte segments"',
-                         command=self.process_matte,
-                         accelerator=f'{os_accelerator}+M')
+        self.menu['View'].add_command(label='Update "Color matte segments"',
+                                      command=self.process_matte,
+                                      accelerator=f'{os_accelerator}+M')
 
-        help_menu.add_command(label='Improve segmentation...',
-                              command=self.call_cmd().open_watershed_controls,
-                              accelerator=f'{os_accelerator}+W')
-        help_menu.add_command(label='Apply default settings',
-                              command=self.call_cmd().apply_default_settings,
-                              accelerator=f'{os_accelerator}+D')
+        self.menu['Help'].add_command(label='Improve segmentation...',
+                                      command=self.call_cmd().open_watershed_controls,
+                                      accelerator=f'{os_accelerator}+W')
+        self.menu['Help'].add_command(label='Apply default settings',
+                                      command=self.call_cmd().apply_default_settings,
+                                      accelerator=f'{os_accelerator}+D')
 
-        help_menu.add_cascade(label='Tips...', menu=tips)
+        tips = tk.Menu(**menu_params)
+        self.menu['Help'].add_cascade(label='Tips...', menu=tips)
         # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
         tip_text = (
             '• Images are auto-zoomed to fit windows at startup.',
@@ -2200,8 +2205,8 @@ class SetupApp(ViewImage):
         for _line in tip_text:
             tips.add_command(label=_line, font=const.TIPS_FONT)
 
-        help_menu.add_command(label='About',
-                              command=utils.about_win)
+        self.menu['Help'].add_command(label='About',
+                                      command=utils.about_win)
 
     def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
         """
@@ -2312,7 +2317,7 @@ class SetupApp(ViewImage):
 
         _info = ('\nThat window cannot be closed from its window bar.\n'
                  'Minimize it if it is in the way.\n'
-                 'Esc or Ctrl-Q keys will quit the program.\n\n')
+                 'Esc or Ctrl-Q keys can quit the program.\n\n')
         self.show_info_message(info=_info, color='vermilion')
 
         self.update_idletasks()
@@ -2447,7 +2452,7 @@ class SetupApp(ViewImage):
         scale_len = int(self.screen_width * 0.20)
 
         self.slider['noise_k_lbl'].configure(text='... kernel size\n'
-                                             '(can affect object sizes):',
+                                                  '(can affect object sizes):',
                                              **const.LABEL_PARAMETERS)
         self.slider['noise_k'].configure(from_=1, to=25,
                                          tickinterval=4,
@@ -2553,7 +2558,7 @@ class SetupApp(ViewImage):
 
         self.size_std['px_entry'].config(textvariable=self.size_std['px_val'],
                                          width=5,
-                                         font=const.WIDGET_FONT,)
+                                         font=const.WIDGET_FONT, )
         self.size_std['px_lbl'].config(text='Enter px diameter of size standard:',
                                        **const.LABEL_PARAMETERS)
 
@@ -2593,19 +2598,17 @@ class SetupApp(ViewImage):
         and grey-out when not. Called at startup from start_now().
         """
 
-        # Note: these need to match the menu labels used in setup_main_menu().
-        cascade_labels = ('File', 'Annotation styles', 'View', 'Help')
-
-        def _got_focus(event) -> None:
+        def _got_focus(_) -> None:
+            """The '_' is a placeholder for an event parameter."""
             try:
-                for _lbl in cascade_labels:
-                    self.menubar.entryconfig(index=_lbl, state=tk.NORMAL)
+                for label in self.menu.keys():
+                    self.menubar.entryconfig(index=label, state=tk.NORMAL)
             except tk.TclError:
-                print('ignoring macOS Tcl focus error')
+                print('ignoring macOS Tcl entryconfig focus error')
 
-        def _lost_focus(event) -> None:
-            for _lbl in cascade_labels:
-                self.menubar.entryconfig(index=_lbl, state=tk.DISABLED)
+        def _lost_focus(_) -> None:
+            for label in self.menu.keys():
+                self.menubar.entryconfig(index=label, state=tk.DISABLED)
 
         # Because we are retaining the macOS default menu bar, the menu
         #  headings are not greyed out when the main window loses focus,
