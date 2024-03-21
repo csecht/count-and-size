@@ -1411,7 +1411,6 @@ class SetupApp(ViewImage):
         # Attributes defined in setup_main_menu().
         self.menubar = tk.Menu()
         self.menu_labels: tuple = ()
-        self.menu: dict = {}
 
         self.start_process_btn_txt = tk.StringVar()
 
@@ -2074,71 +2073,71 @@ class SetupApp(ViewImage):
         # Note: these labels are also used in bind_focus_actions().
         self.menu_labels = ('File', 'Style', 'View', 'Help')
 
-        self.menu = {_l: tk.Menu(**menu_params) for _l in self.menu_labels}
+        menu = {_l: tk.Menu(**menu_params) for _l in self.menu_labels}
 
         for _l in self.menu_labels:
-            self.menubar.add_cascade(label=_l, menu=self.menu[_l])
+            self.menubar.add_cascade(label=_l, menu=menu[_l])
 
-        self.menu['File'].add_command(label='Save results',
-                                      command=self.call_cmd().save_results,
-                                      accelerator=f'{os_accelerator}+S')
-        self.menu['File'].add_command(label='Export objects individually...',
-                                      command=self.select_and_export_objects)
-        self.menu['File'].add_command(label='New input...',
-                                      command=self.call_cmd().new_input,
-                                      accelerator=f'{os_accelerator}+N')
-        self.menu['File'].add_command(label='Export current settings',
-                                      command=self.call_cmd().export_settings)
-        self.menu['File'].add(tk.SEPARATOR)
-        self.menu['File'].add_command(label='Quit',
-                                      command=lambda: utils.quit_gui(mainloop=self),
-                                      # macOS doesn't recognize 'Command+Q' as an accelerator
-                                      #   b/c cannot override that system's native Command-Q,
-                                      accelerator=f'{os_accelerator}+Q')
+        menu['File'].add_command(label='Save results',
+                                 command=self.call_cmd().save_results,
+                                 accelerator=f'{os_accelerator}+S')
+        menu['File'].add_command(label='Export objects individually...',
+                                 command=self.select_and_export_objects)
+        menu['File'].add_command(label='New input...',
+                                 command=self.call_cmd().new_input,
+                                 accelerator=f'{os_accelerator}+N')
+        menu['File'].add_command(label='Export current settings',
+                                 command=self.call_cmd().export_settings)
+        menu['File'].add(tk.SEPARATOR)
+        menu['File'].add_command(label='Quit',
+                                 command=lambda: utils.quit_gui(mainloop=self),
+                                 # macOS doesn't recognize 'Command+Q' as an accelerator
+                                 #   b/c cannot override that system's native Command-Q,
+                                 accelerator=f'{os_accelerator}+Q')
 
-        self.menu['Style'].add_command(label='Increase font size',
-                                       command=self.call_cmd().increase_font_size,
-                                       accelerator=f'{os_accelerator}+{plus_key}')
-        self.menu['Style'].add_command(label='Decrease font size',
-                                       command=self.call_cmd().decrease_font_size,
-                                       accelerator=f'{os_accelerator}+{minus_key}')
-        self.menu['Style'].add_command(label='Increase line thickness',
-                                       command=self.call_cmd().increase_line_thickness,
-                                       accelerator=f'Shift+{os_accelerator}+{plus_key}')
-        self.menu['Style'].add_command(label='Decrease line thickness',
-                                       command=self.call_cmd().decrease_line_thickness,
-                                       accelerator=f'Shift+{os_accelerator}+{minus_key}')
-        self.menu['Style'].add_command(label='Next color',
-                                       command=self.call_cmd().next_font_color,
-                                       accelerator=f'{os_accelerator}+↑')
-        self.menu['Style'].add_command(label='Prior color',
-                                       command=self.call_cmd().preceding_font_color,
-                                       accelerator=f'{os_accelerator}+↓')
+        menu['Style'].add_command(label='Increase font size',
+                                  command=self.call_cmd().increase_font_size,
+                                  accelerator=f'{os_accelerator}+{plus_key}')
+        menu['Style'].add_command(label='Decrease font size',
+                                  command=self.call_cmd().decrease_font_size,
+                                  accelerator=f'{os_accelerator}+{minus_key}')
+        menu['Style'].add_command(label='Increase line thickness',
+                                  command=self.call_cmd().increase_line_thickness,
+                                  accelerator=f'Shift+{os_accelerator}+{plus_key}')
+        menu['Style'].add_command(label='Decrease line thickness',
+                                  command=self.call_cmd().decrease_line_thickness,
+                                  accelerator=f'Shift+{os_accelerator}+{minus_key}')
+        menu['Style'].add_command(label='Next color',
+                                  command=self.call_cmd().next_font_color,
+                                  accelerator=f'{os_accelerator}+↑')
+        menu['Style'].add_command(label='Prior color',
+                                  command=self.call_cmd().preceding_font_color,
+                                  accelerator=f'{os_accelerator}+↓')
 
-        self.menu['View'].add_command(label='Zoom images out',
-                                      command=self.call_cmd().decrease_scale_factor,
-                                      accelerator=f'{os_accelerator}+←')
-        self.menu['View'].add_command(label='Zoom images in',
-                                      command=self.call_cmd().increase_scale_factor,
-                                      accelerator=f'{os_accelerator}+→')
+        menu['View'].add_command(label='Zoom images out',
+                                 command=self.call_cmd().decrease_scale_factor,
+                                 accelerator=f'{os_accelerator}+←')
+        menu['View'].add_command(label='Zoom images in',
+                                 command=self.call_cmd().increase_scale_factor,
+                                 accelerator=f'{os_accelerator}+→')
         # Note that 'Update "Color matte segments"' is needed to just
         #  update the contour color and line thickness of segments image.
         #  Everything else is already up-to-date, but still need to run
         #  process_matte().
-        self.menu['View'].add_command(label='Update "Color matte segments"',
-                                      command=self.process_matte,
-                                      accelerator=f'{os_accelerator}+M')
+        menu['View'].add_command(label='Update "Color matte segments"',
+                                 command=self.process_matte,
+                                 accelerator=f'{os_accelerator}+M')
 
         # The Help menu lists a cascade of Tips as a submenu.
-        self.menu['Help'].add_command(label='Improve segmentation...',
-                                      command=self.call_cmd().open_watershed_controls,
-                                      accelerator=f'{os_accelerator}+W')
-        self.menu['Help'].add_command(label='Apply default settings',
-                                      command=self.call_cmd().apply_default_settings,
-                                      accelerator=f'{os_accelerator}+D')
+        menu['Help'].add_command(label='Improve segmentation...',
+                                 command=self.call_cmd().open_watershed_controls,
+                                 accelerator=f'{os_accelerator}+W')
+        menu['Help'].add_command(label='Apply default settings',
+                                 command=self.call_cmd().apply_default_settings,
+                                 accelerator=f'{os_accelerator}+D')
 
         tips = tk.Menu(**menu_params)
-        self.menu['Help'].add_cascade(label='Tips...', menu=tips)
+        menu['Help'].add_cascade(label='Tips...', menu=tips)
         # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
         tip_text = (
             '• Images are auto-zoomed to fit windows at startup.',
@@ -2159,8 +2158,8 @@ class SetupApp(ViewImage):
         for _line in tip_text:
             tips.add_command(label=_line, font=const.TIPS_FONT)
 
-        self.menu['Help'].add_command(label='About',
-                                      command=utils.about_win)
+        menu['Help'].add_command(label='About',
+                                 command=utils.about_win)
 
     def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
         """
