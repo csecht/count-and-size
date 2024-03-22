@@ -229,18 +229,26 @@ if MY_OS == 'lin':
         activebackground='gray50',  # Default is 'white'.
         activeforeground=COLORS_TK['sky blue'],  # Default is 'black'.
         selectcolor=COLORS_TK['dark blue'])
+    C_KEY = 'Ctrl'
+    C_BIND = 'Control'
+
 elif MY_OS == 'win':
     WIDGET_FONT = 'TkTooltipFont', 7
     REPORT_FONT = 'Consolas', 9
     MENU_FONT = 'TkMenuFont', 8
     TIPS_FONT = 'TkTooltipFont', 7
     radio_params = dict(fg='black')
+    C_KEY = 'Ctrl'
+    C_BIND = 'Control'
+
 else:  # is macOS
     WIDGET_FONT = 'TkTooltipFont', 10
     REPORT_FONT = 'Andale Mono', 10
     MENU_FONT = 'TkMenuFont', 12
     TIPS_FONT = 'TkTooltipFont', 10
     radio_params = dict(fg='black')
+    C_KEY = 'Command'
+    C_BIND = 'Command'
 
 MASTER_BG = 'gray80'
 DARK_BG = 'gray20'
@@ -269,7 +277,7 @@ RADIO_PARAMETERS = dict(
     bg='gray50',
     bd=2,
     indicatoron=False,
-    **radio_params  # are OS-specific.
+    **radio_params,  # are OS-specific.
 )
 
 # Color-in the main (self) window and give it a yellow border;
