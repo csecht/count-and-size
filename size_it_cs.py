@@ -465,19 +465,23 @@ class ViewImage(ProcessImage):
         #  tried to change during prolonged processing times.
         self.slider_values: list = []
 
+        # The following group of attributes is set in SetupApp.open_input().
         self.input_file_path: str = ''
         self.input_file_name: str = ''
         self.input_folder_name: str = ''
         self.input_folder_path: str = ''
         self.input_ht: int = 0
         self.input_w: int = 0
-
         self.settings_file_path = Path('')
+
         self.use_saved_settings: bool = False
+
         self.imported_settings: dict = {}
 
+        # The following group of attributes is set in select_and_size_objects().
         self.num_obj_selected: int = 0
         self.selected_sizes: List[float] = []
+
         self.report_txt: str = ''
 
         self.ws_window = None
@@ -549,10 +553,9 @@ class ViewImage(ProcessImage):
         """
 
         def _show_msg() -> None:
-            _info = ('When the entered pixel size is 1 AND\n'
-                     'size standard is "None", then the size\n'
-                     'units shown are pixels. Size units\n'
-                     'are mm for any pre-set size standard.\n'
+            _info = ('When the entered pixel size is 1 AND size standard is "None",\n'
+                     'then the size units shown are pixels.\n'
+                     'Size units are millimeters for any pre-set size standard.\n'
                      f'(Processing time elapsed: {self.elapsed})\n')
 
             self.show_info_message(info=_info, color='black')
@@ -1273,11 +1276,13 @@ class ViewImage(ProcessImage):
 
         self.delay_size_std_info_msg()
 
-    def process_matte(self) -> None:
+    def process_matte(self, event=None) -> None:
         """
         Calls matte segmentation processing methods from ProcessImage(),
         plus methods for annotation style, sizing, and reporting.
 
+        Args: event - A keyboard event, used to call this method from a
+                    lamda function.
         Returns: None
         """
 
@@ -1456,7 +1461,6 @@ class SetupApp(ViewImage):
             Gives command-based methods access to all script methods and
             instance variables.
             Methods:
-            open_watershed_controls
             process
             save_results
             new_input
@@ -1474,24 +1478,6 @@ class SetupApp(ViewImage):
 
             # These methods are called from configure_buttons() and the
             # "File" menubar of add_menu_bar().
-
-            @staticmethod
-            def open_watershed_controls():
-                """
-                Opens the watershed controller window.
-                Calls matte_segmentation().
-                Called from a keybinding and the Help menu in
-                SetupApp.setup_main_window().
-                """
-
-                # Note that the only way to run the watershed algorithm is
-                # with the 'Run' button in the ws_window.
-                try:
-                    self.ws_window.deiconify()
-                    self.matte_segmentation()
-                except AttributeError:
-                    print('From call_cmd().open_watershed_controls(), the ws window'
-                          ' cannot deiconify or run process_ws.')
 
             @staticmethod
             def process():
@@ -1526,8 +1512,8 @@ class SetupApp(ViewImage):
                                      'before clicking the "Run watershed" button.\n\n')
                             self.show_info_message(info=_info, color='vermilion')
                         else:
-                            _info = ('\nClick "Run watershed" to update\n'
-                                     'selected and sized objects.\n\n\n')
+                            _info = ('\n\nClick "Run watershed" to update\n'
+                                     'selected and sized objects.\n\n')
                             self.show_info_message(info=_info, color='blue')
 
                     else:  # ws_window is withdrawn or iconified.
@@ -1810,6 +1796,131 @@ class SetupApp(ViewImage):
 
         self.bind_main_commands(parent=self)
 
+    def setup_main_menu(self) -> None:
+        """
+        Create main (app) menu instance and hierarchical menus.
+        For proper menu functions, must be called in main(), and after
+        setup_main_window().
+
+        Returns: None
+        """
+
+        # Accelerators use key binds from bind_main_commands() and
+        #   bind_annotation_styles() and must be platform-specific.
+        os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
+
+        # Unicode arrow symbols: left \u2190, right \u2192, up \u2101, down \u2193
+        if const.MY_OS == 'dar':
+            color_tip = 'shift-control-↑ & shift-control-↓'
+            tip_scaling_text = 'with shift-control-← & shift-control-→.'
+            plus_key = '+'
+            minus_key = '-'
+            ws_key = 'command-W'
+        else:
+            color_tip = ' Ctrl-↑ & Ctrl-↓'
+            tip_scaling_text = 'with Ctrl-← & Ctrl-→.'
+            plus_key = '(plus)'
+            minus_key = '(minus)'
+            ws_key = 'Ctrl-W'
+
+        menu_params = dict(
+            tearoff=0,
+            takefocus=False,
+            type='menubar',
+            font=const.MENU_FONT,
+        )
+
+        # Note: these labels are also used in bind_focus_actions().
+        self.menu_labels = ('File', 'Style', 'View', 'Help')
+
+        menu = {_l: tk.Menu(**menu_params) for _l in self.menu_labels}
+
+        for _l in self.menu_labels:
+            self.menubar.add_cascade(label=_l, menu=menu[_l])
+
+        menu['File'].add_command(label='Save results',
+                                 command=self.call_cmd().save_results,
+                                 accelerator=f'{os_accelerator}+S')
+        menu['File'].add_command(label='Export objects individually...',
+                                 command=self.select_and_export_objects)
+        menu['File'].add_command(label='New input...',
+                                 command=self.call_cmd().new_input,
+                                 accelerator=f'{os_accelerator}+N')
+        menu['File'].add_command(label='Export current settings',
+                                 command=self.call_cmd().export_settings)
+        menu['File'].add(tk.SEPARATOR)
+        menu['File'].add_command(label='Quit',
+                                 command=lambda: utils.quit_gui(mainloop=self),
+                                 # macOS doesn't recognize 'Command+Q' as an accelerator
+                                 #   b/c cannot override that system's native Command-Q,
+                                 accelerator=f'{os_accelerator}+Q')
+
+        menu['Style'].add_command(label='Increase font size',
+                                  command=self.call_cmd().increase_font_size,
+                                  accelerator=f'{os_accelerator}+{plus_key}')
+        menu['Style'].add_command(label='Decrease font size',
+                                  command=self.call_cmd().decrease_font_size,
+                                  accelerator=f'{os_accelerator}+{minus_key}')
+        menu['Style'].add_command(label='Increase line thickness',
+                                  command=self.call_cmd().increase_line_thickness,
+                                  accelerator=f'Shift+{os_accelerator}+{plus_key}')
+        menu['Style'].add_command(label='Decrease line thickness',
+                                  command=self.call_cmd().decrease_line_thickness,
+                                  accelerator=f'Shift+{os_accelerator}+{minus_key}')
+        menu['Style'].add_command(label='Next color',
+                                  command=self.call_cmd().next_font_color,
+                                  accelerator=f'{os_accelerator}+↑')
+        menu['Style'].add_command(label='Prior color',
+                                  command=self.call_cmd().preceding_font_color,
+                                  accelerator=f'{os_accelerator}+↓')
+
+        menu['View'].add_command(label='Zoom images out',
+                                 command=self.call_cmd().decrease_scale_factor,
+                                 accelerator=f'{os_accelerator}+←')
+        menu['View'].add_command(label='Zoom images in',
+                                 command=self.call_cmd().increase_scale_factor,
+                                 accelerator=f'{os_accelerator}+→')
+        # Note that 'Update "Color matte segments"' is needed to just
+        #  update the contour color and line thickness of segments image.
+        #  Everything else is already up-to-date, but still need to run
+        #  process_matte().
+        menu['View'].add_command(label='Update "Color matte segments"',
+                                 command=self.process_matte,
+                                 accelerator=f'{os_accelerator}+M')
+
+        # The Help menu lists a cascade of Tips as a submenu.
+        menu['Help'].add_command(label='Improve segmentation...',
+                                 command=self.open_ws_window,
+                                 accelerator=f'{os_accelerator}+W')
+        menu['Help'].add_command(label='Apply default settings',
+                                 command=self.call_cmd().apply_default_settings,
+                                 accelerator=f'{os_accelerator}+D')
+
+        tips = tk.Menu(**menu_params)
+        menu['Help'].add_cascade(label='Tips...', menu=tips)
+        # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
+        tip_text = (
+            '• Images are auto-zoomed to fit windows at startup.',
+            f'     Zoom can be changed with {tip_scaling_text}',
+            f'• Font and line color can be changed with {color_tip}.',
+            '• Font size can be changed with Ctrl-+(plus) & -(minus).',
+            '• Boldness can be changed with Shift-Ctrl-+(plus) & -(minus).',
+            '• Matte color selection can affect counts and sizes',
+            '      ...so can noise reduction.',
+            f'• Try {ws_key} to separate clustered objects.',
+            '• Right-click to save an image at its displayed zoom size.',
+            '• Shift-Right-click to save the image at full scale.',
+            '• "Export objects" saves each selected object as an image.',
+            "• Color and noise reduction settings affect export quality.",
+            "• More Tips are in the repository's README file.",
+            '• Esc or Ctrl-Q from any window will exit the program.',
+        )
+        for _line in tip_text:
+            tips.add_command(label=_line, font=const.TIPS_FONT)
+
+        menu['Help'].add_command(label='About',
+                                 command=utils.about_win)
+
     def setup_start_window(self) -> None:
         """
         Set up a basic Toplevel, prompt for an input file, set initial matte
@@ -1851,7 +1962,6 @@ class SetupApp(ViewImage):
 
         menubar = tk.Menu(master=start_win)
         start_win.config(menu=menubar)
-        os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
 
         # Only need "Process now", "Quit", and "About" commands for the
         # start window menu, but need all commands for the main (settings) menu.
@@ -1864,7 +1974,7 @@ class SetupApp(ViewImage):
                          command=lambda: utils.quit_gui(self),
                          # macOS doesn't recognize 'Command+Q' as an accelerator
                          #   b/c cannot override that system's native Command-Q,
-                         accelerator=f'{os_accelerator}+Q')
+                         accelerator=f'{const.C_KEY}+Q')
 
         help_menu = tk.Menu(master=start_win, tearoff=0)
         menubar.add_cascade(label='Help', menu=help_menu)
@@ -2023,143 +2133,49 @@ class SetupApp(ViewImage):
                        padx=10, pady=10,
                        sticky=tk.EW)
 
-        def _withdraw_ws_window():
-            c_key = 'Command' if const.MY_OS == 'dar' else 'Ctrl'  # is 'lin' or 'win'.
-            ws_window.wm_withdraw()
-            self.show_info_message(info='\n\nWatershed parameters window was withdrawn.\n'
-                                        'Watershed segmentation will not be be used until\n'
-                                        f'<{f"{c_key}"}-W brings the window back\n',
-                                   color='black')
-
         ws_window.protocol(name='WM_DELETE_WINDOW',
-                           func=_withdraw_ws_window)
+                           func=self.withdraw_ws_window)
 
         self.ws_window = ws_window
 
-    def setup_main_menu(self) -> None:
+    def open_ws_window(self, event=None) -> None:
         """
-        Create main (app) menu instance and hierarchical menus.
-        For proper menu functions, must be called in main(), and after
-        setup_main_window().
+        Opens the watershed control window and deactivate the
+        "Update color matte segments" button.
+        Calls matte_segmentation().
+        Called from a keybinding and the Help menu in setup_main_window().
 
+        Args: event: Unused event argument.
         Returns: None
         """
 
-        # Accelerators use key binds from bind_main_commands() and
-        #   bind_annotation_styles() and must be platform-specific.
-        os_accelerator = 'Command' if const.MY_OS == 'dar' else 'Ctrl'
+        # Note that the only way to run the watershed algorithm is
+        # with the 'Run' button in the ws_window.
+        try:
+            self.ws_window.deiconify()
+            self.matte_segmentation()
+        except AttributeError:
+            print('From call_cmd().open_watershed_controls(), the ws window'
+                  ' cannot deiconify or run process_ws.')
 
-        # Unicode arrow symbols: left \u2190, right \u2192, up \u2101, down \u2193
-        if const.MY_OS == 'dar':
-            color_tip = 'shift-control-↑ & shift-control-↓'
-            tip_scaling_text = 'with shift-control-← & shift-control-→.'
-            plus_key = '+'
-            minus_key = '-'
-            ws_key = 'command-W'
-        else:
-            color_tip = ' Ctrl-↑ & Ctrl-↓'
-            tip_scaling_text = 'with Ctrl-← & Ctrl-→.'
-            plus_key = '(plus)'
-            minus_key = '(minus)'
-            ws_key = 'Ctrl-W'
+        self.button['process_matte'].config(state=tk.DISABLED)
 
-        menu_params = dict(
-            tearoff=0,
-            takefocus=False,
-            type='menubar',
-            font=const.MENU_FONT,
-        )
+    def withdraw_ws_window(self) -> None:
+        """
+        Hide the watershed control window and reactivate the "Update color
+        matte segments" button in the main window.
+        Returns: None
+        """
 
-        # Note: these labels are also used in bind_focus_actions().
-        self.menu_labels = ('File', 'Style', 'View', 'Help')
+        self.ws_window.wm_withdraw()
+        self.show_info_message(info='\nWatershed control window was withdrawn.\n'
+                                    'Watershed segmentation will not be be used until\n'
+                                    f'{f"{const.C_KEY}"}-W brings the window back\n\n',
+                               color='black')
 
-        menu = {_l: tk.Menu(**menu_params) for _l in self.menu_labels}
-
-        for _l in self.menu_labels:
-            self.menubar.add_cascade(label=_l, menu=menu[_l])
-
-        menu['File'].add_command(label='Save results',
-                                 command=self.call_cmd().save_results,
-                                 accelerator=f'{os_accelerator}+S')
-        menu['File'].add_command(label='Export objects individually...',
-                                 command=self.select_and_export_objects)
-        menu['File'].add_command(label='New input...',
-                                 command=self.call_cmd().new_input,
-                                 accelerator=f'{os_accelerator}+N')
-        menu['File'].add_command(label='Export current settings',
-                                 command=self.call_cmd().export_settings)
-        menu['File'].add(tk.SEPARATOR)
-        menu['File'].add_command(label='Quit',
-                                 command=lambda: utils.quit_gui(mainloop=self),
-                                 # macOS doesn't recognize 'Command+Q' as an accelerator
-                                 #   b/c cannot override that system's native Command-Q,
-                                 accelerator=f'{os_accelerator}+Q')
-
-        menu['Style'].add_command(label='Increase font size',
-                                  command=self.call_cmd().increase_font_size,
-                                  accelerator=f'{os_accelerator}+{plus_key}')
-        menu['Style'].add_command(label='Decrease font size',
-                                  command=self.call_cmd().decrease_font_size,
-                                  accelerator=f'{os_accelerator}+{minus_key}')
-        menu['Style'].add_command(label='Increase line thickness',
-                                  command=self.call_cmd().increase_line_thickness,
-                                  accelerator=f'Shift+{os_accelerator}+{plus_key}')
-        menu['Style'].add_command(label='Decrease line thickness',
-                                  command=self.call_cmd().decrease_line_thickness,
-                                  accelerator=f'Shift+{os_accelerator}+{minus_key}')
-        menu['Style'].add_command(label='Next color',
-                                  command=self.call_cmd().next_font_color,
-                                  accelerator=f'{os_accelerator}+↑')
-        menu['Style'].add_command(label='Prior color',
-                                  command=self.call_cmd().preceding_font_color,
-                                  accelerator=f'{os_accelerator}+↓')
-
-        menu['View'].add_command(label='Zoom images out',
-                                 command=self.call_cmd().decrease_scale_factor,
-                                 accelerator=f'{os_accelerator}+←')
-        menu['View'].add_command(label='Zoom images in',
-                                 command=self.call_cmd().increase_scale_factor,
-                                 accelerator=f'{os_accelerator}+→')
-        # Note that 'Update "Color matte segments"' is needed to just
-        #  update the contour color and line thickness of segments image.
-        #  Everything else is already up-to-date, but still need to run
-        #  process_matte().
-        menu['View'].add_command(label='Update "Color matte segments"',
-                                 command=self.process_matte,
-                                 accelerator=f'{os_accelerator}+M')
-
-        # The Help menu lists a cascade of Tips as a submenu.
-        menu['Help'].add_command(label='Improve segmentation...',
-                                 command=self.call_cmd().open_watershed_controls,
-                                 accelerator=f'{os_accelerator}+W')
-        menu['Help'].add_command(label='Apply default settings',
-                                 command=self.call_cmd().apply_default_settings,
-                                 accelerator=f'{os_accelerator}+D')
-
-        tips = tk.Menu(**menu_params)
-        menu['Help'].add_cascade(label='Tips...', menu=tips)
-        # Bullet symbol from https://coolsymbol.com/, unicode_escape: u'\u2022'
-        tip_text = (
-            '• Images are auto-zoomed to fit windows at startup.',
-            f'     Zoom can be changed with {tip_scaling_text}',
-            f'• Font and line color can be changed with {color_tip}.',
-            '• Font size can be changed with Ctrl-+(plus) & -(minus).',
-            '• Boldness can be changed with Shift-Ctrl-+(plus) & -(minus).',
-            '• Matte color selection can affect counts and sizes',
-            '      ...so can noise reduction.',
-            f'• Try {ws_key} to separate clustered objects.',
-            '• Right-click to save an image at its displayed zoom size.',
-            '• Shift-Right-click to save the image at full scale.',
-            '• "Export objects" saves each selected object as an image.',
-            "• Color and noise reduction settings affect export quality.",
-            "• More Tips are in the repository's README file.",
-            '• Esc or Ctrl-Q from any window will exit the program.',
-        )
-        for _line in tip_text:
-            tips.add_command(label=_line, font=const.TIPS_FONT)
-
-        menu['Help'].add_command(label='About',
-                                 command=utils.about_win)
+        # Reactivate the "Update color matte segments" button in the main window
+        # that was disabled when the ws_window was deiconified.
+        self.button['process_matte'].config(state=tk.NORMAL)
 
     def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
         """
@@ -2596,14 +2612,18 @@ class SetupApp(ViewImage):
         """
 
         # Note: macOS Command-q will quit program without utils.quit_gui info msg.
-        c_key = 'Command' if const.MY_OS == 'dar' else 'Control'  # is 'lin' or 'win'.
+        # Need os-specific control keybindings for macOS and Windows/Linux.
+        c_key = const.C_BIND
         parent.bind_all('<Escape>', func=lambda _: utils.quit_gui(mainloop=self))
         parent.bind_all('<Control-q>', func=lambda _: utils.quit_gui(mainloop=self))
-        parent.bind_all(f'<{f"{c_key}"}-m>', func=lambda _: self.process_matte())
+        parent.bind_all(f'<{f"{c_key}"}-m>',
+                        func=self.process_matte)
         parent.bind_all(f'<{f"{c_key}"}-w>',
-                        func=lambda _: self.call_cmd().open_watershed_controls())
-        parent.bind_all(f'<{f"{c_key}"}-s>', func=lambda _: self.call_cmd().save_results())
-        parent.bind_all(f'<{f"{c_key}"}-n>', func=lambda _: self.call_cmd().new_input())
+                        func=self.open_ws_window)
+        parent.bind_all(f'<{f"{c_key}"}-s>',
+                        func=lambda _: self.call_cmd().save_results())
+        parent.bind_all(f'<{f"{c_key}"}-n>',
+                        func=lambda _: self.call_cmd().new_input())
         parent.bind_all(f'<{f"{c_key}"}-d>',
                         func=lambda _: self.call_cmd().apply_default_settings())
 
