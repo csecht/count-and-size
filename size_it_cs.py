@@ -1816,12 +1816,14 @@ class SetupApp(ViewImage):
             plus_key = '+'
             minus_key = '-'
             ws_key = 'command-W'
+            zoom_accelerator = 'Command-Shift'
         else:
             color_tip = ' Ctrl-↑ & Ctrl-↓'
             tip_scaling_text = 'with Ctrl-← & Ctrl-→.'
             plus_key = '(plus)'
             minus_key = '(minus)'
             ws_key = 'Ctrl-W'
+            zoom_accelerator = 'Ctrl'
 
         menu_params = dict(
             tearoff=0,
@@ -1876,10 +1878,10 @@ class SetupApp(ViewImage):
 
         menu['View'].add_command(label='Zoom images out',
                                  command=self.call_cmd().decrease_scale_factor,
-                                 accelerator=f'{os_accelerator}+←')
+                                 accelerator=f'{zoom_accelerator}+←')
         menu['View'].add_command(label='Zoom images in',
                                  command=self.call_cmd().increase_scale_factor,
-                                 accelerator=f'{os_accelerator}+→')
+                                 accelerator=f'{zoom_accelerator}+→')
         # Note that 'Update "Color matte segments"' is needed to just
         #  update the contour color and line thickness of segments image.
         #  Everything else is already up-to-date, but still need to run
