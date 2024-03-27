@@ -216,14 +216,27 @@ MATTE_COLOR_RANGE = {
 # }
 FONT_TYPE = cv2.FONT_HERSHEY_SIMPLEX
 
+
+# Fonts for various widgets. Make it os-specific instead of using
+#  Tkinter's default named fonts because they can change and affect spacing.
+if MY_OS == 'lin':  # Linux (Ubuntu)
+    os_font = 'DejaVu Sans'
+    os_mono_font = 'DejaVu Sans Mono'
+elif MY_OS == 'win':  # Windows (10, 11)
+    os_font = 'Segoe UI'
+    os_mono_font = 'Consolas'
+else: # is 'dar', macOS
+    os_font = 'SF Pro'
+    os_mono_font = 'SF Mono'  # or 'Menlo'
+
 # Need platform-specific WIDGET_FONT size for best fit and look.
 # Use platform's default mono font for REPORT_FONT.
 # Need tk to match system's default white shade for COLOR_TK.
 if MY_OS == 'lin':
-    WIDGET_FONT = 'TkTooltipFont', 8
-    REPORT_FONT = 'DejaVu Sans Mono', 9
-    MENU_FONT = 'TkMenuFont', 9
-    TIPS_FONT = 'TkTooltipFont', 8
+    WIDGET_FONT = os_font, 8
+    REPORT_FONT = os_mono_font, 9
+    MENU_FONT = os_font, 9
+    TIPS_FONT = os_font, 8
     radio_params = dict(
         fg=COLORS_TK['yellow'],
         activebackground='gray50',  # Default is 'white'.
@@ -233,19 +246,19 @@ if MY_OS == 'lin':
     C_BIND = 'Control'
 
 elif MY_OS == 'win':
-    WIDGET_FONT = 'TkTooltipFont', 7
-    REPORT_FONT = 'Consolas', 9
-    MENU_FONT = 'TkMenuFont', 8
-    TIPS_FONT = 'TkTooltipFont', 7
+    WIDGET_FONT = os_font, 7
+    REPORT_FONT = os_mono_font, 9
+    MENU_FONT = os_font, 8
+    TIPS_FONT = os_font, 7
     radio_params = dict(fg='black')
     C_KEY = 'Ctrl'
     C_BIND = 'Control'
 
 else:  # is macOS
-    WIDGET_FONT = 'TkTooltipFont', 10
-    REPORT_FONT = 'Andale Mono', 10
-    MENU_FONT = 'TkMenuFont', 12
-    TIPS_FONT = 'TkTooltipFont', 10
+    WIDGET_FONT = os_font, 10
+    REPORT_FONT = os_mono_font, 10
+    MENU_FONT = os_font, 12
+    TIPS_FONT = os_font, 10
     radio_params = dict(fg='black')
     C_KEY = 'Command'
     C_BIND = 'Command'
