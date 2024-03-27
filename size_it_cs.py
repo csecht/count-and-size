@@ -553,8 +553,8 @@ class ViewImage(ProcessImage):
         """
 
         def _show_msg() -> None:
-            _info = ('When the entered pixel size is 1 AND size standard is "None",\n'
-                     'then the size units shown are pixels.\n'
+            _info = ('\nWhen entered pixel size is 1 AND size standard is "None",\n'
+                     'then size units are pixels.\n'
                      'Size units are millimeters for any pre-set size standard.\n'
                      f'(Processing time elapsed: {self.elapsed})\n')
 
@@ -1723,7 +1723,7 @@ class SetupApp(ViewImage):
 
         # Use a spinning cursor to indicate that something is happening
         #  because larger images may take a while to process and show.
-        self.start_process_btn_txt.set('Processing started, wait...')
+        self.start_process_btn_txt.set('Processing ...')
         parent.config(cursor='watch')
         self.start_now()
         parent.destroy()
@@ -2411,7 +2411,7 @@ class SetupApp(ViewImage):
                                   sticky=tk.NSEW)
 
         # Width should fit any text expected without causing WINDOW shifting.
-        self.info_label.config(font=const.WIDGET_FONT,
+        self.info_label.config(font=const.TIPS_FONT,
                                width=50,  # width should fit any text expected without
                                justify='right',
                                bg=const.MASTER_BG,  # use 'pink' for development
@@ -2862,7 +2862,7 @@ class SetupApp(ViewImage):
         #  Sticky is 'east' to prevent horizontal shifting when, during
         #  segmentation processing, all buttons in col 0 are removed.
         self.info_label.grid(column=1, row=2, rowspan=5, columnspan=2,
-                             padx=5, sticky=tk.EW)
+                             padx=(0, 5), sticky=tk.EW)
 
         # Widgets gridded in the self.selectors_frame Frame.
         # Sorted by row number:

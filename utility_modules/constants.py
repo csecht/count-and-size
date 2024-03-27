@@ -247,9 +247,9 @@ if MY_OS == 'lin':
 
 elif MY_OS == 'win':
     WIDGET_FONT = os_font, 7
-    REPORT_FONT = os_mono_font, 9
-    MENU_FONT = os_font, 8
-    TIPS_FONT = os_font, 7
+    REPORT_FONT = os_mono_font, 8
+    MENU_FONT = os_font, 9
+    TIPS_FONT = os_font, 8
     radio_params = dict(fg='black')
     C_KEY = 'Ctrl'
     C_BIND = 'Control'
