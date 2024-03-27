@@ -227,7 +227,7 @@ elif MY_OS == 'win':  # Windows (10, 11)
     os_mono_font = 'Consolas'
 else: # is 'dar', macOS
     os_font = 'SF Pro'
-    os_mono_font = 'SF Mono'  # or 'Menlo'
+    os_mono_font = 'Menlo'
 
 # Need platform-specific WIDGET_FONT size for best fit and look.
 # Use platform's default mono font for REPORT_FONT.
@@ -257,8 +257,8 @@ elif MY_OS == 'win':
 else:  # is macOS
     WIDGET_FONT = os_font, 10
     REPORT_FONT = os_mono_font, 10
-    MENU_FONT = os_font, 12
-    TIPS_FONT = os_font, 10
+    MENU_FONT = os_font, 13
+    TIPS_FONT = os_font, 11
     radio_params = dict(fg='black')
     C_KEY = 'Command'
     C_BIND = 'Command'

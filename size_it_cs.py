@@ -1216,8 +1216,8 @@ class ViewImage(ProcessImage):
             f' {size_std_size} {unit} units.\n'
             f'{tab}Pixel diameter entered: {self.size_std["px_val"].get()},'
             f' unit/px factor: {unit_per_px}\n'
-            f'{"Object size metrics,".ljust(space)}mean: {mean_unit_dia}, median:'
-            f' {median_unit_dia}, range: {size_range}'
+            f'{"Object size metrics:".ljust(space)}mean = {mean_unit_dia}, median ='
+            f' {median_unit_dia}, range = {size_range}'
         )
 
         utils.display_report(frame=self.report_frame,
@@ -1786,7 +1786,7 @@ class SetupApp(ViewImage):
         # Make geometry offset a function of the screen width.
         #  This is needed b/c of the way different platforms' window
         #  managers position windows.
-        w_offset = int(self.screen_width * 0.60)
+        w_offset = int(self.screen_width * 0.55 )
         self.geometry(f'+{w_offset}+50')
         self.wm_minsize(width=500, height=450)
 
