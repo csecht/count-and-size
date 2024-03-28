@@ -4,6 +4,7 @@ ALPHA_MAX
 BETA_MAX
 COLORS_CV
 COLORS_TK
+CS_IMAGE_NAMES
 CONTOUR_METHOD
 CONTOUR_MODE
 CS_SETTINGS_FILE_NAME
@@ -187,6 +188,10 @@ elif MY_OS == 'lin':  # Linux (Ubuntu)
 else:  # platform is 'win'  # Windows (10, 11?)
     COLORS_TK['tk_white'] = 'grey95'
 
+CS_IMAGE_NAMES = ('input',
+                  'redux_mask',
+                  'matte_objects',
+                  'sized')
 
 # Used with size_it_cs.py, color screens (mattes).
 MATTE_COLOR_RANGE = {
@@ -216,7 +221,6 @@ MATTE_COLOR_RANGE = {
 # }
 FONT_TYPE = cv2.FONT_HERSHEY_SIMPLEX
 
-
 # Fonts for various widgets. Make it os-specific instead of using
 #  Tkinter's default named fonts because they can change and affect spacing.
 if MY_OS == 'lin':  # Linux (Ubuntu)
@@ -225,7 +229,7 @@ if MY_OS == 'lin':  # Linux (Ubuntu)
 elif MY_OS == 'win':  # Windows (10, 11)
     os_font = 'Segoe UI'
     os_mono_font = 'Consolas'
-else: # is 'dar', macOS
+else:  # is 'dar', macOS
     os_font = 'SF Pro'
     os_mono_font = 'Menlo'
 
@@ -301,7 +305,7 @@ WINDOW_PARAMETERS = dict(
     highlightthickness=5,
     highlightcolor=COLORS_TK['yellow'],
     highlightbackground=DRAG_GRAY,
-    padx=3, pady=3,)
+    padx=3, pady=3, )
 
 # Here 'font' sets the shown value; font in the pull-down values
 #   is set by option_add in ContourViewer.setup_styles()

@@ -142,11 +142,7 @@ class ProcessImage(tk.Tk):
         #  The cvimg images are numpy arrays.
         self.tkimg: dict = {}
         self.cvimg: dict = {}
-        self.image_names = ('input',
-                            'redux_mask',
-                            'matte_objects',
-                            'sized')
-        for _name in self.image_names:
+        for _name in const.CS_IMAGE_NAMES:
             self.tkimg[_name] = tk.PhotoImage()
             self.cvimg[_name] = const.STUB_ARRAY
 
@@ -1379,12 +1375,12 @@ class SetupApp(ViewImage):
     Methods:
     _delete_window_message
     bind_annotation_styles
+    bind_focus_actions
     bind_main_commands
     bind_saving_images
     bind_scale_adjustment
-    bind_focus_actions
     call_cmd
-    call_start
+    call_start_now
     check_for_saved_settings
     config_comboboxes
     config_entries
@@ -1395,14 +1391,16 @@ class SetupApp(ViewImage):
     grid_img_labels
     grid_widgets
     open_input
+    open_ws_window
     set_color_defaults
     set_defaults
     setup_image_windows
-    setup_main_window
     setup_main_menu
+    setup_main_window
     setup_start_window
     setup_ws_window
     start_now
+    withdraw_ws_window
     """
 
     def __init__(self):
@@ -1411,7 +1409,6 @@ class SetupApp(ViewImage):
         # Dictionary items are populated in setup_image_windows(), with
         #   tk.Toplevel as values; don't want tk windows created here.
         self.tkimg_window: dict = {}
-        self.window_title: dict = {}
 
         # Attributes defined in setup_main_menu().
         self.menubar = tk.Menu()
@@ -1428,7 +1425,7 @@ class SetupApp(ViewImage):
         configure_buttons().
         Usage example: self.call_cmd().save_results()
 
-        Returns: Callable methods in the _Command inner class.
+        Returns: A callable method from the _Command inner class.
         """
 
         # Inner class concept adapted from:
@@ -1453,7 +1450,7 @@ class SetupApp(ViewImage):
             _info = f'\n\nA new scale factor of {_sf} was applied.\n\n\n'
             self.show_info_message(info=_info, color='black')
 
-            for _n in self.image_names:
+            for _n in const.CS_IMAGE_NAMES:
                 self.update_image(image_name=_n)
 
         class _Command:
@@ -1482,9 +1479,10 @@ class SetupApp(ViewImage):
             @staticmethod
             def process():
                 """
-                Calls process_matte() or shows a prompt to run watershed
-                segregation from the ProcessImage class, depending on state
-                of the ws_window watershed controller.
+                Depending on state of the ws_window watershed controller,
+                calls either process_matte() or report_results(), matte_segmentation(),
+                noise_widget_control(), with a show_info_message() prompt
+                to run watershed segmentation with a button click.
                 Called from bindings for ws_window sliders and main_window
                 noise reduction sliders and comboboxes.
                 """
@@ -1710,7 +1708,7 @@ class SetupApp(ViewImage):
 
         return _Command
 
-    def call_start(self, parent) -> None:
+    def call_start_now(self, parent) -> None:
         """
         Call the suite of methods to get things going, then destroy the
         start window.
@@ -1740,6 +1738,7 @@ class SetupApp(ViewImage):
         # This calling sequence produces a slight delay (longer for larger files)
         #  before anything is displayed, but ensures that everything displays
         #  nearly simultaneously for a visually cleaner start.
+        # set_size_standard() and process_matte() are inherited from ViewImage().
         self.setup_image_windows()
         self.configure_main_window()
         self.configure_buttons()
@@ -1758,8 +1757,8 @@ class SetupApp(ViewImage):
         self.set_size_standard()
 
         # Run processing for the starting image prior to displaying images.
-        # Call process_matte(), and display_windows(), in this sequence, for
-        #  best performance. process_matte() is inherited from ViewImage().
+        # Lastly, call process_matte() and display_windows(), in this sequence,
+        #  for best performance.
         self.process_matte()
         self.display_windows()
         self.first_run = False
@@ -1939,7 +1938,7 @@ class SetupApp(ViewImage):
 
         file = tk.Menu(master=self.master, tearoff=0)
 
-        # Button text is set to 'Processing started, wait...' in call_start().
+        # Button text is set to 'Processing started, wait...' in call_start_now().
         self.start_process_btn_txt.set('Process now')
 
         # Window basics:
@@ -1959,8 +1958,8 @@ class SetupApp(ViewImage):
 
         start_win.bind('<Escape>', lambda _: utils.quit_gui(mainloop=self))
         start_win.bind('<Control-q>', lambda _: utils.quit_gui(mainloop=self))
-        start_win.bind('<Return>', func=lambda _: self.call_start(start_win))
-        start_win.bind('<KP_Enter>', func=lambda _: self.call_start(start_win))
+        start_win.bind('<Return>', func=lambda _: self.call_start_now(start_win))
+        start_win.bind('<KP_Enter>', func=lambda _: self.call_start_now(start_win))
 
         menubar = tk.Menu(master=start_win)
         start_win.config(menu=menubar)
@@ -1969,7 +1968,7 @@ class SetupApp(ViewImage):
         # start window menu, but need all commands for the main (settings) menu.
         menubar.add_cascade(label=utils.program_name(), menu=file)
         file.add_command(label='Process now',
-                         command=lambda: self.call_start(parent=start_win),
+                         command=lambda: self.call_start_now(parent=start_win),
                          accelerator='Return')  # macOS doesn't recognize 'Enter'
         file.add(tk.SEPARATOR)
         file.add_command(label='Quit',
@@ -2015,7 +2014,7 @@ class SetupApp(ViewImage):
                                         textvariable=self.start_process_btn_txt,
                                         style='My.TButton',
                                         width=0,
-                                        command=lambda: self.call_start(start_win))
+                                        command=lambda: self.call_start_now(start_win))
 
         self.set_color_defaults()
         self.cbox_val['matte_color'].set('green2')
@@ -2312,30 +2311,26 @@ class SetupApp(ViewImage):
         # Dictionary item order determines stack order of windows.
         # Toplevel() is assigned here, not in __init__, to control timing
         #  and smoothness of window appearance at startup.
-        # Note that keys in tkimg_window and window_title must match
-        # Each window contains a single Label image, so window name matches
-        #  image_names tuple, and tkimg dictionary keys.
-
-        self.tkimg_window = {_n: tk.Toplevel() for _n in self.image_names}
-
-        self.window_title = {
-            'input': 'Input image',
-            'redux_mask': 'Mask with reduced noise',
-            'matte_objects': 'Color matte segments',
-            'sized': 'Selected & Sized objects',
-        }
+        # Each window contains a single Label image, so window title keys
+        #  must match CS_IMAGE_NAMES tuple.
+        self.tkimg_window = {_n: tk.Toplevel() for _n in const.CS_IMAGE_NAMES}
+        titles = ('Input image',
+                  'Mask with reduced noise',
+                  'Color matte segments',
+                  'Selected & Sized objects')
+        window_title = dict(zip(const.CS_IMAGE_NAMES, titles))
 
         # Labels to display scaled images are updated using .configure()
         #  for 'image=' in their respective processing methods via ProcessImage.update_image().
         #  Labels are gridded in their respective tkimg_window in grid_img_labels().
-        self.img_label = {_n: tk.Label(self.tkimg_window[_n]) for _n in self.image_names}
+        self.img_label = {_n: tk.Label(self.tkimg_window[_n]) for _n in const.CS_IMAGE_NAMES}
 
         # Need an image to replace blank tk desktop icon for each img window.
         #  Set correct path to the local 'images' directory and icon file.
         icon_path = None
         try:
-            #  If the icon file is not present, a Terminal notice will be
-            #   printed from <if __name__ == "__main__"> at startup.
+            # If the icon file is not present, a Terminal notice will be
+            #  printed from main() at startup.
             icon_path = tk.PhotoImage(file=utils.valid_path_to('image/sizeit_icon_512.png'))
             self.iconphoto(True, icon_path)
         except tk.TclError as _msg:
@@ -2353,12 +2348,12 @@ class SetupApp(ViewImage):
             if icon_path:
                 _toplevel.iconphoto(True, icon_path)
             _toplevel.wm_minsize(width=200, height=100)
-            _toplevel.resizable(False, False)
+            _toplevel.resizable(width=False, height=False)
             _toplevel.protocol(name='WM_DELETE_WINDOW', func=self._delete_window_message)
             _toplevel.columnconfigure(index=0, weight=1)
             _toplevel.columnconfigure(index=1, weight=1)
             _toplevel.rowconfigure(index=0, weight=1)
-            _toplevel.title(self.window_title[_name])
+            _toplevel.title(window_title[_name])
             _toplevel.config(**const.WINDOW_PARAMETERS)
 
     def configure_main_window(self) -> None:
