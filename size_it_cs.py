@@ -198,7 +198,6 @@ class ProcessImage(tk.Tk):
         if iteration == 0:
             self.cvimg['redux_mask'] = img
             self.update_image(image_name='redux_mask')
-
             return
 
         noise_k = self.slider_val['noise_k'].get()
@@ -480,6 +479,8 @@ class ViewImage(ProcessImage):
 
         self.report_txt: str = ''
 
+        # This window, used to display the watershed segmentation controllers,
+        #  is defined in SetupApp.setup_ws_window().
         self.ws_window = None
 
     def set_auto_scale_factor(self) -> None:
@@ -1434,9 +1435,10 @@ class SetupApp(ViewImage):
         cv_colors = list(const.COLORS_CV.keys())
 
         def _display_annotation_action(action: str, value: str):
-            _info = (f'\n\nA new annotation style was applied.\n'
-                     f'{action} was changed to {value}.\n\n')
-            self.show_info_message(info=_info, color='black')
+            self.show_info_message(
+                '\n\nA new annotation style was applied.\n'
+                f'{action} was changed to {value}.\n\n',
+                color='black')
 
         def _display_scale_action(value: float):
             """
@@ -1447,8 +1449,8 @@ class SetupApp(ViewImage):
                  value: the scale factor update to display, as float.
             """
             _sf = round(value, 2)
-            _info = f'\n\nA new scale factor of {_sf} was applied.\n\n\n'
-            self.show_info_message(info=_info, color='black')
+            self.show_info_message(f'\n\nA new scale factor of {_sf} was applied.\n\n\n',
+                                   color='black')
 
             for _n in const.CS_IMAGE_NAMES:
                 self.update_image(image_name=_n)
@@ -1497,7 +1499,7 @@ class SetupApp(ViewImage):
                         #  updates the pre-watershed images for live viewing when
                         #  noise reduction settings change. PLM settings are not
                         #  applied until the "Run watershed" button is clicked.
-                        # For clarity, disable noise widgets when they are irrelevant,
+                        # For visual clarity, disable noise widgets when they are irrelevant,
                         #  as when noise reduction iterations are zero.
                         self.matte_segmentation()
                         self.noise_widget_control()
@@ -1505,14 +1507,16 @@ class SetupApp(ViewImage):
                         # Preprocessing results have displayed, so the user can
                         # now choose to run watershed.
                         if self.slider_val['plm_footprint'].get() == 1:
-                            _info = ('\nA peak_local_max footprint of 1 may run a long time.\n'
-                                     'If that is a problem, then increase the value\n'
-                                     'before clicking the "Run watershed" button.\n\n')
-                            self.show_info_message(info=_info, color='vermilion')
+                            self.show_info_message(
+                                '\nA peak_local_max footprint of 1 may run a long time.\n'
+                                'If that is a problem, then increase the value\n'
+                                'before clicking the "Run watershed" button.\n\n',
+                                color='vermilion')
                         else:
-                            _info = ('\n\nClick "Run watershed" to update\n'
-                                     'selected and sized objects.\n\n')
-                            self.show_info_message(info=_info, color='blue')
+                            self.show_info_message(
+                                '\n\nClick "Run watershed" to update\n'
+                                'selected and sized objects.\n\n',
+                                color='blue')
 
                     else:  # ws_window is withdrawn or iconified.
                         self.process_matte()
@@ -1536,10 +1540,10 @@ class SetupApp(ViewImage):
                     txt2save=self.report_txt + f'\n{_sizes}',
                     caller=PROGRAM_NAME,
                 )
-
-                _info = ('\n\nSettings report and result image were saved to\n'
-                         f'the input image folder: {self.input_folder_name}\n\n')
-                self.show_info_message(info=_info, color='blue')
+                self.show_info_message(
+                    '\n\nSettings report and result image were saved to\n'
+                    f'the input image folder: {self.input_folder_name}\n\n',
+                    color='blue')
 
             @staticmethod
             def new_input():
@@ -1556,8 +1560,8 @@ class SetupApp(ViewImage):
                     self.check_for_saved_settings()
                     self.update_image(image_name='input')
                 else:  # User canceled input selection or closed messagebox window.
-                    _info = '\n\nNo new input file was selected.\n\n\n'
-                    self.show_info_message(info=_info, color='vermilion')
+                    self.show_info_message('\n\nNo new input file was selected.\n\n\n',
+                                           color='vermilion')
                     self.delay_size_std_info_msg()
 
                     return
@@ -1567,13 +1571,7 @@ class SetupApp(ViewImage):
 
             @staticmethod
             def export_settings():
-                """
-                Saves a dictionary of current settings a JSON file.
-                Calls utils.export_settings_to_json(), show_info_message().
-                Called from menu and button commands.
-                """
-
-                settings_dict = {
+                settings = {
                     'noise_iter': self.slider_val['noise_iter'].get(),
                     'morph_op': self.cbox_val['morph_op'].get(),
                     'morph_shape': self.cbox_val['morph_shape'].get(),
@@ -1583,7 +1581,6 @@ class SetupApp(ViewImage):
                     'plm_mindist': self.slider_val['plm_mindist'].get(),
                     'plm_footprint': self.slider_val['plm_footprint'].get(),
                     'size_std': self.cbox_val['size_std'].get(),
-                    # 'scale': self.scale_factor.get(),
                     'px_val': self.size_std['px_val'].get(),
                     'custom_val': self.size_std['custom_val'].get(),
                     'annotation_color': self.cbox_val['annotation_color'].get(),
@@ -1592,16 +1589,15 @@ class SetupApp(ViewImage):
                     'matte_color': self.cbox_val['matte_color'].get(),
                 }
 
-                utils.export_settings_to_json(
-                    path2folder=self.input_folder_path,
-                    settings2save=settings_dict,
-                    called_by_cs=True)
+                utils.export_settings_to_json(self.input_folder_path,
+                                              settings,
+                                              True)
 
-                _info = ('\nSettings have been exported to folder:\n'
-                         f'{self.input_folder_name}\n'
-                         'and are available to use with "New input" or at\n'
-                         'startup. Previous settings file was overwritten.\n')
-                self.show_info_message(info=_info, color='blue')
+                self.show_info_message('\nSettings have been exported to folder:\n'
+                                       f'{self.input_folder_name}\n'
+                                       'and are available to use with "New input" or at\n'
+                                       'startup. Previous settings file was overwritten.\n',
+                                       color='blue')
 
             # These methods are called from the "Style" menu of add_menu_bar()
             #  and as bindings from setup_main_window() or bind_annotation_styles().
@@ -1699,12 +1695,11 @@ class SetupApp(ViewImage):
                 # Order of calls is important here.
                 self.set_auto_scale_factor()
                 self.set_defaults()
-                # self.widget_control('off')  # is turned 'on' in process_matte()
+                self.widget_control('off')  # is turned 'on' in process_matte()
                 self.process_matte()
-
-                _info = ('\n\nSettings have been reset to their defaults.\n'
-                         'Check and adjust if needed.\n\n')
-                self.show_info_message(info=_info, color='blue')
+                self.show_info_message(
+                    '\n\nSettings have been reset to their defaults.\n'
+                    'Check and adjust if needed.\n\n', color='blue')
 
         return _Command
 
@@ -1756,7 +1751,6 @@ class SetupApp(ViewImage):
         self.grid_img_labels()
         self.set_size_standard()
 
-        # Run processing for the starting image prior to displaying images.
         # Lastly, call process_matte() and display_windows(), in this sequence,
         #  for best performance.
         self.process_matte()
@@ -1785,7 +1779,7 @@ class SetupApp(ViewImage):
         # Make geometry offset a function of the screen width.
         #  This is needed b/c of the way different platforms' window
         #  managers position windows.
-        w_offset = int(self.screen_width * 0.55 )
+        w_offset = int(self.screen_width * 0.55)
         self.geometry(f'+{w_offset}+50')
         self.wm_minsize(width=500, height=450)
 
@@ -2473,7 +2467,7 @@ class SetupApp(ViewImage):
         """
         # Minimum width for any Toplevel window is set by the length
         #  of the longest widget, whether that be a Label() or Scale().
-        #  So, for the main (app) window, set a Scale() length  sufficient
+        #  So, for the main (app) window, set a Scale() length sufficient
         #  to fit everything in the Frame given current padding arguments.
         #  Keep in mind that a long input file path in the report_frame
         #   may be longer than this set scale_len in the selectors_frame.
