@@ -2991,10 +2991,26 @@ def run_checks() -> None:
             None
     """
     utils.check_platform()
-
     vcheck.minversion('3.7')
     vcheck.maxversion('3.11')
     manage.arguments()
+
+
+def set_icon():
+    """
+    Set the program icon image file.  If the icon cannot be displayed,
+    print a message to the console.
+    """
+    # The custom app icon is expected to be in the program's images folder.
+    try:
+        icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
+        app.wm_iconphoto(True, icon)
+    except tk.TclError as err:
+        print('Cannot display program icon, so it will be blank or the tk default.\n'
+              f'tk error message: {err}')
+    except FileNotFoundError as fnf:
+        print(f'Cannot find program icon file: {fnf}.\n'
+              'The program will run without an icon image.')
 
 
 def main() -> None:
@@ -3007,30 +3023,27 @@ def main() -> None:
     instance attributes and methods are available to all classes only
     where needed.
     """
-    print(f'{PROGRAM_NAME} has launched...')
-    app = SetupApp()
-    app.title(f'{PROGRAM_NAME} Report & Settings')
-    app.setup_main_window()
-    # For proper menu functions, setup_main_menu() must be called in main(),
-    #   after setup_main_window().
-    app.setup_main_menu()
-    app.setup_start_window()
-    app.setup_ws_window()
 
-    # The custom app icon is expected to be in the program's images folder.
-    try:
-        icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
-        app.wm_iconphoto(True, icon)
-    except tk.TclError as err:
-        print('Cannot display program icon, so it will be blank or the tk default.\n'
-              f'tk error message: {err}')
+    # Comment out these two lines to run PyInstaller.
+    run_checks()
+    set_icon()
 
     try:
+        print(f'{PROGRAM_NAME} has launched...')
+        app.setup_main_window()
+        # For proper menu functions, setup_main_menu() must be called here,
+        #  in main(), and after setup_main_window().
+        app.setup_main_menu()
+        app.setup_start_window()
+        app.setup_ws_window()
+
         app.mainloop()
     except KeyboardInterrupt:
         print('*** User quit the program from Terminal command line. ***\n')
 
 
 if __name__ == '__main__':
-    run_checks()
+
+    app = SetupApp()
+    app.title(f'{PROGRAM_NAME} Report & Settings')
     main()
