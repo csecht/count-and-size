@@ -117,7 +117,7 @@ class ProcessImage(tk.Tk):
             'noise_iter': tk.IntVar(),
             'circle_r_min': tk.IntVar(),
             'circle_r_max': tk.IntVar(),
-            # For Scale() widgets in setup_ws_window()...
+            # For Scale() widgets in setup_watershed_window()...
             'plm_mindist': tk.IntVar(),
             'plm_footprint': tk.IntVar(),
         }
@@ -155,7 +155,7 @@ class ProcessImage(tk.Tk):
         self.line_thickness: int = 0
         self.font_scale: float = 0
         self.matte_contours: tuple = ()
-        self.ws_basins: tuple = ()
+        self.watershed_basins: tuple = ()
         self.sorted_size_list: list = []
         self.unit_per_px = tk.DoubleVar()
         self.num_sigfig: int = 0
@@ -353,10 +353,10 @@ class ProcessImage(tk.Tk):
                                               compactness=1.0,
                                               watershed_line=True)
 
-        # ws_basins are the contours to be passed to select_and_size_objects(),
+        # watershed_basins are the contours to be passed to select_and_size_objects(),
         #  where selected contours are used to draw and size enclosing circles.
         # The data type is a tuple of lists of contour pointsets.
-        self.ws_basins, _ = cv2.findContours(image=np.uint8(watershed_img),
+        self.watershed_basins, _ = cv2.findContours(image=np.uint8(watershed_img),
                                              mode=cv2.RETR_EXTERNAL,
                                              method=cv2.CHAIN_APPROX_NONE)
 
@@ -480,8 +480,8 @@ class ViewImage(ProcessImage):
         self.report_txt: str = ''
 
         # This window, used to display the watershed segmentation controllers,
-        #  is defined in SetupApp.setup_ws_window().
-        self.ws_window = None
+        #  is defined in SetupApp.setup_watershed_window().
+        self.watershed_window = None
 
     def set_auto_scale_factor(self) -> None:
         """
@@ -642,7 +642,7 @@ class ViewImage(ProcessImage):
                     _w.configure(state=tk.DISABLED)
 
             self.config(cursor='watch')
-            self.ws_window.config(cursor='watch')
+            self.watershed_window.config(cursor='watch')
         else:  # is 'on'
             idx = 0
             for _name, _w in self.slider.items():
@@ -668,7 +668,7 @@ class ViewImage(ProcessImage):
             self.noise_widget_control()
 
             self.config(cursor='')
-            self.ws_window.config(cursor='')
+            self.watershed_window.config(cursor='')
             self.slider_values.clear()
 
         # Use update(), not update_idletasks, here to improve promptness
@@ -829,8 +829,8 @@ class ViewImage(ProcessImage):
 
         # Need to determine whether the watershed algorithm is in use,
         #  which is the case when the ws control window is visible.
-        if self.ws_window.wm_state() in 'normal, zoomed':
-            contour_pointset = self.ws_basins
+        if self.watershed_window.wm_state() in 'normal, zoomed':
+            contour_pointset = self.watershed_basins
         else:  # is 'withdrawn' or 'iconic'
             contour_pointset = self.matte_contours
 
@@ -1151,13 +1151,13 @@ class ViewImage(ProcessImage):
         color: str = self.cbox_val['matte_color'].get()
         lo, hi = const.MATTE_COLOR_RANGE[color]
 
-        if self.ws_window.wm_state() in 'normal, zoomed':
-            num_segments = len(self.ws_basins)
-            ws_status = 'Yes'
+        if self.watershed_window.wm_state() in 'normal, zoomed':
+            num_segments = len(self.watershed_basins)
+            watershed_status = 'Yes'
         else:  # is 'withdrawn' or 'iconic'
             num_segments = len(self.matte_contours)
             num_segments = 0 if num_segments == 1 else num_segments
-            ws_status = 'No'
+            watershed_status = 'No'
 
         size_std: str = self.cbox_val['size_std'].get()
         if size_std == 'Custom':
@@ -1205,7 +1205,7 @@ class ViewImage(ProcessImage):
             f'{tab}cv2.morphologyEx iterations={noise_iter}\n'
             f'{tab}cv2.morphologyEx op={morph_op},\n'
             f'{divider}\n'
-            f'{"Watershed segments:".ljust(space)}{ws_status},\n'
+            f'{"Watershed segments:".ljust(space)}{watershed_status},\n'
             f'{"# Selected objects:".ljust(space)}{num_selected},'
             f' out of {num_segments} total segments\n'
             f'{"Selected size range:".ljust(space)}{circle_r_min}--{circle_r_max} pixels\n'
@@ -1228,7 +1228,7 @@ class ViewImage(ProcessImage):
         mask image, then runs sizing, and reporting. To be used when the
         input image has objects that are not well separated by the color
         matte alone.
-        Called from Button command in setup_ws_window() and from
+        Called from Button command in setup_watershed_window() and from
         call.cmd().open_watershed_controls().
 
         Returns: None
@@ -1249,7 +1249,7 @@ class ViewImage(ProcessImage):
         # The redux (noise reduction) and matte segmentation pre-processing
         #  steps need to run before watershed segmentation. This is done in
         #  self.call_cmd().open_watershed_controls() or self.call_cmd().process(),
-        #  which are called by the ws_window's "Run" button, redux widgets,
+        #  which are called by the watershed_window's "Run" button, redux widgets,
         #  or a keyboard shortcut binding.
         self.watershed_segmentation()
         self.select_and_size_objects()
@@ -1258,7 +1258,7 @@ class ViewImage(ProcessImage):
         #  its list has 1 element, so the elapsed time is considered n/a.
         #  The sorted_size_list is cleared when no contours are found,
         #    otherwise would retain the last run's sizes.
-        if len(self.ws_basins) <= 1:
+        if len(self.watershed_basins) <= 1:
             self.elapsed = 'n/a'
             self.sorted_size_list.clear()
         else:
@@ -1283,10 +1283,10 @@ class ViewImage(ProcessImage):
         Returns: None
         """
 
-        # Need to clear the ws_basins tuple of contours when ws not used,
+        # Need to clear the watershed_basins tuple of contours when ws not used,
         #  i.e., for reporting number of matte segments in report_results().
-        self.ws_basins = tuple()
-        self.ws_window.withdraw()
+        self.watershed_basins = tuple()
+        self.watershed_window.withdraw()
 
         # Need to check that entered size values are okay.
         if not self.first_run:
@@ -1392,16 +1392,16 @@ class SetupApp(ViewImage):
     grid_img_labels
     grid_widgets
     open_input
-    open_ws_window
+    open_watershed_window
     set_color_defaults
     set_defaults
     setup_image_windows
     setup_main_menu
     setup_main_window
     setup_start_window
-    setup_ws_window
+    setup_watershed_window
     start_now
-    withdraw_ws_window
+    withdraw_watershed_window
     """
 
     def __init__(self):
@@ -1481,16 +1481,16 @@ class SetupApp(ViewImage):
             @staticmethod
             def process():
                 """
-                Depending on state of the ws_window watershed controller,
+                Depending on state of the watershed_window watershed controller,
                 calls either process_matte() or report_results(), matte_segmentation(),
                 noise_widget_control(), with a show_info_message() prompt
                 to run watershed segmentation with a button click.
-                Called from bindings for ws_window sliders and main_window
+                Called from bindings for watershed_window sliders and main_window
                 noise reduction sliders and comboboxes.
                 """
 
                 try:
-                    if self.ws_window.state() in 'normal, zoomed':
+                    if self.watershed_window.state() in 'normal, zoomed':
                         # Update report with current plm_* slider values; don't wait
                         #  for the segmentation algorithm to run before reporting settings.
                         self.report_results()
@@ -1518,10 +1518,10 @@ class SetupApp(ViewImage):
                                 'selected and sized objects.\n\n',
                                 color='blue')
 
-                    else:  # ws_window is withdrawn or iconified.
+                    else:  # watershed_window is withdrawn or iconified.
                         self.process_matte()
                 except AttributeError:
-                    print('From call_cmd().process(), the ws_window'
+                    print('From call_cmd().process(), the watershed_window'
                           ' state cannot be determined, so will run process_matte().')
                     self.process_matte()
 
@@ -1549,7 +1549,7 @@ class SetupApp(ViewImage):
             def new_input():
                 """
                 Reads a new image file for preprocessing.
-                Calls open_input(), update_image(), ws_window.withdraw()
+                Calls open_input(), update_image(), watershed_window.withdraw()
                 self & process_matte(), or show_info_message() &
                 delay_size_std_info_msg().
                 Called from keybinding, menu, and button commands.
@@ -1566,7 +1566,7 @@ class SetupApp(ViewImage):
 
                     return
 
-                self.ws_window.withdraw()
+                self.watershed_window.withdraw()
                 self.process_matte()
 
             @staticmethod
@@ -1808,14 +1808,14 @@ class SetupApp(ViewImage):
             tip_scaling_text = 'with shift-control-← & shift-control-→.'
             plus_key = '+'
             minus_key = '-'
-            ws_key = 'command-W'
+            watershed_key = 'command-W'
             zoom_accelerator = 'Command-Shift'
         else:
             color_tip = ' Ctrl-↑ & Ctrl-↓'
             tip_scaling_text = 'with Ctrl-← & Ctrl-→.'
             plus_key = '(plus)'
             minus_key = '(minus)'
-            ws_key = 'Ctrl-W'
+            watershed_key = 'Ctrl-W'
             zoom_accelerator = 'Ctrl'
 
         menu_params = dict(
@@ -1885,7 +1885,7 @@ class SetupApp(ViewImage):
 
         # The Help menu lists a cascade of Tips as a submenu.
         menu['Help'].add_command(label='Improve segmentation...',
-                                 command=self.open_ws_window,
+                                 command=self.open_watershed_window,
                                  accelerator=f'{os_accelerator}+W')
         menu['Help'].add_command(label='Apply default settings',
                                  command=self.call_cmd().apply_default_settings,
@@ -1902,7 +1902,7 @@ class SetupApp(ViewImage):
             '• Boldness can be changed with Shift-Ctrl-+(plus) & -(minus).',
             '• Matte color selection can affect counts and sizes',
             '      ...so can noise reduction.',
-            f'• Try {ws_key} to separate clustered objects.',
+            f'• Try {watershed_key} to separate clustered objects.',
             '• Right-click to save an image at its displayed zoom size.',
             '• Shift-Right-click to save the image at full scale.',
             '• "Export objects" saves each selected object as an image.',
@@ -2053,7 +2053,7 @@ class SetupApp(ViewImage):
         color_label.config(state=tk.NORMAL)
         matte_label.config(state=tk.NORMAL)
 
-    def setup_ws_window(self) -> None:
+    def setup_watershed_window(self) -> None:
         """
         Open a window with watershed (local peak) sliders and a run
         watershed button. Includes widget configurations, grids,
@@ -2063,20 +2063,20 @@ class SetupApp(ViewImage):
         """
         scale_len = int(self.screen_width * 0.20)
 
-        # The ws_window is hidden at startup, and is deiconified with a keybinding.
+        # The watershed_window is hidden at startup, and is deiconified with a keybinding.
         # Note that the system window manager will position the window where it
         #  wants, despite what the geometry string is set to. So, just go with it.
-        # To keep things tidy, the self.ws_window attribute is defined as
-        #  ws_window at the end of the method.
-        ws_window = tk.Toplevel(master=self)
-        ws_window.wm_withdraw()
+        # To keep things tidy, the self.watershed_window attribute is defined as
+        #  watershed_window at the end of the method.
+        watershed_window = tk.Toplevel(master=self)
+        watershed_window.wm_withdraw()
 
         # Window configuration is based on the main window, but with a dark bg
-        ws_window.title('Watershed segmentation controls')
-        ws_window.resizable(width=False, height=False)
-        ws_window.columnconfigure(index=0, weight=1)
-        ws_window.columnconfigure(index=1, weight=1)
-        ws_window.config(**const.WINDOW_PARAMETERS)
+        watershed_window.title('Watershed segmentation controls')
+        watershed_window.resizable(width=False, height=False)
+        watershed_window.columnconfigure(index=0, weight=1)
+        watershed_window.columnconfigure(index=1, weight=1)
+        watershed_window.config(**const.WINDOW_PARAMETERS)
 
         # Increase PLM values for larger files to reduce the number
         #  of contours, thus decreasing startup/reset processing time.
@@ -2087,26 +2087,26 @@ class SetupApp(ViewImage):
             self.slider_val['plm_mindist'].set(40)
             self.slider_val['plm_footprint'].set(3)
 
-        self.slider['plm_mindist_lbl'] = tk.Label(master=ws_window,
+        self.slider['plm_mindist_lbl'] = tk.Label(master=watershed_window,
                                                   text='peak_local_max min_distance:',
                                                   **const.LABEL_PARAMETERS)
-        self.slider['plm_mindist'] = tk.Scale(master=ws_window,
+        self.slider['plm_mindist'] = tk.Scale(master=watershed_window,
                                               from_=1, to=500,
                                               length=scale_len,
                                               tickinterval=40,
                                               variable=self.slider_val['plm_mindist'],
                                               **const.SCALE_PARAMETERS)
-        self.slider['plm_footprint_lbl'] = tk.Label(master=ws_window,
+        self.slider['plm_footprint_lbl'] = tk.Label(master=watershed_window,
                                                     text='peak_local_max min_distance:',
                                                     **const.LABEL_PARAMETERS)
-        self.slider['plm_footprint'] = tk.Scale(master=ws_window,
+        self.slider['plm_footprint'] = tk.Scale(master=watershed_window,
                                                 from_=1, to=50,
                                                 length=scale_len,
                                                 tickinterval=5,
                                                 variable=self.slider_val['plm_footprint'],
                                                 **const.SCALE_PARAMETERS)
 
-        ws_button = ttk.Button(master=ws_window,
+        watershed_button = ttk.Button(master=watershed_window,
                                text='Run Watershed segmentation',
                                command=self.process_ws,
                                width=0,
@@ -2124,16 +2124,16 @@ class SetupApp(ViewImage):
         self.slider['plm_footprint'].grid(column=1, row=1,
                                           padx=(0, 10), pady=(10, 0),
                                           sticky=tk.EW)
-        ws_button.grid(column=1, row=2,
+        watershed_button.grid(column=1, row=2,
                        padx=10, pady=10,
                        sticky=tk.EW)
 
-        ws_window.protocol(name='WM_DELETE_WINDOW',
-                           func=self.withdraw_ws_window)
+        watershed_window.protocol(name='WM_DELETE_WINDOW',
+                           func=self.withdraw_watershed_window)
 
-        self.ws_window = ws_window
+        self.watershed_window = watershed_window
 
-    def open_ws_window(self, event=None) -> None:
+    def open_watershed_window(self, event=None) -> None:
         """
         Opens the watershed control window and deactivate the
         "Update color matte segments" button.
@@ -2145,9 +2145,9 @@ class SetupApp(ViewImage):
         """
 
         # Note that the only way to run the watershed algorithm is
-        # with the 'Run' button in the ws_window.
+        # with the 'Run' button in the watershed_window.
         try:
-            self.ws_window.deiconify()
+            self.watershed_window.deiconify()
             self.matte_segmentation()
         except AttributeError:
             print('From call_cmd().open_watershed_controls(), the ws window'
@@ -2155,21 +2155,21 @@ class SetupApp(ViewImage):
 
         self.button['process_matte'].config(state=tk.DISABLED)
 
-    def withdraw_ws_window(self) -> None:
+    def withdraw_watershed_window(self) -> None:
         """
         Hide the watershed control window and reactivate the "Update color
         matte segments" button in the main window.
         Returns: None
         """
 
-        self.ws_window.wm_withdraw()
+        self.watershed_window.wm_withdraw()
         self.show_info_message(info='\nWatershed control window was withdrawn.\n'
                                     'Watershed segmentation will not be be used until\n'
                                     f'{f"{const.C_KEY}"}-W brings the window back\n\n',
                                color='black')
 
         # Reactivate the "Update color matte segments" button in the main window
-        # that was disabled when the ws_window was deiconified.
+        # that was disabled when the watershed_window was deiconified.
         self.button['process_matte'].config(state=tk.NORMAL)
 
     def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
@@ -2610,7 +2610,7 @@ class SetupApp(ViewImage):
         parent.bind_all(f'<{f"{c_key}"}-m>',
                         func=self.process_matte)
         parent.bind_all(f'<{f"{c_key}"}-w>',
-                        func=self.open_ws_window)
+                        func=self.open_watershed_window)
         parent.bind_all(f'<{f"{c_key}"}-s>',
                         func=lambda _: self.call_cmd().save_results())
         parent.bind_all(f'<{f"{c_key}"}-n>',
@@ -3035,7 +3035,7 @@ def main() -> None:
         #  in main(), and after setup_main_window().
         app.setup_main_menu()
         app.setup_start_window()
-        app.setup_ws_window()
+        app.setup_watershed_window()
 
         app.mainloop()
     except KeyboardInterrupt:
