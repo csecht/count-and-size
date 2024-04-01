@@ -2157,6 +2157,7 @@ class SetupApp(ViewImage):
         # Color-in the main (self) window and give it a yellow border;
         #  border highlightcolor changes to grey with loss of focus.
         self.config(**const.WINDOW_PARAMETERS)
+        self.config(bg=const.MASTER_BG)
 
         # Default Frame() arguments work fine to display report text.
         # bg won't show when grid sticky EW for tk.Text; see utils.display_report().
@@ -3180,7 +3181,6 @@ def run_checks() -> None:
             None
     """
     utils.check_platform()
-
     vcheck.minversion('3.7')
     vcheck.maxversion('3.11')
     manage.arguments()
@@ -3192,31 +3192,32 @@ def main() -> None:
     sets up the mainloop window and all other windows and widgets.
     Through inheritance, SetupApp() also initializes ProcessImage(),
     which initializes ProcessImage() that inherits Tk, thus creating the
-    mainloop window for settings and reporting.
+    mainloop window for settings and reporting.  With this structure,
+    instance attributes and methods are available to all classes only
+    where needed.
 
     Returns:
             None
     """
-    print(f'{PROGRAM_NAME} has launched...')
-    app = SetupApp()
-    app.title(f'{PROGRAM_NAME} Report & Settings')
-    app.setup_main_window()
-    app.setup_start_window()
 
-    # The custom app icon is expected to be in the program's images folder.
-    try:
-        icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
-        app.wm_iconphoto(True, icon)
-    except tk.TclError as err:
-        print('Cannot display program icon, so it will be blank or the tk default.\n'
-              f'tk error message: {err}')
+    # Check system, versions, and command line arguments. Exit if any
+    #  critical check fails or if the argument --about is used.
+    # Comment out run_checks to run PyInstaller.
+    run_checks()
 
     try:
+        print(f'{PROGRAM_NAME} has launched...')
+        app = SetupApp()
+        app.title(f'{PROGRAM_NAME} Report & Settings')
+        utils.set_icon(app)
+
+        app.setup_main_window()
+        app.setup_start_window()
+
         app.mainloop()
     except KeyboardInterrupt:
         print('*** User quit the program from Terminal command line. ***\n')
 
 
 if __name__ == '__main__':
-    run_checks()
     main()

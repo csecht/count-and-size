@@ -125,6 +125,25 @@ def valid_path_to(input_path: str) -> Path:
     return valid_path
 
 
+def set_icon(mainloop: tk.Tk) -> None:
+    """
+    Set the program icon image file.  If the icon cannot be displayed,
+    print a message to the console.
+
+    Args:  mainloop: The main tk.Tk() Toplevel running the mainloop.
+    """
+    # The custom app icon is expected to be in the program's images folder.
+    try:
+        icon = tk.PhotoImage(file=valid_path_to('images/sizeit_icon_512.png'))
+        mainloop.wm_iconphoto(True, icon)
+    except tk.TclError as err:
+        print('Cannot display program icon, so it will be blank or the tk default.\n'
+              f'tk error message: {err}')
+    except FileNotFoundError as fnf:
+        print(f'Cannot find program icon file: {fnf}.\n'
+              'The program will run without an icon image.')
+
+
 def export_settings_to_json(path2folder: str,
                             settings2save: dict,
                             called_by_cs=None) -> None:

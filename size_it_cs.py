@@ -1589,9 +1589,9 @@ class SetupApp(ViewImage):
                     'matte_color': self.cbox_val['matte_color'].get(),
                 }
 
-                utils.export_settings_to_json(self.input_folder_path,
-                                              settings,
-                                              True)
+                utils.export_settings_to_json(path2folder=self.input_folder_path,
+                                              settings2save=settings,
+                                              called_by_cs=True)
 
                 self.show_info_message('\nSettings have been exported to folder:\n'
                                        f'{self.input_folder_name}\n'
@@ -2360,7 +2360,7 @@ class SetupApp(ViewImage):
         """
 
         self.config(**const.WINDOW_PARAMETERS)
-        self.config(bg=const.MASTER_BG, )
+        self.config(bg=const.MASTER_BG)
         self.config(menu=self.menubar)
 
         # Default Frame() arguments work fine to display report text.
@@ -2996,23 +2996,6 @@ def run_checks() -> None:
     manage.arguments()
 
 
-def set_icon():
-    """
-    Set the program icon image file.  If the icon cannot be displayed,
-    print a message to the console.
-    """
-    # The custom app icon is expected to be in the program's images folder.
-    try:
-        icon = tk.PhotoImage(file=utils.valid_path_to('images/sizeit_icon_512.png'))
-        app.wm_iconphoto(True, icon)
-    except tk.TclError as err:
-        print('Cannot display program icon, so it will be blank or the tk default.\n'
-              f'tk error message: {err}')
-    except FileNotFoundError as fnf:
-        print(f'Cannot find program icon file: {fnf}.\n'
-              'The program will run without an icon image.')
-
-
 def main() -> None:
     """
     Main function to launch the program. Initializes SetupApp() and
@@ -3024,13 +3007,19 @@ def main() -> None:
     where needed.
     """
 
-    # Comment out these two lines to run PyInstaller.
+    # Check system, versions, and command line arguments. Exit if any
+    #  critical check fails or if the argument --about is used.
+    # Comment out run_checks to run PyInstaller.
     run_checks()
-    set_icon()
 
     try:
         print(f'{PROGRAM_NAME} has launched...')
+        app = SetupApp()
+        app.title(f'{PROGRAM_NAME} Report & Settings')
+        utils.set_icon(app)
+
         app.setup_main_window()
+
         # For proper menu functions, setup_main_menu() must be called here,
         #  in main(), and after setup_main_window().
         app.setup_main_menu()
@@ -3043,7 +3032,4 @@ def main() -> None:
 
 
 if __name__ == '__main__':
-
-    app = SetupApp()
-    app.title(f'{PROGRAM_NAME} Report & Settings')
     main()

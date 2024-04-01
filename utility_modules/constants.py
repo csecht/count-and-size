@@ -267,7 +267,7 @@ else:  # is macOS
     C_KEY = 'Command'
     C_BIND = 'Command'
 
-MASTER_BG = 'gray80'
+MASTER_BG = COLORS_TK['white']
 DARK_BG = 'gray20'
 DRAG_GRAY = 'gray65'
 WIDGET_FG = COLORS_TK['yellow']
