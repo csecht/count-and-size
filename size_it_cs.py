@@ -203,8 +203,8 @@ class ProcessImage(tk.Tk):
         noise_k = self.slider_val['noise_k'].get()
 
         # Need integers for the cv function parameters.
-        morph_shape = const.CV_MORPH_SHAPE[self.cbox_val['morph_shape'].get()]
-        morph_op = const.CV_MORPH_OP[self.cbox_val['morph_op'].get()]
+        morph_shape = const.CV['morph_shape'][self.cbox_val['morph_shape'].get()]
+        morph_op = const.CV['morph_op'][self.cbox_val['morph_op'].get()]
 
         # See: https://docs.opencv2.org/3.0-beta/modules/imgproc/doc/filtering.html
         #  on page, see: cv2.getStructuringElement(shape, ksize[, anchor])
@@ -216,7 +216,7 @@ class ProcessImage(tk.Tk):
         # Use morphologyEx as a shortcut for erosion followed by dilation.
         # Read https://docs.opencv2.org/3.4/db/df6/tutorial_erosion_dilatation.html
         # https://theailearner.com/tag/cv-morphologyex/
-        # The op argument from const.CV_MORPH_OP options:
+        # The op argument from const.CV['morph_op'] options:
         #   MORPH_OPEN is useful to remove noise and small features.
         #   MORPH_CLOSE is better for certain images, but generally is worse.
         #   MORPH_HITMISS helps to separate close objects by shrinking them.
@@ -2533,14 +2533,14 @@ class SetupApp(ViewImage):
                                          **const.LABEL_PARAMETERS)
         self.cbox['morph_op'].config(textvariable=self.cbox_val['morph_op'],
                                      width=16 + width_correction,
-                                     values=list(const.CV_MORPH_OP.keys()),
+                                     values=list(const.CV['morph_op'].keys()),
                                      **const.COMBO_PARAMETERS)
 
         self.cbox['morph_shape_lbl'].config(text='... shape:',
                                             **const.LABEL_PARAMETERS)
         self.cbox['morph_shape'].config(textvariable=self.cbox_val['morph_shape'],
                                         width=16 + width_correction,
-                                        values=list(const.CV_MORPH_SHAPE.keys()),
+                                        values=list(const.CV['morph_shape'].keys()),
                                         **const.COMBO_PARAMETERS)
 
         self.cbox['size_std_lbl'].config(text='Select the standard used:',

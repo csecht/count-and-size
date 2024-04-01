@@ -145,7 +145,7 @@ class ProcessImage(tk.Tk):
             'morph_op': tk.StringVar(),
             'morph_shape': tk.StringVar(),
             'filter_type': tk.StringVar(),
-            'th_type': tk.StringVar(),
+            'threshold_type': tk.StringVar(),
             'dt_type': tk.StringVar(),
             'dt_mask_size': tk.StringVar(),
             'ws_connectivity': tk.StringVar(),
@@ -269,8 +269,8 @@ class ProcessImage(tk.Tk):
             return
 
         # Need integers for the cv function parameters.
-        morph_shape = const.CV_MORPH_SHAPE[self.cbox_val['morph_shape'].get()]
-        morph_op = const.CV_MORPH_OP[self.cbox_val['morph_op'].get()]
+        morph_shape = const.CV['morph_shape'][self.cbox_val['morph_shape'].get()]
+        morph_op = const.CV['morph_op'][self.cbox_val['morph_op'].get()]
 
         # See: https://docs.opencv2.org/3.0-beta/modules/imgproc/doc/filtering.html
         #  on page, see: cv2.getStructuringElement(shape, ksize[, anchor])
@@ -282,7 +282,7 @@ class ProcessImage(tk.Tk):
         # Use morphologyEx as a shortcut for erosion followed by dilation.
         # Read https://docs.opencv2.org/3.4/db/df6/tutorial_erosion_dilatation.html
         # https://theailearner.com/tag/cv-morphologyex/
-        # The op argument from const.CV_MORPH_OP options:
+        # The op argument from const.CV['morph_op'] options:
         #   MORPH_OPEN is useful to remove noise and small features.
         #   MORPH_CLOSE is better for certain images, but generally is worse.
         #   MORPH_HITMISS helps to separate close objects by shrinking them.
@@ -398,10 +398,10 @@ class ProcessImage(tk.Tk):
             None
         """
 
-        th_type: int = const.THRESH_TYPE[self.cbox_val['th_type'].get()]
+        th_type: int = const.CV['threshold_type'][self.cbox_val['threshold_type'].get()]
         filter_k = self.slider_val['filter_k'].get()
         noise_iter = self.slider_val['noise_iter'].get()
-        dt_type: int = const.DISTANCE_TRANS_TYPE[self.cbox_val['dt_type'].get()]
+        dt_type: int = const.CV['distance_trans_type'][self.cbox_val['dt_type'].get()]
         mask_size = int(self.cbox_val['dt_mask_size'].get())
 
         # Note from doc: Currently, the Otsu's and Triangle methods
@@ -745,7 +745,7 @@ class ViewImage(ProcessImage):
             'filter_type': ttk.Combobox(master=self.selectors_frame),
             'filter_lbl': tk.Label(master=self.selectors_frame),
 
-            'th_type': ttk.Combobox(master=self.selectors_frame),
+            'threshold_type': ttk.Combobox(master=self.selectors_frame),
             'th_type_lbl': tk.Label(master=self.selectors_frame),
 
             'dt_type': ttk.Combobox(master=self.selectors_frame),
@@ -1511,7 +1511,7 @@ class ViewImage(ProcessImage):
         morph_op: str = self.cbox_val['morph_op'].get()
         morph_shape: str = self.cbox_val['morph_shape'].get()
         filter_type: str = self.cbox_val['filter_type'].get()
-        th_type: str = self.cbox_val['th_type'].get()
+        th_type: str = self.cbox_val['threshold_type'].get()
         circle_r_min: int = self.slider_val['circle_r_min'].get()
         circle_r_max: int = self.slider_val['circle_r_max'].get()
         plm_mindist: int = self.slider_val['plm_mindist'].get()
@@ -2229,7 +2229,7 @@ class SetupApp(ViewImage):
             'morph_op': self.cbox_val['morph_op'].get(),
             'morph_shape': self.cbox_val['morph_shape'].get(),
             'filter_type': self.cbox_val['filter_type'].get(),
-            'th_type': self.cbox_val['th_type'].get(),
+            'threshold_type': self.cbox_val['threshold_type'].get(),
             'do_inverse_th': self.do_inverse_th.get(),
             'circle_r_min': self.slider_val['circle_r_min'].get(),
             'circle_r_max': self.slider_val['circle_r_max'].get(),
@@ -2557,35 +2557,35 @@ class SetupApp(ViewImage):
                                          **const.LABEL_PARAMETERS)
         self.cbox['morph_op'].config(textvariable=self.cbox_val['morph_op'],
                                      width=18 + width_correction,
-                                     values=list(const.CV_MORPH_OP.keys()),
+                                     values=list(const.CV['morph_op'].keys()),
                                      **const.COMBO_PARAMETERS)
 
         self.cbox['morph_shape_lbl'].config(text='... shape:',
                                             **const.LABEL_PARAMETERS)
         self.cbox['morph_shape'].config(textvariable=self.cbox_val['morph_shape'],
                                         width=16 + width_correction,
-                                        values=list(const.CV_MORPH_SHAPE.keys()),
+                                        values=list(const.CV['morph_shape'].keys()),
                                         **const.COMBO_PARAMETERS)
 
         self.cbox['filter_lbl'].config(text='Filter type:',
                                        **const.LABEL_PARAMETERS)
         self.cbox['filter_type'].config(textvariable=self.cbox_val['filter_type'],
                                         width=14 + width_correction,
-                                        values=list(const.CV_FILTER.keys()),
+                                        values=list(const.CV['filter'].keys()),
                                         **const.COMBO_PARAMETERS)
 
         self.cbox['th_type_lbl'].config(text='Threshold type:',
                                         **const.LABEL_PARAMETERS)
-        self.cbox['th_type'].config(textvariable=self.cbox_val['th_type'],
+        self.cbox['threshold_type'].config(textvariable=self.cbox_val['threshold_type'],
                                     width=26 + width_correction,
-                                    values=list(const.THRESH_TYPE.keys()),
+                                    values=list(const.CV['threshold_type'].keys()),
                                     **const.COMBO_PARAMETERS)
 
         self.cbox['dt_type_lbl'].configure(text='cv2.distanceTransform, distanceType:',
                                            **const.LABEL_PARAMETERS)
         self.cbox['dt_type'].configure(textvariable=self.cbox_val['dt_type'],
                                        width=12,
-                                       values=list(const.DISTANCE_TRANS_TYPE.keys()),
+                                       values=list(const.CV['distance_trans_type'].keys()),
                                        **const.COMBO_PARAMETERS)
 
         self.cbox['dt_mask_size_lbl'].configure(text='... maskSize:',
@@ -2894,13 +2894,13 @@ class SetupApp(ViewImage):
         if self.first_run:
             self.seg_algorithm = 'Watershed'
             if self.do_inverse_th.get():
-                self.cbox['th_type'].current(1)
-                self.cbox_val['th_type'].set('cv2.THRESH_OTSU_INVERSE')
+                self.cbox['threshold_type'].current(1)
+                self.cbox_val['threshold_type'].set('cv2.THRESH_OTSU_INVERSE')
             else:  # user selected 'No' for INVERSE threshold type.
-                self.cbox['th_type'].current(0)
-                self.cbox_val['th_type'].set('cv2.THRESH_OTSU')
+                self.cbox['threshold_type'].current(0)
+                self.cbox_val['threshold_type'].set('cv2.THRESH_OTSU')
         else:
-            self.cbox['th_type'].current(0)  # 'cv2.THRESH_OTSU'
+            self.cbox['threshold_type'].current(0)  # 'cv2.THRESH_OTSU'
             self.cbox_val['annotation_color'].set('blue')
 
         # Set/Reset Scale widgets.
@@ -3004,7 +3004,7 @@ class SetupApp(ViewImage):
         self.cbox['filter_type'].grid(column=1, row=6, **west_grid_params)
 
         # The label widget is gridded to the left, based on this widget's width.
-        self.cbox['th_type'].grid(column=1, row=6, **east_grid_params)
+        self.cbox['threshold_type'].grid(column=1, row=6, **east_grid_params)
 
         self.slider['filter_k_lbl'].grid(column=0, row=9, **east_grid_params)
         self.slider['filter_k'].grid(column=1, row=9, **slider_grid_params)
@@ -3054,7 +3054,7 @@ class SetupApp(ViewImage):
         # Now grid widgets with relative padx values based on widths of
         #  their corresponding partner widgets. Needed across platforms.
         morph_shape_padx = (0, self.cbox['morph_shape'].winfo_reqwidth() + 10)
-        thtype_padx = (0, self.cbox['th_type'].winfo_reqwidth() + 10)
+        thtype_padx = (0, self.cbox['threshold_type'].winfo_reqwidth() + 10)
         mask_lbl_padx = (self.cbox['dt_mask_size_lbl'].winfo_reqwidth() + 120, 0)
         ws_connectivity_padx = (0, self.cbox['ws_connectivity'].winfo_reqwidth() + 10)
         size_std_padx = (0, self.cbox['size_std'].winfo_reqwidth() + 10)

@@ -69,76 +69,41 @@ SIZE_FACTOR: float = 5.5e-4
 LINE_THICKNESS_FACTOR: float = 1.5e-3
 
 # CV dict values are cv2 constants' (key) returned integers.
-# Some of these dictionaries are used only to populate Combobox lists.
-CV_BORDER = {
-    'cv2.BORDER_REFLECT_101': 4,  # is same as cv2.BORDER_DEFAULT.
-    'cv2.BORDER_REFLECT': 2,
-    'cv2.BORDER_REPLICATE': 1,
-    'cv2.BORDER_ISOLATED': 16,
-}
-
-THRESH_TYPE = {
-    # Note: Can mimic inverse types by adjusting alpha and beta channels.
-    # Note: THRESH_BINARY* is used with cv2.adaptiveThreshold, which is
-    #  not implemented here.
-    # 'cv2.THRESH_BINARY': 0,
-    # 'cv2.THRESH_BINARY_INVERSE': 1,
-    'cv2.THRESH_OTSU': 8,
-    'cv2.THRESH_OTSU_INVERSE': 9,
-    'cv2.THRESH_TRIANGLE': 16,
-    'cv2.THRESH_TRIANGLE_INVERSE': 17,
-}
-
-CV_MORPH_OP = {
-    'cv2.MORPH_OPEN': 2,
-    'cv2.MORPH_CLOSE': 3,
-    # 'cv2.MORPH_GRADIENT': 4,
-    # 'cv2.MORPH_BLACKHAT': 6,
-    'cv2.MORPH_HITMISS': 7,
-}
-
-CV_MORPH_SHAPE = {
-    'cv2.MORPH_RECT': 0,  # cv2 default
-    'cv2.MORPH_CROSS': 1,
-    'cv2.MORPH_ELLIPSE': 2,
-}
-
-CV_FILTER = {
-    'cv2.blur': 0,  # cv2 default
-    'cv2.bilateralFilter': 1,
-    'cv2.GaussianBlur': 2,
-    'cv2.medianBlur': 3,
-    # 'Convolution': None,
-}
-
-CONTOUR_MODE = {
-    'cv2.RETR_EXTERNAL': 0,  # cv2 default
-    'cv2.RETR_LIST': 1,
-    'cv2.RETR_CCOMP': 2,
-    'cv2.RETR_TREE': 3,
-    'cv2.RETR_FLOODFILL': 4,
-}
-
-# from: https://docs.opencv.org/4.4.0/d3/dc0/group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
-# CHAIN_APPROX_NONE
-# stores absolutely all the contour points. That is, any 2 subsequent points (x1,y1) and (x2,y2) of the contour will be either horizontal, vertical or diagonal neighbors, that is, max(abs(x1-x2),abs(y2-y1))==1.
-# CHAIN_APPROX_SIMPLE
-# compresses horizontal, vertical, and diagonal segments and leaves only their end points. For example, an up-right rectangular contour is encoded with 4 points.
-# CHAIN_APPROX_TC89_L1
-# applies one of the flavors of the Teh-Chin chain approximation algorithm [229]
-# CHAIN_APPROX_TC89_KCOS
-# applies one of the flavors of the Teh-Chin chain approximation algorithm [229]
-CONTOUR_METHOD = {
-    'cv2.CHAIN_APPROX_NONE': 1,
-    'cv2.CHAIN_APPROX_SIMPLE': 2,
-    'cv2.CHAIN_APPROX_TC89_L1': 3,
-    'cv2.CHAIN_APPROX_TC89_KCOS': 4
-}
-
-DISTANCE_TRANS_TYPE = {
-    'cv2.DIST_L1': 1,
-    'cv2.DIST_L2': 2,
-    'cv2.DIST_C': 3,
+# The values are used to set the corresponding cv2 constant.
+# Some of these value dictionaries are used only to populate Combobox lists.
+# For cv2 contour method operations, see ContourApproximationModes in:
+#  https://docs.opencv.org/4.4.0/d3/dc0/group__imgproc__shape.html
+CV = {
+    'border': {'cv2.BORDER_REFLECT_101': 4,
+               'cv2.BORDER_REFLECT': 2,
+               'cv2.BORDER_REPLICATE': 1,
+               'cv2.BORDER_ISOLATED': 16},
+    'threshold_type': {'cv2.THRESH_OTSU': 8,
+                       'cv2.THRESH_OTSU_INVERSE': 9,
+                       'cv2.THRESH_TRIANGLE': 16,
+                       'cv2.THRESH_TRIANGLE_INVERSE': 17},
+    'morph_op': {'cv2.MORPH_OPEN': 2,
+                 'cv2.MORPH_CLOSE': 3,
+                 'cv2.MORPH_HITMISS': 7},
+    'morph_shape': {'cv2.MORPH_RECT': 0,
+                    'cv2.MORPH_CROSS': 1,
+                    'cv2.MORPH_ELLIPSE': 2},
+    'filter': {'cv2.blur': 0,
+               'cv2.bilateralFilter': 1,
+               'cv2.GaussianBlur': 2,
+               'cv2.medianBlur': 3},
+    'contour_mode': {'cv2.RETR_EXTERNAL': 0,
+                     'cv2.RETR_LIST': 1,
+                     'cv2.RETR_CCOMP': 2,
+                     'cv2.RETR_TREE': 3,
+                     'cv2.RETR_FLOODFILL': 4},
+    'contour_method': {'cv2.CHAIN_APPROX_NONE': 1,
+                       'cv2.CHAIN_APPROX_SIMPLE': 2,
+                       'cv2.CHAIN_APPROX_TC89_L1': 3,
+                       'cv2.CHAIN_APPROX_TC89_KCOS': 4},
+    'distance_trans_type': {'cv2.DIST_L1': 1,
+                            'cv2.DIST_L2': 2,
+                            'cv2.DIST_C': 3},
 }
 
 """
@@ -163,7 +128,11 @@ COLORS_CV = {
     'green': (0, 255, 0)
 }
 
-# Hex values source: https://www.rgbtohex.net/
+# Set 'tk_white' based on the operating system's default white.
+# This structure directly maps the operating system to the corresponding
+#  color for 'tk_white'. This eliminates the need for a if-elif-else
+#  structure. The get method is used to provide a default value of 'grey95'
+#  (Windows) if the operating system is not 'dar' (macOS) or 'lin' (Linux).
 COLORS_TK = {
     'blue': '#0072B2',
     'orange': '#E69F00',
@@ -175,23 +144,12 @@ COLORS_TK = {
     'yellow': '#F0E442',
     'black': 'black',
     'white': 'white',
-    'tk_white': '',  # system's default, conditional on MY_OS
+    'tk_white': {'dar': 'white', 'lin': 'grey85'}.get(MY_OS, 'grey95'),
     'red': 'red1',  # not color-blind compatible
     'green': 'green1',  # not color-blind compatible
 }
 
-# Need tk to match system's default white shade.
-if MY_OS == 'dar':  # macOS
-    COLORS_TK['tk_white'] = 'white'
-elif MY_OS == 'lin':  # Linux (Ubuntu)
-    COLORS_TK['tk_white'] = 'grey85'
-else:  # platform is 'win'  # Windows (10, 11?)
-    COLORS_TK['tk_white'] = 'grey95'
-
-CS_IMAGE_NAMES = ('input',
-                  'redux_mask',
-                  'matte_objects',
-                  'sized')
+CS_IMAGE_NAMES = ('input', 'redux_mask', 'matte_objects', 'sized')
 
 # Used with size_it_cs.py, color screens (mattes).
 MATTE_COLOR_RANGE = {
@@ -221,51 +179,58 @@ MATTE_COLOR_RANGE = {
 # }
 FONT_TYPE = cv2.FONT_HERSHEY_SIMPLEX
 
-# Fonts for various widgets. Make it os-specific instead of using
-#  Tkinter's default named fonts because they can change and affect spacing.
-if MY_OS == 'lin':  # Linux (Ubuntu)
-    os_font = 'DejaVu Sans'
-    os_mono_font = 'DejaVu Sans Mono'
-elif MY_OS == 'win':  # Windows (10, 11)
-    os_font = 'Segoe UI'
-    os_mono_font = 'Consolas'
-else:  # is 'dar', macOS
-    os_font = 'SF Pro'
-    os_mono_font = 'Menlo'
+OS_SETTINGS = {
+    'lin': {
+        'os_font': 'DejaVu Sans',
+        'os_mono_font': 'DejaVu Sans Mono',
+        'widget_font': (8,),
+        'report_font': (9,),
+        'menu_font': (9,),
+        'tips_font': (8,),
+        'radio_params': {
+            'fg': COLORS_TK['yellow'],
+            'activebackground': 'gray50',
+            'activeforeground': COLORS_TK['sky blue'],
+            'selectcolor': COLORS_TK['dark blue']
+        },
+        'c_key': 'Ctrl',
+        'c_bind': 'Control'
+    },
+    'win': {
+        'os_font': 'Segoe UI',
+        'os_mono_font': 'Consolas',
+        'widget_font': (7,),
+        'report_font': (8,),
+        'menu_font': (9,),
+        'tips_font': (8,),
+        'radio_params': {'fg': 'black'},
+        'c_key': 'Ctrl',
+        'c_bind': 'Control'
+    },
+    'dar': {
+        'os_font': 'SF Pro',
+        'os_mono_font': 'Menlo',
+        'widget_font': (10,),
+        'report_font': (10,),
+        'menu_font': (13,),
+        'tips_font': (11,),
+        'radio_params': {'fg': 'black'},
+        'c_key': 'Command',
+        'c_bind': 'Command'
+    }
+}
 
-# Need platform-specific WIDGET_FONT size for best fit and look.
-# Use platform's default mono font for REPORT_FONT.
-# Need tk to match system's default white shade for COLOR_TK.
-if MY_OS == 'lin':
-    WIDGET_FONT = os_font, 8
-    REPORT_FONT = os_mono_font, 9
-    MENU_FONT = os_font, 9
-    TIPS_FONT = os_font, 8
-    radio_params = dict(
-        fg=COLORS_TK['yellow'],
-        activebackground='gray50',  # Default is 'white'.
-        activeforeground=COLORS_TK['sky blue'],  # Default is 'black'.
-        selectcolor=COLORS_TK['dark blue'])
-    C_KEY = 'Ctrl'
-    C_BIND = 'Control'
+settings = OS_SETTINGS.get(MY_OS, OS_SETTINGS['win'])
 
-elif MY_OS == 'win':
-    WIDGET_FONT = os_font, 7
-    REPORT_FONT = os_mono_font, 8
-    MENU_FONT = os_font, 9
-    TIPS_FONT = os_font, 8
-    radio_params = dict(fg='black')
-    C_KEY = 'Ctrl'
-    C_BIND = 'Control'
+C_KEY = settings['c_key']
+C_BIND = settings['c_bind']
 
-else:  # is macOS
-    WIDGET_FONT = os_font, 10
-    REPORT_FONT = os_mono_font, 10
-    MENU_FONT = os_font, 13
-    TIPS_FONT = os_font, 11
-    radio_params = dict(fg='black')
-    C_KEY = 'Command'
-    C_BIND = 'Command'
+os_font = settings['os_font']
+os_mono_font = settings['os_mono_font']
+WIDGET_FONT = os_font, *settings['widget_font']
+REPORT_FONT = os_mono_font, *settings['report_font']
+MENU_FONT = os_font, *settings['menu_font']
+TIPS_FONT = os_font, *settings['tips_font']
 
 MASTER_BG = COLORS_TK['white']
 DARK_BG = 'gray20'
@@ -289,12 +254,13 @@ SCALE_PARAMETERS = dict(
     troughcolor=MASTER_BG,
 )
 
+radio_params = settings['radio_params']  # are OS-specific.
 RADIO_PARAMETERS = dict(
     font=WIDGET_FONT,
     bg='gray50',
     bd=2,
     indicatoron=False,
-    **radio_params,  # are OS-specific.
+    **radio_params,
 )
 
 # Color-in the main (self) window and give it a yellow border;
@@ -307,24 +273,26 @@ WINDOW_PARAMETERS = dict(
     highlightbackground=DRAG_GRAY,
     padx=3, pady=3, )
 
-# Here 'font' sets the shown value; font in the pull-down values
-#   is set by option_add in ContourViewer.setup_styles()
-if MY_OS == 'lin':
-    COMBO_PARAMETERS = dict(
-        font=WIDGET_FONT,
-        foreground=COLORS_TK['yellow'],
-        takefocus=False,
-        state='readonly')
-elif MY_OS == 'win':  # is Windows
-    COMBO_PARAMETERS = dict(
-        font=('TkTooltipFont', 7),  # not size 8
-        takefocus=False,
-        state='readonly')
-else:  # is macOS
-    COMBO_PARAMETERS = dict(
-        font=WIDGET_FONT,
-        takefocus=False,
-        state='readonly')
+# The get() method provides a default value for an unknown or untested
+#  operating system.
+COMBO_PARAMETERS = {
+    'lin': {
+        'font': WIDGET_FONT,
+        'foreground': COLORS_TK['yellow'],
+        'takefocus': False,
+        'state': 'readonly'
+    },
+    'win': {
+        'font': ('TkTooltipFont', 7),
+        'takefocus': False,
+        'state': 'readonly'
+    },
+    'dar': {
+        'font': WIDGET_FONT,
+        'takefocus': False,
+        'state': 'readonly'
+    }
+}.get(MY_OS, {'font': WIDGET_FONT, 'takefocus': False, 'state': 'readonly'})
 
 # Grid arguments to position tk.Label images in their windows.
 PANEL_LEFT = dict(
