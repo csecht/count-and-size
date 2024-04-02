@@ -183,10 +183,10 @@ OS_SETTINGS = {
     'lin': {
         'os_font': 'DejaVu Sans',
         'os_mono_font': 'DejaVu Sans Mono',
-        'widget_font': (8,),
-        'report_font': (9,),
-        'menu_font': (9,),
-        'tips_font': (8,),
+        'widget_font_size': (8,),
+        'report_font_size': (9,),
+        'menu_font_size': (9,),
+        'tips_font_size': (8,),
         'radio_params': {
             'fg': COLORS_TK['yellow'],
             'activebackground': 'gray50',
@@ -199,10 +199,10 @@ OS_SETTINGS = {
     'win': {
         'os_font': 'Segoe UI',
         'os_mono_font': 'Consolas',
-        'widget_font': (7,),
-        'report_font': (8,),
-        'menu_font': (9,),
-        'tips_font': (8,),
+        'widget_font_size': (7,),
+        'report_font_size': (8,),
+        'menu_font_size': (9,),
+        'tips_font_size': (8,),
         'radio_params': {'fg': 'black'},
         'c_key': 'Ctrl',
         'c_bind': 'Control'
@@ -210,16 +210,17 @@ OS_SETTINGS = {
     'dar': {
         'os_font': 'SF Pro',
         'os_mono_font': 'Menlo',
-        'widget_font': (10,),
-        'report_font': (10,),
-        'menu_font': (13,),
-        'tips_font': (11,),
+        'widget_font_size': (10,),
+        'report_font_size': (10,),
+        'menu_font_size': (13,),
+        'tips_font_size': (11,),
         'radio_params': {'fg': 'black'},
         'c_key': 'Command',
         'c_bind': 'Command'
     }
 }
 
+# Defaults to Windows if OS is not 'lin' or 'dar'.
 settings = OS_SETTINGS.get(MY_OS, OS_SETTINGS['win'])
 
 C_KEY = settings['c_key']
@@ -227,10 +228,11 @@ C_BIND = settings['c_bind']
 
 os_font = settings['os_font']
 os_mono_font = settings['os_mono_font']
-WIDGET_FONT = os_font, *settings['widget_font']
-REPORT_FONT = os_mono_font, *settings['report_font']
-MENU_FONT = os_font, *settings['menu_font']
-TIPS_FONT = os_font, *settings['tips_font']
+
+WIDGET_FONT = os_font, *settings['widget_font_size']
+REPORT_FONT = os_mono_font, *settings['report_font_size']
+MENU_FONT = os_font, *settings['menu_font_size']
+TIPS_FONT = os_font, *settings['tips_font_size']
 
 MASTER_BG = COLORS_TK['white']
 DARK_BG = 'gray20'
@@ -273,6 +275,7 @@ WINDOW_PARAMETERS = dict(
     highlightbackground=DRAG_GRAY,
     padx=3, pady=3, )
 
+# OS-specific combo box parameters.
 # The get() method provides a default value for an unknown or untested
 #  operating system.
 COMBO_PARAMETERS = {
@@ -292,7 +295,7 @@ COMBO_PARAMETERS = {
         'takefocus': False,
         'state': 'readonly'
     }
-}.get(MY_OS, {'font': WIDGET_FONT, 'takefocus': False, 'state': 'readonly'})
+}.get(MY_OS, {'font': 'Arial', 'takefocus': False, 'state': 'readonly'})
 
 # Grid arguments to position tk.Label images in their windows.
 PANEL_LEFT = dict(
