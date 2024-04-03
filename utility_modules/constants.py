@@ -131,8 +131,9 @@ COLORS_CV = {
 # Set 'tk_white' based on the operating system's default white.
 # This structure directly maps the operating system to the corresponding
 #  color for 'tk_white'. This eliminates the need for a if-elif-else
-#  structure. The get method is used to provide a default value of 'grey95'
-#  (Windows) if the operating system is not 'dar' (macOS) or 'lin' (Linux).
+#  structure. The get method for 'tk_white' is used to provide a default
+#  value of 'grey95' (Windows) if the operating system is not 'dar' (macOS)
+#  or 'lin' (Linux).
 COLORS_TK = {
     'blue': '#0072B2',
     'orange': '#E69F00',
@@ -226,15 +227,12 @@ settings = OS_SETTINGS.get(MY_OS, OS_SETTINGS['win'])
 C_KEY = settings['c_key']
 C_BIND = settings['c_bind']
 
-os_font = settings['os_font']
-os_mono_font = settings['os_mono_font']
+REPORT_FONT = settings['os_mono_font'], *settings['report_font_size']
+WIDGET_FONT = settings['os_font'], *settings['widget_font_size']
+MENU_FONT = settings['os_font'], *settings['menu_font_size']
+TIPS_FONT = settings['os_font'], *settings['tips_font_size']
 
-WIDGET_FONT = os_font, *settings['widget_font_size']
-REPORT_FONT = os_mono_font, *settings['report_font_size']
-MENU_FONT = os_font, *settings['menu_font_size']
-TIPS_FONT = os_font, *settings['tips_font_size']
-
-MASTER_BG = COLORS_TK['white']
+MASTER_BG = COLORS_TK['white']  # or COLORS_TK['tk_white'] for off-white.
 DARK_BG = 'gray20'
 DRAG_GRAY = 'gray65'
 WIDGET_FG = COLORS_TK['yellow']
@@ -256,13 +254,12 @@ SCALE_PARAMETERS = dict(
     troughcolor=MASTER_BG,
 )
 
-radio_params = settings['radio_params']  # are OS-specific.
 RADIO_PARAMETERS = dict(
     font=WIDGET_FONT,
     bg='gray50',
     bd=2,
     indicatoron=False,
-    **radio_params,
+    **settings['radio_params'],  # are OS-specific
 )
 
 # Color-in the main (self) window and give it a yellow border;
