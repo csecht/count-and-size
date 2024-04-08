@@ -948,9 +948,7 @@ class ViewImage(ProcessImage):
 
         self.update_image(image_name='sized')
 
-    def preview_export(self,
-                       export_img: tk.PhotoImage,
-                       import_img: tk.PhotoImage) -> tk.Toplevel:
+    def preview_export(self, export_img: tk.PhotoImage) -> tk.Toplevel:
         """
         Display a sample of the export image and import image, from
         select_and_export_objects(), in a Toplevel window.
@@ -964,8 +962,8 @@ class ViewImage(ProcessImage):
         w_offset = int(self.screen_width * 0.50)
 
         preview_win = tk.Toplevel()
-        preview_win.title('Sample: for export <- | -> as input')
-        preview_win.minsize(width=400, height=150)
+        preview_win.title('Export sample, zoom view')
+        preview_win.minsize(width=300, height=150)
         preview_win.geometry(f'+{w_offset}+55')
         preview_win.columnconfigure(index=0, weight=1)
         preview_win.columnconfigure(index=1, weight=1)
@@ -973,10 +971,8 @@ class ViewImage(ProcessImage):
         preview_win.bind('<Escape>', func=lambda _: utils.quit_gui(self))
         preview_win.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
 
-        l1 = tk.Label(master=preview_win, image=export_img, bg='red')
-        l2 = tk.Label(master=preview_win, image=import_img, bg='black')
-        l1.grid(**const.PANEL_LEFT)
-        l2.grid(**const.PANEL_RIGHT)
+        l1 = tk.Label(master=preview_win, image=export_img)
+        l1.pack()
 
         return preview_win
 
@@ -1042,8 +1038,8 @@ class ViewImage(ProcessImage):
             _x, _y, _w, _h = cv2.boundingRect(_c)
 
             # Slightly expand the _c segment's ROI bounding box on the input image.
-            y_slice = slice(_y - 4, (_y + _h + 3))
-            x_slice = slice(_x - 4, (_x + _w + 3))
+            y_slice = slice(_y - 6, (_y + _h + 5))
+            x_slice = slice(_x - 6, (_x + _w + 5))
             roi = self.cvimg['input'][y_slice, x_slice]
             roi_idx += 1
 
@@ -1077,17 +1073,18 @@ class ViewImage(ProcessImage):
             result = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
 
             if result is not None:
-                result[roi_mask == 0] = 255
+                # result[roi_mask == 0] = 255  # seg on white background
 
                 if first2export:
                     first2export = False
-                    mask_img = manage.tk_image(image=result, scale_factor=3.0)
-                    roi_img = manage.tk_image(image=roi, scale_factor=3.0)
+                    # mask_img = manage.tk_image(image=result, scale_factor=3.0)
+                    _sf = 1.5 if max(roi.shape) >= 200 else 3.0
+                    roi_img = manage.tk_image(image=roi, scale_factor=_sf)
                     object_size = self.selected_sizes[roi_idx - 1]
-                    preview_window = self.preview_export(export_img=mask_img, import_img=roi_img)
+                    preview_window = self.preview_export(export_img=roi_img)
                     ok2export = messagebox.askokcancel(
-                        parent=preview_window,
-                        title='Export preview (3X zoom)',
+                        parent=self,
+                        title='Export preview',
                         message='Sampled from selected objects:\n'
                                 f'#{roi_idx}, size = {object_size}.',
                         detail=f'OK: looks good, export all {self.num_obj_selected}'
@@ -1099,7 +1096,7 @@ class ViewImage(ProcessImage):
                     if ok2export:
                         # Need to export this first sample result before continuing.
                         utils.export_each_segment(path2folder=self.input_folder_path,
-                                                  img2exp=result,
+                                                  img2exp=roi,
                                                   index=roi_idx,
                                                   timestamp=time_now)
                         continue
@@ -1107,7 +1104,7 @@ class ViewImage(ProcessImage):
                     return
 
                 utils.export_each_segment(path2folder=self.input_folder_path,
-                                          img2exp=result,
+                                          img2exp=roi,
                                           index=roi_idx,
                                           timestamp=time_now)
             else:
