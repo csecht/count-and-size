@@ -953,11 +953,9 @@ class ViewImage(ProcessImage):
         Display a sample of the export image and import image, from
         select_and_export_objects(), in a Toplevel window.
         Args:
-            export_img: A PhotoImage of an object segment for export.
-            import_img: A PhotoImage of the ROI input image.
-
-        Returns: A Toplevel window comparing input ROI to its export.
-
+            export_img: A PhotoImage of the sample ROI.
+        Returns:
+            preview_win: A Toplevel window with the export image.
         """
         w_offset = int(self.screen_width * 0.50)
 
