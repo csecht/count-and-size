@@ -1050,7 +1050,6 @@ class ViewImage(ProcessImage):
             #        Crop the mask to a slim border around the segment.
             mask = np.zeros_like(cv2.cvtColor(src=self.cvimg['input'],
                                               code=cv2.COLOR_BGR2GRAY))
-            roi_mask = mask[y_slice, x_slice]
 
             cv2.drawContours(image=mask,
                              contours=[_c],
@@ -1068,20 +1067,28 @@ class ViewImage(ProcessImage):
 
             # Idea for extraction from: https://stackoverflow.com/questions/59432324/
             #  how-to-mask-image-with-binary-mask
-            # Extract the segment from input to a black background, then if it's
-            #  valid, convert black background to white and export it.
-            result = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
 
-            if result is not None:
-                # result[roi_mask == 0] = 255  # seg on white background
+            # To preview and export masked segments on a white background,
+            #  instead of the matte color, uncomment the commented statements,
+            #  replace img2exp=roi with img2exp=segment, and replace
+            #  if roi... with if segment... .
+            #  Extract the segment from input to a black background, then, if
+            #  valid, convert black background to white and export it.
+            # roi_mask = mask[y_slice, x_slice]
+            # segment = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
+
+            if roi is not None:
+                # segment[roi_mask == 0] = 255
 
                 if first2export:
                     first2export = False
-                    # mask_img = manage.tk_image(image=result, scale_factor=3.0)
-                    _sf = 1.5 if max(roi.shape) >= 200 else 3.0
-                    roi_img = manage.tk_image(image=roi, scale_factor=_sf)
+                    _scale = 1.5 if max(roi.shape) >= 200 else 3.0
+                    roi_img = manage.tk_image(image=roi, scale_factor=_scale)
+                    # mask_img = manage.tk_image(image=segment, scale_factor=_scale)
                     object_size = self.selected_sizes[roi_idx - 1]
+
                     preview_window = self.preview_export(export_img=roi_img)
+                    # preview_window = self.preview_export(export_img=mask_img)
                     ok2export = messagebox.askokcancel(
                         parent=self,
                         title='Export preview',
@@ -1094,7 +1101,7 @@ class ViewImage(ProcessImage):
                     preview_window.destroy()
 
                     if ok2export:
-                        # Need to export this first sample result before continuing.
+                        # Need to export this first sample before continuing.
                         utils.export_each_segment(path2folder=self.input_folder_path,
                                                   img2exp=roi,
                                                   index=roi_idx,
