@@ -299,32 +299,33 @@ class ProcessImage(tk.Tk):
         Returns: None
         """
 
-        inv_img = cv2.bitwise_not(self.cvimg['redux_mask'])
-
-        min_dist = self.slider_val['plm_mindist'].get()
-        p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
-                           self.slider_val['plm_footprint'].get())
-        plm_kernel = np.ones(shape=p_kernel, dtype=np.uint8)
-
         # Calculate the distance transform of the objects' masks by
         #  replacing each foreground (non-zero) element with its
         #  shortest distance to the background (any zero-valued element).
         #  Returns a float64 ndarray.
-        # Note that maskSize=0 calculates the precise mask size only for
-        #   cv2.DIST_L2. cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
+        # Note that maskSize=0 calculates the precise mask size only for cv2.DIST_L2.
+        #  cv2.DIST_L1 and cv2.DIST_C always use maskSize=3.
+        inv_img = cv2.bitwise_not(self.cvimg['redux_mask'])
         transformed: np.ndarray = cv2.distanceTransform(
             src=inv_img,
             distanceType=cv2.DIST_L2,
-            maskSize=0)
+            maskSize=0
+        )
 
-        local_max: ndimage = peak_local_max(image=transformed,
-                                            min_distance=min_dist,
-                                            exclude_border=False,  # True is min_dist
-                                            num_peaks=np.inf,
-                                            footprint=plm_kernel,
-                                            labels=inv_img,
-                                            num_peaks_per_label=np.inf,
-                                            p_norm=np.inf)  # Chebyshev distance
+        p_kernel: tuple = (self.slider_val['plm_footprint'].get(),
+                           self.slider_val['plm_footprint'].get())
+
+        local_max: ndimage = peak_local_max(
+            image=transformed,
+            min_distance=self.slider_val['plm_mindist'].get(),
+            exclude_border=False,  # True uses min_distance.
+            num_peaks=np.inf,
+            footprint=np.ones(shape=p_kernel, dtype=np.uint8),
+            labels=inv_img,
+            num_peaks_per_label=np.inf,
+            p_norm=np.inf,  # Chebyshev distance
+        )
+
         mask = np.zeros(shape=transformed.shape, dtype=bool)
         # Set background to True (not zero: True or 1)
         mask[tuple(local_max.T)] = True
@@ -346,19 +347,23 @@ class ProcessImage(tk.Tk):
         # https://scikit-image.org/docs/stable/auto_examples/segmentation/plot_watershed.html
         # compactness=1.0 based on: DOI:10.1109/ICPR.2014.181
         # Watershed_line=True is necessary to separate touching objects.
-        watershed_img: np.ndarray = watershed(image=-transformed,
-                                              markers=labeled_array,
-                                              connectivity=4,
-                                              mask=inv_img,
-                                              compactness=1.0,
-                                              watershed_line=True)
+        watershed_img: np.ndarray = watershed(
+            image=-transformed,
+            markers=labeled_array,
+            connectivity=4,
+            mask=inv_img,
+            compactness=1.0,
+            watershed_line=True
+        )
 
         # watershed_basins are the contours to be passed to select_and_size_objects(),
         #  where selected contours are used to draw and size enclosing circles.
         # The data type is a tuple of lists of contour pointsets.
-        self.watershed_basins, _ = cv2.findContours(image=np.uint8(watershed_img),
-                                             mode=cv2.RETR_EXTERNAL,
-                                             method=cv2.CHAIN_APPROX_NONE)
+        self.watershed_basins, _ = cv2.findContours(
+            image=np.uint8(watershed_img),
+            mode=cv2.RETR_EXTERNAL,
+            method=cv2.CHAIN_APPROX_NONE,
+        )
 
 
 class ViewImage(ProcessImage):
@@ -396,6 +401,8 @@ class ViewImage(ProcessImage):
 
         # The control variables with matching names for these Scale() and
         #  Combobox() widgets are instance attributes in ProcessImage.
+        # plm_mindist and plm_footprint are for watershed segmentation.
+        # 'plm' is for peak_local_max, a function from skimage.feature.
         self.slider = {
 
             'noise_k': tk.Scale(master=self.selectors_frame),
@@ -716,14 +723,14 @@ class ViewImage(ProcessImage):
 
         size_std_px: str = self.size_std['px_val'].get()
         try:
-            int(size_std_px)
-            if int(size_std_px) <= 0:
+            size_std_px_int = int(size_std_px)
+            if size_std_px_int <= 0:
                 raise ValueError
         except ValueError:
 
             # Need widget_control to prevent runaway sliders, if clicked.
             self.widget_control(action='off')
-            _post = ('Enter only integers > 0 for the pixel diameter.\n'
+            _post = ('Enter a whole number > 0 for the pixel diameter.\n'
                      f'{size_std_px} was entered. Defaulting to 1.')
             messagebox.showerror(title='Invalid entry',
                                  detail=_post)
@@ -749,11 +756,12 @@ class ViewImage(ProcessImage):
         #  are more likely to have size std diameters of <100 px, thus
         #  limiting calculated sizes to 2 sigfig.
         try:
-            float(custom_size)  # will raise ValueError if not a number.
-            if float(custom_size) <= 0:
+            # float() will raise ValueError if custom_size is not a number.
+            custom_size_float = float(custom_size)
+            if custom_size_float <= 0:
                 raise ValueError
 
-            self.unit_per_px.set(float(custom_size) / int(size_std_px))
+            self.unit_per_px.set(custom_size_float / int(size_std_px))
 
             if size_std_px == '1':
                 self.num_sigfig = utils.count_sig_fig(custom_size)
@@ -2109,10 +2117,10 @@ class SetupApp(ViewImage):
                                                 **const.SCALE_PARAMETERS)
 
         watershed_button = ttk.Button(master=watershed_window,
-                               text='Run Watershed segmentation',
-                               command=self.process_ws,
-                               width=0,
-                               style='My.TButton')
+                                      text='Run Watershed segmentation',
+                                      command=self.process_ws,
+                                      width=0,
+                                      style='My.TButton')
 
         self.slider['plm_mindist_lbl'].grid(column=0, row=0,
                                             padx=(10, 5), pady=(10, 0),
@@ -2127,11 +2135,11 @@ class SetupApp(ViewImage):
                                           padx=(0, 10), pady=(10, 0),
                                           sticky=tk.EW)
         watershed_button.grid(column=1, row=2,
-                       padx=10, pady=10,
-                       sticky=tk.EW)
+                              padx=10, pady=10,
+                              sticky=tk.EW)
 
         watershed_window.protocol(name='WM_DELETE_WINDOW',
-                           func=self.withdraw_watershed_window)
+                                  func=self.withdraw_watershed_window)
 
         self.watershed_window = watershed_window
 
