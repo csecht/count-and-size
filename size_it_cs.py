@@ -1413,17 +1413,20 @@ class ViewImage(ProcessImage):
             self.size_std['custom_entry'].grid_remove()
             self.size_std['custom_lbl'].grid_remove()
             self.size_std['custom_val'].set('0.0')
-            _info = ('\nUsing a pixel size greater than 1 AND\n'
+            self.show_info_message(
+                info='\n\nUsing a pixel size greater than 1 AND\n'
                      '"None" for a size standard will give\n'
-                     'wrong object sizes.\n\n')
-            self.show_info_message(info=_info, color='vermilion')
+                     'wrong object sizes.\n',
+                color='vermilion')
         elif caller == 'circle_r':
-            _info = ('\n\nNew size range for selected objects.\n'
-                     'Counts may have changed.\n\n')
-            self.show_info_message(info=_info, color='blue')
+            self.show_info_message(
+                info='\n\nNew size range for selected objects.\n'
+                     'Counts may have changed.\n\n',
+                color='blue')
         elif caller in 'size_std, px_entry, custom_entry':
-            _info = '\n\nNew object sizes calculated.\n\n\n'
-            self.show_info_message(info=_info, color='blue')
+            self.show_info_message(
+                info='\n\nNew object sizes calculated.\n\n\n',
+                color='blue')
         else:
             print('Oops, an unrecognized process_sizes() caller argument\n'
                   f'was used: caller={caller}')
@@ -1619,18 +1622,16 @@ class SetupApp(ViewImage):
 
                 Returns: None
                 """
+
                 if self.open_input(parent=self.master):
                     self.check_for_saved_settings()
                     self.update_image(image_name='input')
+                    self.watershed_window.withdraw()
+                    self.process_matte()
                 else:  # User canceled input selection or closed messagebox window.
                     self.show_info_message('\n\nNo new input file was selected.\n\n\n',
                                            color='vermilion')
                     self.delay_size_std_info_msg()
-
-                    return
-
-                self.watershed_window.withdraw()
-                self.process_matte()
 
             @staticmethod
             def export_settings():
@@ -1700,11 +1701,10 @@ class SetupApp(ViewImage):
                 """Go to the next color key in const.COLORS_CV.keys."""
                 current_color: str = self.cbox_val['annotation_color'].get()
                 current_index = cv_colors.index(current_color)
-                # Need to stop increasing idx at the end of colors list.
-                if current_index == len(cv_colors) - 1:
-                    next_color = cv_colors[len(cv_colors) - 1]
-                else:
-                    next_color = cv_colors[current_index + 1]
+                # Wraps around the list to the first color.
+                next_color = (cv_colors[0]
+                              if current_index == len(cv_colors) - 1
+                              else cv_colors[current_index + 1])
                 self.cbox_val['annotation_color'].set(next_color)
                 self.select_and_size_objects()
                 _display_annotation_action('Font color', f'{next_color}')
@@ -1714,10 +1714,10 @@ class SetupApp(ViewImage):
                 """Go to the prior color key in const.COLORS_CV.keys."""
                 current_color: str = self.cbox_val['annotation_color'].get()
                 current_index = cv_colors.index(current_color)
-                # Need to stop decreasing idx at the beginning of colors list.
-                if current_index == 0:
-                    current_index = 1
-                preceding_color = cv_colors[current_index - 1]
+                # Wraps around the list to the last color.
+                preceding_color = (cv_colors[current_index - 1]
+                                   if current_index == 0
+                                   else cv_colors[current_index - 1])
                 self.cbox_val['annotation_color'].set(preceding_color)
                 self.select_and_size_objects()
                 _display_annotation_action('Font color', f'{preceding_color}')
@@ -1728,9 +1728,7 @@ class SetupApp(ViewImage):
                 Limit upper factor to a 5x increase to maintain performance.
                 """
                 scale_factor: float = self.scale_factor.get()
-                scale_factor *= 1.1
-                scale_factor = round(min(scale_factor, 5), 2)
-                self.scale_factor.set(scale_factor)
+                self.scale_factor.set(round(min(scale_factor * 1.1, 5), 2))
                 _display_scale_action(value=scale_factor)
 
             @staticmethod
@@ -1739,9 +1737,7 @@ class SetupApp(ViewImage):
                 Limit lower factor to a 1/10 decrease to maintain readability.
                 """
                 scale_factor: float = self.scale_factor.get()
-                scale_factor *= 0.9
-                scale_factor = round(max(scale_factor, 0.10), 2)
-                self.scale_factor.set(scale_factor)
+                self.scale_factor.set(round(max(scale_factor * 0.9, 0.10), 2))
                 _display_scale_action(value=scale_factor)
 
             # This method is called from the "Help" menu of add_menu_bar()
