@@ -2273,7 +2273,8 @@ class SetupApp(ViewImage):
         try:
             if self.input_file_path:
                 self.cvimg['input'] = cv2.imread(self.input_file_path)
-                self.input_ht, self.input_w = self.cvimg['gray'].shape
+                self.input_ht, self.input_w = cv2.cvtColor(src=self.cvimg['input'],
+                                                           code=cv2.COLOR_RGBA2GRAY).shape
                 self.input_file_name = Path(self.input_file_path).name
                 self.input_folder_path = str(Path(self.input_file_path).parent)
                 self.input_folder_name = str(Path(self.input_file_path).parts[-2])
