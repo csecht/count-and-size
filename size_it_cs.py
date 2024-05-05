@@ -1018,18 +1018,16 @@ class ViewImage(ProcessImage):
         """
         w_offset = int(self.screen_width * 0.50)
 
-        preview_win = tk.Toplevel()
+        preview_win = tk.Toplevel(**const.WINDOW_PARAMETERS)
         preview_win.title('Export sample, zoom view')
         preview_win.minsize(width=300, height=150)
         preview_win.geometry(f'+{w_offset}+55')
         preview_win.columnconfigure(index=0, weight=1)
         preview_win.columnconfigure(index=1, weight=1)
-        preview_win.config(**const.WINDOW_PARAMETERS)
         preview_win.bind('<Escape>', func=lambda _: utils.quit_gui(self))
         preview_win.bind('<Control-q>', func=lambda _: utils.quit_gui(self))
 
-        l1 = tk.Label(master=preview_win, image=export_img)
-        l1.pack()
+        tk.Label(master=preview_win, image=export_img).pack()
 
         return preview_win
 
@@ -2275,14 +2273,12 @@ class SetupApp(ViewImage):
         try:
             if self.input_file_path:
                 self.cvimg['input'] = cv2.imread(self.input_file_path)
-                self.input_ht = cv2.cvtColor(src=self.cvimg['input'],
-                                             code=cv2.COLOR_RGBA2GRAY).shape[0]
-                self.input_w = cv2.cvtColor(src=self.cvimg['input'],
-                                            code=cv2.COLOR_RGBA2GRAY).shape[1]
+                self.input_ht, self.input_w = self.cvimg['gray'].shape
                 self.input_file_name = Path(self.input_file_path).name
                 self.input_folder_path = str(Path(self.input_file_path).parent)
                 self.input_folder_name = str(Path(self.input_file_path).parts[-2])
-                self.settings_file_path = Path(self.input_folder_path, const.CS_SETTINGS_FILE_NAME)
+                self.settings_file_path = Path(self.input_folder_path,
+                                               const.CS_SETTINGS_FILE_NAME)
             elif parent != self.master:
                 utils.quit_gui(mainloop=self, confirm=False)
             else:  # no input and parent is self.master (app tk.Toplevel).
