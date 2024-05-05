@@ -47,7 +47,7 @@ from pathlib import Path
 from statistics import mean, median
 from sys import exit as sys_exit
 from time import time
-from typing import Union
+from typing import Union, List
 
 # Third party imports.
 # tkinter(Tk/Tcl) is included with most Python3 distributions,
@@ -812,6 +812,7 @@ class ViewImage(ProcessImage):
 
         self.seg_algorithm: str = ''
         self.report_txt: str = ''
+        self.selected_sizes: List[float] = []
 
     def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
         """
@@ -1235,14 +1236,133 @@ class ViewImage(ProcessImage):
                 self.num_sigfig = min(utils.count_sig_fig(preset_std_size),
                                       utils.count_sig_fig(size_std_px))
 
+    def is_selected_contour(self, contour: np.ndarray) -> bool:
+        """
+        Filter each contour segment based on size and position.
+        Exclude None elements, contours not in the specified size range,
+        and contours that have a coordinate point intersecting an image border.
+
+        Args:
+            contour: A numpy array of contour points.
+
+        Returns:
+            True if the contour is within the specified parameters,
+            False if not.
+        """
+        # Filter each contour segment based on size and position.
+        # Exclude None elements.
+        # Exclude contours not in the specified size range.
+        # Exclude contours that have a coordinate point intersecting an img edge.
+        #  ... those that touch top or left edge or are background.
+        #  ... those that touch bottom or right edge.
+
+        # The size range slider values are radii pixels. This is done b/c:
+        #  1) Displayed values have fewer digits, so a cleaner slide bar.
+        #  2) Sizes are diameters, so radii are conceptually easier than areas.
+        #  So, need to convert to area for the cv2.contourArea function.
+        c_area_min: float = self.slider_val['circle_r_min'].get() ** 2 * np.pi
+        c_area_max: float = self.slider_val['circle_r_max'].get() ** 2 * np.pi
+
+        # Set limits for coordinate points to identify contours that
+        # are within 1 px of an image file border (edge).
+        bottom_edge: int = self.input_ht - 1
+        right_edge: int = self.input_w - 1
+
+        if contour is None:
+            return False
+        if not c_area_max > cv2.contourArea(contour) >= c_area_min:
+            return False
+        if {0, 1}.intersection(set(contour.ravel())):
+            return False
+        for point in contour:
+            x, y = tuple(point[0])
+            if x == right_edge or y == bottom_edge:
+                return False
+        return True
+
+    def measure_object(self, contour: np.ndarray) -> tuple:
+        """
+        Measure object's size as an enclosing circle diameter of its contour.
+        Calls to_p.to_precision() to set the number of significant figures.
+
+        Args: contour: A numpy array of contour points.
+        Returns: tuple of the circle's center coordinates, radius, and
+            size diameter to display.
+        """
+
+        # Measure object's size as an enclosing circle diameter of its contour.
+        ((x, y), radius) = cv2.minEnclosingCircle(contour)
+
+        # Note: sizes are full-length floats.
+        object_size: float = radius * 2 * self.unit_per_px.get()
+
+        # Need to set sig. fig. to display sizes in annotated image.
+        #  num_sigfig value is determined in set_size_standard().
+        display_size: str = to_p.to_precision(value=object_size,
+                                              precision=self.num_sigfig)
+
+        # Need to have pixel diameters as integers. Because...
+        #  When num_sigfig is 4, as is case for None:'1.001' in
+        #  const.SIZE_STANDARDS, then for px_val==1, with lower
+        #  sig.fig., objects <1000 px diameter would display as
+        #  decimal fractions. So, round()...
+        if (self.size_std['px_val'].get() == '1' and
+                self.cbox_val['size_std'].get() == 'None'):
+            display_size = str(round(float(display_size)))
+        return x, y, radius, display_size
+
+    def annotate_object(self, x_coord: float,
+                        y_coord: float,
+                        radius: float,
+                        size: str) -> None:
+        """
+        Draw a circle around the object's coordinates and annotate
+        its size.
+
+        Args: x_coord, y_coord, radius, size: The object's center x and y,
+            radius, and size diameter to display.
+        Returns: None
+        """
+
+        color: tuple = const.COLORS_CV[self.cbox_val['annotation_color'].get()]
+
+        # Need to properly center text in the circled object.
+        ((txt_width, _), baseline) = cv2.getTextSize(
+            text=size,
+            fontFace=const.FONT_TYPE,
+            fontScale=self.metrics['font_scale'],
+            thickness=self.metrics['line_thickness'])
+        offset_x = txt_width / 2
+
+        cv2.circle(img=self.cvimg['sized'],
+                   center=(round(x_coord),
+                           round(y_coord)),
+                   radius=round(radius),
+                   color=color,
+                   thickness=self.metrics['line_thickness'],
+                   lineType=cv2.LINE_AA,
+                   )
+        cv2.putText(img=self.cvimg['sized'],
+                    text=size,
+                    org=(round(x_coord - offset_x),
+                         round(y_coord + baseline)),
+                    fontFace=const.FONT_TYPE,
+                    fontScale=self.metrics['font_scale'],
+                    color=color,
+                    thickness=self.metrics['line_thickness'],
+                    lineType=cv2.LINE_AA,
+                    )
+
     def select_and_size_objects(self, contour_pointset: list) -> None:
         """
         Select object contour ROI based on area size and position,
-        draw an enclosing circle around contours, then display them
-        on the input image. Objects are expected to be oblong so that
-        circle diameter can represent the object's length.
-        Called by process(), process_sizes(), bind_annotation_styles().
-        Calls update_image().
+        draw an enclosing circle around contours, then display the
+        diameter size over the input image. Objects are expected to be
+        oblong so that circle diameter can represent the object's length.
+        Called by process*() methods and annotation methods in call_cmd().
+        Calls is_selected_object(), measure_object(), annotate_object(),
+            to_p.to_precision(), utils.no_objects_found_msg() as needed,
+            and update_image().
 
         Args:
             contour_pointset: A list of contour coordinates generated by
@@ -1254,114 +1374,102 @@ class ViewImage(ProcessImage):
 
         self.cvimg['sized'] = self.cvimg['input'].copy()
 
-        selected_sizes: list[float] = []
-        annotation_color: tuple = const.COLORS_CV[self.cbox_val['annotation_color'].get()]
-        font_scale: float = self.metrics['font_scale']
-        line_thickness: int = self.metrics['line_thickness']
-
-        # The size range slider values are radii pixels. This is done b/c:
-        #  1) Displayed values have fewer digits, so a cleaner slide bar.
-        #  2) Sizes are diameters, so radii are conceptually easier than areas.
-        #  So, need to convert to area for the cv2.contourArea function.
-        c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
-        c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
-
-        # Set limits for coordinate points to identify contours that
-        # are within 1 px of an image file border (edge).
-        bottom_edge = self.cvimg['gray'].shape[0] - 1
-        right_edge = self.cvimg['gray'].shape[1] - 1
+        # Need to reset selected_sizes list for each call.
+        self.selected_sizes.clear()
 
         if not contour_pointset:
             utils.no_objects_found_msg(caller=PROGRAM_NAME)
             return
 
-        flag = False
         for _c in contour_pointset:
+            if self.is_selected_contour(contour=_c):
+                _x, _y, _r, size2display = self.measure_object(_c)
+                self.annotate_object(x_coord=_x,
+                                     y_coord=_y,
+                                     radius=_r,
+                                     size=size2display)
 
-            # Exclude None elements.
-            # Exclude contours not in the specified size range.
-            # Exclude contours that have a coordinate point intersecting an img edge.
-            #  ... those that touch top or left edge or are background.
-            #  ... those that touch bottom or right edge.
-            if _c is None:
-                continue
-            if not c_area_max > cv2.contourArea(_c) >= c_area_min:
-                continue
-            if {0, 1}.intersection(set(_c.ravel())):
-                continue
-            # Break from inner loop when either edge touch is found.
-            for _p in _c:
-                for coord in _p:
-                    _x, _y = tuple(coord)
-                    if _x == right_edge or _y == bottom_edge:
-                        flag = True
-                if flag:
-                    break
-            if flag:
-                flag = False
-                continue
-
-            # Draw a circle enclosing the contour, measure its diameter,
-            #  and save each object_size measurement to the selected_sizes
-            #  list for reporting.
-            ((_x, _y), _r) = cv2.minEnclosingCircle(_c)
-
-            # Note: sizes are full-length floats.
-            object_size: float = _r * 2 * self.unit_per_px.get()
-
-            # Need to set sig. fig. to display sizes in annotated image.
-            #  num_sigfig value is determined in set_size_standard().
-            size2display: str = to_p.to_precision(value=object_size,
-                                                  precision=self.num_sigfig)
-
-            # Need to have pixel diameters as integers. Because...
-            #  When num_sigfig is 4, as is case for None:'1.001' in
-            #  const.SIZE_STANDARDS, then for px_val==1, with lower
-            #  sig.fig., objects <1000 px diameter would display as
-            #  decimal fractions. So, round()...
-            if (self.size_std['px_val'].get() == '1' and
-                    self.cbox_val['size_std'].get() == 'None'):
-                size2display = str(round(float(size2display)))
-
-            # Convert size strings to float, assuming that individual
-            #  sizes listed in the report may be used in a spreadsheet
-            #  or for other statistical analysis.
-            selected_sizes.append(float(size2display))
-
-            # Need to properly center text in the circled object.
-            ((txt_width, _), baseline) = cv2.getTextSize(
-                text=size2display,
-                fontFace=const.FONT_TYPE,
-                fontScale=font_scale,
-                thickness=line_thickness)
-            offset_x = txt_width / 2
-
-            cv2.circle(img=self.cvimg['sized'],
-                       center=(round(_x), round(_y)),
-                       radius=round(_r),
-                       color=annotation_color,
-                       thickness=line_thickness,
-                       lineType=cv2.LINE_AA,
-                       )
-            cv2.putText(img=self.cvimg['sized'],
-                        text=size2display,
-                        org=(round(_x - offset_x), round(_y + baseline)),
-                        fontFace=const.FONT_TYPE,
-                        fontScale=font_scale,
-                        color=annotation_color,
-                        thickness=line_thickness,
-                        lineType=cv2.LINE_AA,
-                        )
+                # Save each object_size measurement to the selected_sizes
+                #  list for reporting.
+                # Convert size2display string to float, assuming that individual
+                #  sizes listed in the report may be used in a spreadsheet
+                #  or for other statistical analysis.
+                self.selected_sizes.append(float(size2display))
 
         # The sorted size list is used for reporting individual sizes
         #   and size summary metrics.
-        if selected_sizes:
-            self.sorted_size_list = sorted(selected_sizes)
+        if self.selected_sizes:
+            self.sorted_size_list = sorted(self.selected_sizes)
         else:
             utils.no_objects_found_msg(caller=PROGRAM_NAME)
 
         self.update_image(tkimg_name='sized',
                           cvimg_array=self.cvimg['sized'])
+
+    def mask_for_export(self, contour: np.ndarray) -> np.ndarray:
+        """
+        Create a binary mask of the segment on the input image. Used to
+        extract the segment to a black background for export. Crop the
+        mask to a slim border around the segment.
+        Args:
+            contour: The numpy array of a single set of contour points
+                for an image segment.
+
+        Returns:
+            The binary mask of the segment *contour*.
+        """
+
+        # Idea for masking from: https://stackoverflow.com/questions/70209433/
+        #   opencv-creating-a-binary-mask-from-the-image
+        # Need to use full input img b/c that is what _c pointset refers to.
+        # Steps: Make a binary mask of segment on full input image.
+        #        Crop the mask to a slim border around the segment.
+        mask = np.zeros_like(cv2.cvtColor(src=self.cvimg['input'],
+                                          code=cv2.COLOR_BGR2GRAY))
+
+        if self.export_hull:
+            hull = cv2.convexHull(contour)
+            chosen_contours = [hull]
+        else:  # is False, user selected "No".
+            chosen_contours = [contour]
+
+        cv2.drawContours(image=mask,
+                         contours=chosen_contours,
+                         contourIdx=-1,
+                         color=(255, 255, 255),
+                         thickness=cv2.FILLED)
+
+        # Note: this contour step provides a cleaner border around the segment.
+        cv2.drawContours(image=mask,
+                         contours=chosen_contours,
+                         contourIdx=-1,
+                         color=(0, 0, 0),
+                         thickness=4)
+
+        return mask
+
+    def define_roi(self, contour: np.ndarray) -> tuple:
+        """
+        Define a region of interest (ROI) slice from the input image
+        based on the bounding rectangle of the contour segment.
+        Args:
+            contour: A numpy array of contour points.
+        Returns:
+            roi: A numpy array of the ROI slice, and its y and x slices.
+        """
+
+        # Idea for segment extraction from:
+        #  https://stackoverflow.com/questions/21104664/
+        #   extract-all-bounding-boxes-using-opencv-python
+        #  https://stackoverflow.com/questions/46441893/
+        _x, _y, _w, _h = cv2.boundingRect(contour)
+
+        # Slightly expand the _c segment's ROI bounding box on the input image.
+        y_slice = slice(_y - 4, (_y + _h + 3))
+        x_slice = slice(_x - 4, (_x + _w + 3))
+        roi = self.cvimg['input'][y_slice, x_slice]
+
+        return roi, y_slice, x_slice
 
     def select_and_export_objects(self) -> int:
         """
@@ -1372,6 +1480,11 @@ class ViewImage(ProcessImage):
 
         Returns: Integer count of exported segments.
         """
+
+        # Idea for extraction from: https://stackoverflow.com/questions/59432324/
+        #  how-to-mask-image-with-binary-mask
+        # Extract the segment from input to a black background, then if it's
+        #  valid, convert black background to white and export it.
 
         # Evaluate user's messagebox askyesnocancel answer, from configure_buttons().
         if self.export_segment:
@@ -1388,14 +1501,7 @@ class ViewImage(ProcessImage):
         #  export timestamp change (by one or two seconds) during processing.
         # The index count is also passed as an export_each_segment() argument.
         time_now = datetime.now().strftime(const.TIME_STAMP_FORMAT)
-        roi_idx = 0
-
-        # Use the identical selection criteria as in select_and_size_objects().
-        c_area_min = self.slider_val['circle_r_min'].get() ** 2 * np.pi
-        c_area_max = self.slider_val['circle_r_max'].get() ** 2 * np.pi
-        bottom_edge = self.cvimg['gray'].shape[0] - 1
-        right_edge = self.cvimg['gray'].shape[1] - 1
-        flag = False
+        selected_roi_idx = 0
 
         if self.seg_algorithm == 'Watershed':
             contour_pointset = self.ws_basins
@@ -1403,96 +1509,30 @@ class ViewImage(ProcessImage):
             contour_pointset = self.rw_contours
 
         for _c in contour_pointset:
+            if self.is_selected_contour(contour=_c):
+                roi, y_slice, x_slice = self.define_roi(contour=_c)
+                roi_mask = self.mask_for_export(_c)[y_slice, x_slice]
+                selected_roi_idx += 1
+                result = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
 
-            # As in select_and_size_objects():
-            #  Exclude None elements.
-            #  Exclude contours not in the specified size range.
-            #  Exclude contours that have a coordinate point intersecting
-            #   the img edge, that is...
-            #   ...those that touch top or left edge or are background.
-            #   ...those that touch bottom or right edge.
-            if _c is None:
-                return 0
-            if not c_area_max > cv2.contourArea(_c) >= c_area_min:
-                continue
-            if {0, 1}.intersection(set(_c.ravel())):
-                continue
-            # Break from inner loop when either edge touch is found.
-            for _p in _c:
-                for coord in _p:
-                    _x, _y = tuple(coord)
-                    if _x == right_edge or _y == bottom_edge:
-                        flag = True
-                if flag:
-                    break
-            if flag:
-                flag = False
-                continue
+                if result is not None:
+                    result[roi_mask == 0] = 255
 
-            # Idea for segment extraction from:
-            #  https://stackoverflow.com/questions/21104664/
-            #   extract-all-bounding-boxes-using-opencv-python
-            # The ROI slice encompasses the selected segment contour.
-            _x, _y, _w, _h = cv2.boundingRect(_c)
+                    if export_this == 'result':
+                        # Export just the object segment.
+                        export_chosen = result
+                    else:  # is 'roi', so export segment's enlarged bounding box.
+                        export_chosen = roi
 
-            # Slightly expand the _c segment's ROI bounding box on the input image.
-            y_slice = slice(_y - 4, (_y + _h + 3))
-            x_slice = slice(_x - 4, (_x + _w + 3))
-            roi = self.cvimg['input'][y_slice, x_slice]
-            roi_idx += 1
+                    utils.export_each_segment(path2folder=self.input_folder_path,
+                                              img2exp=export_chosen,
+                                              index=selected_roi_idx,
+                                              timestamp=time_now)
+                else:
+                    print(f'There was a problem with segment # {selected_roi_idx},'
+                          ' so it was not exported.')
 
-            # Idea for masking from: https://stackoverflow.com/questions/70209433/
-            #   opencv-creating-a-binary-mask-from-the-image
-            # Need to use full input img b/c that is what _c pointset refers to.
-            # Steps: Make a binary mask of segment on full input image.
-            #        Crop the mask to a slim border around the segment.
-            mask = np.zeros_like(cv2.cvtColor(src=self.cvimg['input'],
-                                              code=cv2.COLOR_BGR2GRAY))
-            roi_mask = mask[y_slice, x_slice]
-
-            if self.export_hull:
-                hull = cv2.convexHull(_c)
-                chosen_contours = [hull]
-            else:  # is False, user selected "No".
-                chosen_contours = [_c]
-
-            cv2.drawContours(image=mask,
-                             contours=chosen_contours,
-                             contourIdx=-1,
-                             color=(255, 255, 255),
-                             thickness=cv2.FILLED)
-
-            # Note: this contour step provides a cleaner border around the segment.
-            cv2.drawContours(image=mask,
-                             contours=chosen_contours,
-                             contourIdx=-1,
-                             color=(0, 0, 0),
-                             thickness=4)
-
-            # Idea for extraction from: https://stackoverflow.com/questions/59432324/
-            #  how-to-mask-image-with-binary-mask
-            # Extract the segment from input to a black background, then if it's
-            #  valid, convert black background to white and export it.
-            result = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
-
-            if result is not None:
-                result[roi_mask == 0] = 255
-
-                if export_this == 'result':
-                    # Export just the object segment.
-                    export_chosen = result
-                else:  # is 'roi', so export segment's enlarged bounding box.
-                    export_chosen = roi
-
-                utils.export_each_segment(path2folder=self.input_folder_path,
-                                          img2exp=export_chosen,
-                                          index=roi_idx,
-                                          timestamp=time_now)
-            else:
-                print(f'There was a problem with segment # {roi_idx},'
-                      ' so it was not exported.')
-
-        return roi_idx
+        return selected_roi_idx
 
     def report_results(self) -> None:
         """
@@ -2577,9 +2617,9 @@ class SetupApp(ViewImage):
         self.cbox['th_type_lbl'].config(text='Threshold type:',
                                         **const.LABEL_PARAMETERS)
         self.cbox['threshold_type'].config(textvariable=self.cbox_val['threshold_type'],
-                                    width=26 + width_correction,
-                                    values=list(const.CV['threshold_type'].keys()),
-                                    **const.COMBO_PARAMETERS)
+                                           width=26 + width_correction,
+                                           values=list(const.CV['threshold_type'].keys()),
+                                           **const.COMBO_PARAMETERS)
 
         self.cbox['dt_type_lbl'].configure(text='cv2.distanceTransform, distanceType:',
                                            **const.LABEL_PARAMETERS)
