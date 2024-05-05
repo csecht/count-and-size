@@ -675,24 +675,28 @@ class ViewImage(ProcessImage):
     A suite of methods to display cv segments based on selected settings
     and parameters that are in ProcessImage() methods.
     Methods:
-        open_input
-        set_auto_scale_factor
-        import_settings
-        delay_size_std_info_msg
-        show_info_message
-        configure_circle_r_sliders
-        _on_click_save_tkimg
-        _on_click_save_cvimg
-        widget_control
-        validate_px_size_entry
-        validate_custom_size_entry
-        set_size_standard
-        select_and_size_objects
-        select_and_export_objects
-        report_results
-        preprocess
-        process
-        process_sizes
+    open_input
+    check_for_saved_settings
+    set_auto_scale_factor
+    import_settings
+    delay_size_std_info_msg
+    show_info_message
+    configure_circle_r_sliders
+    widget_control
+    validate_px_size_entry
+    validate_custom_size_entry
+    set_size_standard
+    is_selected_contour
+    measure_object
+    annotate_object
+    select_and_size_objects
+    mask_for_export
+    define_roi
+    select_and_export_objects
+    report_results
+    preprocess
+    process
+    process_sizes
     """
 
     def __init__(self):
@@ -851,10 +855,7 @@ class ViewImage(ProcessImage):
                 self.cvimg['input'] = cv2.imread(self.input_file_path)
                 self.cvimg['gray'] = cv2.cvtColor(src=self.cvimg['input'],
                                                   code=cv2.COLOR_RGBA2GRAY)
-                self.input_ht = cv2.cvtColor(src=self.cvimg['input'],
-                                             code=cv2.COLOR_RGBA2GRAY).shape[0]
-                self.input_w = cv2.cvtColor(src=self.cvimg['input'],
-                                            code=cv2.COLOR_RGBA2GRAY).shape[1]
+                self.input_ht, self.input_w = self.cvimg['gray'].shape
                 self.input_file_name = Path(self.input_file_path).name
                 self.input_folder_path = str(Path(self.input_file_path).parent)
                 self.input_folder_name = str(Path(self.input_file_path).parts[-2])
@@ -1012,9 +1013,10 @@ class ViewImage(ProcessImage):
 
     def configure_circle_r_sliders(self) -> None:
         """
+        Configure the circle radius sliders based on the input image size.
         Called from config_sliders() and open_input().
         Returns:
-
+                None
         """
 
         # Note: this widget configuration method is here, instead of in
@@ -1036,50 +1038,6 @@ class ViewImage(ProcessImage):
             tickinterval=max_circle_r / 10,
             variable=self.slider_val['circle_r_max'],
             **const.SCALE_PARAMETERS)
-
-    def _on_click_save_tkimg(self, image_name: str) -> None:
-        """
-        Save a window image (Label) that was rt-clicked.
-        Called only from display_windows() for keybindings.
-
-        Args:
-            image_name: The key name (string) used in the img_label
-                        dictionary.
-        Returns:
-            None
-        """
-        tkimg = self.tkimg[image_name]
-
-        click_info = (f'The displayed {image_name} image was saved at'
-                      f' {self.scale_factor.get()} scale.')
-
-        utils.save_report_and_img(path2folder=self.input_file_path,
-                                  img2save=tkimg,
-                                  txt2save=click_info,
-                                  caller=image_name)
-
-        # Provide user with a notice that a file was created and
-        #  give user time to read the message before resetting it.
-        _info = (f'\nThe result image, "{image_name}", was saved to\n'
-                 f'the input image folder: {self.input_folder_name}\n'
-                 f'with a timestamp, at a scale of {self.scale_factor.get()}.\n\n')
-        self.show_info_message(info=_info, color='black')
-
-    def _on_click_save_cvimg(self, image_name: str) -> None:
-        cvimg = self.cvimg[image_name]
-
-        click_info = (f'\nThe displayed {image_name} image was saved to\n'
-                      f'the input image folder: {self.input_folder_name}\n'
-                      'with a timestamp and original pixel dimensions.\n\n')
-
-        utils.save_report_and_img(path2folder=self.input_file_path,
-                                  img2save=cvimg,
-                                  txt2save=click_info,
-                                  caller=image_name)
-
-        # Provide user with a notice that a file was created and
-        #  give user time to read the message before resetting it.
-        self.show_info_message(info=click_info, color='black')
 
     def widget_control(self, action: str) -> None:
         """
