@@ -94,11 +94,8 @@ def program_name() -> str:
     :return: Context-specific name of the main program, as string.
     """
     if getattr(sys, 'frozen', False):  # hasattr(sys, '_MEIPASS'):
-        _name = Path(sys.executable).stem
-    else:
-        _name = Path(sys.modules['__main__'].__file__).stem
-
-    return _name
+        return Path(sys.executable).stem
+    return  Path(sys.modules['__main__'].__file__).stem
 
 
 def valid_path_to(input_path: str) -> Path:
