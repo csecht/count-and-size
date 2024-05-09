@@ -1232,9 +1232,8 @@ class ViewImage(ProcessImage):
             return False
         if {0, 1}.intersection(set(contour.ravel())):
             return False
-        for point in contour:
-            x, y = tuple(point[0])
-            if x == right_edge or y == bottom_edge:
+        for xy_point in contour:
+            if xy_point[0][0] == right_edge or xy_point[0][1] == bottom_edge:
                 return False
         return True
 
@@ -1249,7 +1248,7 @@ class ViewImage(ProcessImage):
         """
 
         # Measure object's size as an enclosing circle diameter of its contour.
-        ((x, y), radius) = cv2.minEnclosingCircle(contour)
+        ((_x, _y), radius) = cv2.minEnclosingCircle(contour)
 
         # Note: sizes are full-length floats.
         object_size: float = radius * 2 * self.unit_per_px.get()
@@ -1267,7 +1266,7 @@ class ViewImage(ProcessImage):
         if (self.size_std['px_val'].get() == '1' and
                 self.cbox_val['size_std'].get() == 'None'):
             display_size = str(round(float(display_size)))
-        return x, y, radius, display_size
+        return _x, _y, radius, display_size
 
     def annotate_object(self, x_coord: float,
                         y_coord: float,
@@ -1339,9 +1338,9 @@ class ViewImage(ProcessImage):
             utils.no_objects_found_msg(caller=PROGRAM_NAME)
             return
 
-        for _c in contour_pointset:
-            if self.is_selected_contour(contour=_c):
-                _x, _y, _r, size2display = self.measure_object(_c)
+        for contour in contour_pointset:
+            if self.is_selected_contour(contour=contour):
+                _x, _y, _r, size2display = self.measure_object(contour)
                 self.annotate_object(x_coord=_x,
                                      y_coord=_y,
                                      radius=_r,
@@ -1466,10 +1465,10 @@ class ViewImage(ProcessImage):
         else:  # is 'Random Walker'
             contour_pointset = self.rw_contours
 
-        for _c in contour_pointset:
-            if self.is_selected_contour(contour=_c):
-                roi, y_slice, x_slice = self.define_roi(contour=_c)
-                roi_mask = self.mask_for_export(_c)[y_slice, x_slice]
+        for contour in contour_pointset:
+            if self.is_selected_contour(contour=contour):
+                roi, y_slice, x_slice = self.define_roi(contour=contour)
+                roi_mask = self.mask_for_export(contour)[y_slice, x_slice]
                 selected_roi_idx += 1
                 result = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
 

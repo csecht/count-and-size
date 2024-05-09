@@ -699,22 +699,22 @@ class ViewImage(ProcessImage):
         """
 
         if self.slider_val['noise_iter'].get() == 0:
-            for _name, _w in self.cbox.items():
+            for _name, _widget in self.cbox.items():
                 if 'morph' in _name:
-                    _w.configure(state=tk.DISABLED)
-            for _name, _w in self.slider.items():
+                    _widget.configure(state=tk.DISABLED)
+            for _name, _widget in self.slider.items():
                 if 'noise_k' in _name:
-                    _w.configure(state=tk.DISABLED)
-        else:  # is > 0, so now relevant.
+                    _widget.configure(state=tk.DISABLED)
+        else:  # is > 0, so widget now relevant.
             # Need to re-enable the noise reduction widgets, but is simplest
             #  to re-enable all widgets.
-            for _, _w in self.cbox.items():
-                if isinstance(_w, tk.Label):
-                    _w.configure(state=tk.NORMAL)
+            for _, _widget in self.cbox.items():
+                if isinstance(_widget, tk.Label):
+                    _widget.configure(state=tk.NORMAL)
                 else:  # is tk.Combobox
-                    _w.configure(state='readonly')
-            for _, _w in self.slider.items():
-                _w.configure(state=tk.NORMAL)
+                    _widget.configure(state='readonly')
+            for _, _widget in self.slider.items():
+                _widget.configure(state=tk.NORMAL)
 
     def validate_px_size_entry(self) -> None:
         """
@@ -865,9 +865,8 @@ class ViewImage(ProcessImage):
             return False
         if {0, 1}.intersection(set(contour.ravel())):
             return False
-        for point in contour:
-            x, y = tuple(point[0])
-            if x == right_edge or y == bottom_edge:
+        for xy_point in contour:
+            if xy_point[0][0] == right_edge or xy_point[0][1] == bottom_edge:
                 return False
         return True
 
@@ -981,20 +980,20 @@ class ViewImage(ProcessImage):
         # Need to reset the number of objects selected for each call.
         self.num_obj_selected = 0
 
-        for _c in contour_pointset:
-            if self.is_selected_contour(contour=_c):
-                _x, _y, _r, size2display = self.measure_object(_c)
+        for contour in contour_pointset:
+            if self.is_selected_contour(contour=contour):
+                _x, _y, _r, size_to_display = self.measure_object(contour)
                 self.annotate_object(x_coord=_x,
                                      y_coord=_y,
                                      radius=_r,
-                                     size=size2display)
+                                     size=size_to_display)
 
                 # Save each object_size measurement to the selected_sizes
                 #  list for reporting.
-                # Convert size2display string to float, assuming that individual
+                # Convert size_to_display string to float, assuming that individual
                 #  sizes listed in the report may be used in a spreadsheet
                 #  or for other statistical analysis.
-                self.selected_sizes.append(float(size2display))
+                self.selected_sizes.append(float(size_to_display))
 
                 self.num_obj_selected += 1
 
