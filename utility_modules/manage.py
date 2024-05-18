@@ -45,6 +45,11 @@ def arguments() -> dict:
                         help='Prints to Terminal the report that is also saved to file.',
                         action='store_true',
                         default=False)
+    parser.add_argument('--prefix', '-p',
+                        help='Optional file name prefix for exported segments (default: seg).',
+                        default='seg',
+                        type=str,
+                        required=False)
 
     args = parser.parse_args()
 
@@ -68,6 +73,7 @@ def arguments() -> dict:
     arg_dict = {
         'about': about_text,
         'terminal': args.terminal,
+        'prefix': args.prefix,
     }
 
     return arg_dict
@@ -119,10 +125,11 @@ def tk_image(image: np.ndarray, scale_factor: float) -> PhotoImage:
     Args:
         image: A cv2 numpy array of the image to scale and convert to
                a PIL ImageTk.PhotoImage.
-        scale_factor: The user-selected scaling, from start parameters.
+        scale_factor: A float number; from user selection or an
+            auto-scale statement.
 
     Returns:
-        Scaled PIL ImageTk.PhotoImage to display in tk.Label.
+        Scaled PIL ImageTk.PhotoImage for display as a tk.Label image arg.
     """
 
     # Need to scale images for display; images for processing are left raw.

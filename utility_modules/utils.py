@@ -95,7 +95,7 @@ def program_name() -> str:
     """
     if getattr(sys, 'frozen', False):  # hasattr(sys, '_MEIPASS'):
         return Path(sys.executable).stem
-    return  Path(sys.modules['__main__'].__file__).stem
+    return Path(sys.modules['__main__'].__file__).stem
 
 
 def valid_path_to(input_path: str) -> Path:
@@ -250,23 +250,23 @@ def export_each_segment(path2folder: str,
                         index: int,
                         timestamp: str) -> None:
     """
-    Writes an image file for an individual contoured segments from a
-    list of contour. File names include a timestamp and segment index
-    number.
+    Writes a JPEG image file for the *img2exp* contoured segment or ROI.
+    File names include a timestamp and segment index number.
     Called from ViewImage.select_and_export_objects() from a Button() command.
 
     Args:
-        path2folder: The input image file path, as string.
+        path2folder: The input image file path, as a string.
         img2exp: Either a np.ndarray or binary UMat slice of a segmented
             (contoured) object, from the input image, to export to file.
-        index: The segmented contour index number.
-        timestamp: The starting time of the calling method.
+        index: The segmented contour index number; used for file naming.
+        timestamp: The starting time of the calling method; used for file naming.
 
     Returns: None
     """
 
-    export_img_name = f'seg_{timestamp}_{index}.jpg'
-    export_file_path = f'{path2folder}/{export_img_name}'
+    # Default prefix is 'seg'; is changed with Terminal --prefix argument.
+    export_img_name = f'{manage.arguments()["prefix"]}_{timestamp}_{index}.jpg'
+    export_file_path = str(Path(path2folder, export_img_name))
 
     # Contour images are np.ndarray direct from cv2 functions.
     # For JPEG file format the supported parameter is cv2.IMWRITE_JPEG_QUALITY
