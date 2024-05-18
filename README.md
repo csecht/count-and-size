@@ -52,7 +52,9 @@ From within the downloaded repository folder, recommended command line invocatio
 
 To view basic information, author, version, license, etc.: `python3 -m size_it --about`
 
-To have the settings and size report print to the Terminal in addition to saving to file: `python3 -m size_it --terminal` (or can use -t).
+To have the settings and size report print to the Terminal in addition to saving to file: `python3 -m size_it --terminal` (or can use -t to invoke the argument).
+
+When segmented objects are exported as JPEG files, the default file prefix is 'seg', followed by a timestamp and index. The prefix can be changed with the --prefix argument, depending on your target objects: `python3 -m size_it_cs --prefix oyster` (or can use -p to invoke the argument.)
 
 As with any Python downloads, running within a virtual environment is recommended.
 
