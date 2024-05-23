@@ -858,7 +858,7 @@ class ViewImage(ProcessImage):
                 self.input_ht, self.input_w = self.cvimg['gray'].shape
                 self.input_file_name = Path(self.input_file_path).name
                 self.input_folder_path = str(Path(self.input_file_path).parent)
-                self.input_folder_name = str(Path(self.input_file_path).parts[-2])
+                self.input_folder_name = str(Path(self.input_folder_path).name)
                 self.settings_file_path = Path(self.input_folder_path, const.SETTINGS_FILE_NAME)
             elif parent != self:
                 utils.quit_gui(mainloop=self, confirm=False)
@@ -1467,9 +1467,9 @@ class ViewImage(ProcessImage):
 
         for contour in contour_pointset:
             if self.is_selected_contour(contour=contour):
+                selected_roi_idx += 1
                 roi, y_slice, x_slice = self.define_roi(contour=contour)
                 roi_mask = self.mask_for_export(contour)[y_slice, x_slice]
-                selected_roi_idx += 1
                 result = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
 
                 if result is not None:

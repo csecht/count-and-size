@@ -1062,14 +1062,14 @@ class ViewImage(ProcessImage):
                          color=(0, 0, 0),
                          thickness=4)
 
-    def define_roi(self, contour: np.ndarray) -> np.ndarray:
+    def define_roi(self, contour: np.ndarray) -> tuple:
         """
         Define a region of interest (ROI) slice from the input image
         based on the bounding rectangle of the contour segment.
         Args:
             contour: A numpy array of contour points.
         Returns:
-            roi: A numpy array of the ROI slice.
+            roi: A numpy array of the ROI slice, and its y and x slices.
         """
 
         # Idea for segment extraction from:
@@ -1090,6 +1090,7 @@ class ViewImage(ProcessImage):
         #   roi_mask = mask[y_slice, x_slice]
         #   segment = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
         #   and export the segment instead of the roi.
+        #  See size_it.py for the full code. Modify as needed for here.
 
         _x, _y, _w, _h = cv2.boundingRect(contour)
 
@@ -1098,7 +1099,7 @@ class ViewImage(ProcessImage):
         x_slice = slice(_x - 6, (_x + _w + 5))
         roi = self.cvimg['input'][y_slice, x_slice]
 
-        return roi
+        return roi, y_slice, x_slice
 
     def select_and_export_objects(self) -> None:
         """
@@ -1137,12 +1138,15 @@ class ViewImage(ProcessImage):
 
         # See comments in define_roi() for how to extract segments to a
         #  black or white background. The commented statements below
-        #  are when extracting segments instead of an ROI.
-        for _c in contour_pointset:
-            if self.is_selected_contour(contour=_c):
-                roi = self.define_roi(contour=_c)
-                self.mask_for_export(contour=_c)
+        #  are for extracting segments instead of an ROI. See size_it.py
+        for contour in contour_pointset:
+            if self.is_selected_contour(contour=contour):
                 selected_roi_idx += 1
+                roi, _, _ = self.define_roi(contour=contour)
+                # roi, y_slice, x_slice = self.define_roi(contour=contour)
+                # roi_mask = self.mask_for_export(contour)[y_slice, x_slice]
+                # seg = cv2.bitwise_and(src1=roi, src2=roi, mask=roi_mask)
+                # if seg is not None:  # ..and uncomment roi statements as needed.
                 if roi is not None:
                     if selected_roi_idx == 1:
                         _scale = 1.5 if max(roi.shape) >= 200 else 3.0
@@ -1167,7 +1171,8 @@ class ViewImage(ProcessImage):
                         utils.export_each_segment(path2folder=self.input_folder_path, img2exp=roi,
                                                   index=selected_roi_idx, timestamp=time_now)
 
-                    # First previewed segment is exported, now export the rest.
+                    # First previewed ROI is exported, now export the rest.
+                    # If exporting segments, replace roi with seg variable, from above.
                     utils.export_each_segment(path2folder=self.input_folder_path, img2exp=roi,
                                               index=selected_roi_idx, timestamp=time_now)
 
@@ -2264,7 +2269,6 @@ class SetupApp(ViewImage):
         #  window (== self.master).
         # Need to call quit_gui() without confirmation b/c a confirmation
         #  dialog answer of "No" throws an error during file input.
-
         try:
             if self.input_file_path:
                 self.cvimg['input'] = cv2.imread(self.input_file_path)
@@ -2272,9 +2276,8 @@ class SetupApp(ViewImage):
                                                            code=cv2.COLOR_RGBA2GRAY).shape
                 self.input_file_name = Path(self.input_file_path).name
                 self.input_folder_path = str(Path(self.input_file_path).parent)
-                self.input_folder_name = str(Path(self.input_file_path).parts[-2])
-                self.settings_file_path = Path(self.input_folder_path,
-                                               const.CS_SETTINGS_FILE_NAME)
+                self.input_folder_name = str(Path(self.input_folder_path).name)
+                self.settings_file_path = Path(self.input_folder_path, const.CS_SETTINGS_FILE_NAME)
             elif parent != self.master:
                 utils.quit_gui(mainloop=self, confirm=False)
             else:  # no input and parent is self.master (app tk.Toplevel).
