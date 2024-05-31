@@ -3,17 +3,22 @@ General housekeeping utilities.
 Functions:
 about_win: a toplevel window for the Help>About menu selection.
 check_platform - Exit if not Linux, Windows, or macOS.
+program_name - Get the program name for file paths and window titles.
 valid_path_to - Get correct path to program's files.
+set_icon - Set the program icon image file.
 save_report_and_img- Save files of result image and its report.
+export_settings_to_json - Write selector widget values to a JSON file.
+export_object_labels - Write a CSV file for object ROI bounding boxes.
+export_each_segment - Write a JPEG image file for each contoured segment.
 display_report - Place a formatted text string into a specified Frame.
 count_sig_fig - Count number of significant figures in a number.
 quit_gui -  Error-free and informative exit from the program.
 no_objects_found - A simple messagebox when a contour pointset is empty.
-wait4it_msg - A messagebox explaining large images can take a long time.
 """
 # Copyright (C) 2022-2023 C.S. Echt, under GNU General Public License'
 
 # Standard library imports.
+import csv
 import platform
 import sys
 import tkinter as tk
@@ -162,8 +167,8 @@ def export_settings_to_json(path2folder: str,
     else:  # is called by size_it.py.
         path2folder = Path(path2folder, const.SETTINGS_FILE_NAME)
 
-    with open(path2folder, mode='wt', encoding='utf-8') as _fp:
-        _fp.write(dumps(settings2save))
+    with open(path2folder, mode='wt', encoding='utf-8') as fp:
+        fp.write(dumps(settings2save))
 
 
 def save_report_and_img(path2folder: str,
@@ -218,8 +223,8 @@ def save_report_and_img(path2folder: str,
     # Use this Path function for saving individual report files:
     #   Path(f'{img_stem}_{caller}_settings{time_now}.txt').write_text(data2save)
     # Use this for appending multiple reports to single file:
-    with open(report_file_path, mode='a', encoding='utf-8') as _fp:
-        _fp.write(data2save)
+    with open(report_file_path, mode='a', encoding='utf-8') as fp:
+        fp.write(data2save)
 
     # Contour images are np.ndarray direct from cv2 functions, while
     #   other images are those displayed as ImageTk.PhotoImage.
@@ -243,6 +248,49 @@ def save_report_and_img(path2folder: str,
     if manage.arguments()['terminal']:
         print(f'Result image and its report were saved to files.'
               f'{data2save}')
+
+
+def export_object_labels(path2input: str,
+                         object_label: list[list],
+                         timestamp: str) -> None:
+    """
+    Writes a CSV file for object ROI bounding boxes and other data
+    needed for label annotation in CNN object detection training.
+    Called from ViewImage.select_and_export_objects(), from a Button()
+    command.
+
+    Args:
+        path2input: The full input image file path, as a string. Will be
+            used to write the CSV output file.
+        object_label: The list of lists of object labels, including
+            input file name, width, height, label class name, bounding
+            box coordinates, and object size. This list is created in
+            ViewImage.select_and_export_objects() as the object_label
+            instance attribute.
+        timestamp: The starting time of the calling method; used in
+            file naming.
+    Returns: None
+
+    """
+
+    # Default prefix is 'seg'; is changed with Terminal --prefix argument.
+    img_name = Path(path2input).name
+    img_folder = Path(path2input).parent
+    csv_file_name = f'labels_{img_name}_{timestamp}.csv'
+    file_path = Path(img_folder, csv_file_name)
+
+    # Headers and data are structured after those in the GitHub repository
+    #  https://github.com/harshatejas/pytorch_custom_object_detection
+    # header = ['filename', 'width', 'height', 'class', 'xmin', 'ymin', 'xmax', 'ymax']
+    # Labeling app https://www.makesense.ai/ uses this structure for CSV files.
+    #  But here added object size to aid editing the CSV output, if needed.
+    header = ['label_name', 'bbox_x', 'bbox_y', 'bbox_width', 'bbox_height',
+              'image_name', 'image_width', 'image_height', 'object_size']
+
+    with open(file_path, 'w', encoding='utf-8', newline='') as fp:
+        csv_labels = csv.writer(fp)
+        csv_labels.writerow(header)
+        csv_labels.writerows(object_label)
 
 
 def export_each_segment(path2folder: str,

@@ -486,8 +486,9 @@ class ViewImage(ProcessImage):
         self.imported_settings: dict = {}
 
         # The following group of attributes is set in select_and_size_objects().
-        self.num_obj_selected: int = 0
+        self.num_objects_selected: int = 0
         self.selected_sizes: List[float] = []
+        self.object_labels: List[list] = []
 
         self.report_txt: str = ''
 
@@ -976,9 +977,10 @@ class ViewImage(ProcessImage):
 
         # Need to reset selected_sizes list for each call.
         self.selected_sizes.clear()
+        self.object_labels.clear()
 
         # Need to reset the number of objects selected for each call.
-        self.num_obj_selected = 0
+        self.num_objects_selected = 0
 
         for contour in contour_pointset:
             if self.is_selected_contour(contour=contour):
@@ -995,7 +997,17 @@ class ViewImage(ProcessImage):
                 #  or for other statistical analysis.
                 self.selected_sizes.append(float(size_to_display))
 
-                self.num_obj_selected += 1
+                # Specify object data to export for CNN training, as a convenience.
+                _x, _y, _w, _h = cv2.boundingRect(contour)
+                label_class = f'{manage.arguments()["prefix"]}'
+                self.object_labels.append([label_class,
+                                           _x, _y, _w, _h,
+                                           self.input_file_name,
+                                           self.input_w, self.input_ht,
+                                           size_to_display]
+                                          )
+
+                self.num_objects_selected += 1
 
         # The sorted size list is used to report individual sizes and
         #  their summary metrics. Display message if no objects found.
@@ -1094,9 +1106,12 @@ class ViewImage(ProcessImage):
 
         _x, _y, _w, _h = cv2.boundingRect(contour)
 
+        # ROI slices account for 0-based indexing.
+        y_slice = slice(_y-1, (_y + _h - 1))
+        x_slice = slice(_x-1, (_x + _w - 1))
         # Slightly expand the _c segment's ROI bounding box on the input image.
-        y_slice = slice(_y - 6, (_y + _h + 5))
-        x_slice = slice(_x - 6, (_x + _w + 5))
+        # y_slice = slice(_y - 6, (_y + _h + 5))
+        # x_slice = slice(_x - 6, (_x + _w + 5))
         roi = self.cvimg['input'][y_slice, x_slice]
 
         return roi, y_slice, x_slice
@@ -1159,7 +1174,7 @@ class ViewImage(ProcessImage):
                             title='Export preview',
                             message='Sampled from selected objects:\n'
                                     f'#{selected_roi_idx}, size = {self.selected_sizes[selected_roi_idx - 1]}.',
-                            detail=f'OK: looks good, export all {self.num_obj_selected}'
+                            detail=f'OK: looks good, export all {self.num_objects_selected}'
                                    ' selected objects.\n\n'
                                    'Cancel: export nothing; try different\n'
                                    'noise settings or matte color.')
@@ -1186,10 +1201,15 @@ class ViewImage(ProcessImage):
 
         if ok2export:
             self.show_info_message(
-                info=(f'\n{self.num_obj_selected} selected objects were individually\n'
+                info=(f'\n{self.num_objects_selected} selected objects were individually\n'
                       ' exported to the input image folder:\n'
-                      f'{self.input_folder_name}, with a timestamp.\n\n'),
+                      f'{self.input_folder_name}, with a timestamp.\n'
+                      f'A CSV file of object labels for CNN was also exported.\n'),
                 color='blue')
+
+            utils.export_object_labels(path2input=self.input_file_path,
+                                       object_label=self.object_labels,
+                                       timestamp=time_now)
 
     def report_results(self) -> None:
         """

@@ -817,6 +817,8 @@ class ViewImage(ProcessImage):
         self.seg_algorithm: str = ''
         self.report_txt: str = ''
         self.selected_sizes: List[float] = []
+        self.object_labels: List[list] = []
+
 
     def open_input(self, parent: Union[tk.Toplevel, 'SetupApp']) -> bool:
         """
@@ -1340,18 +1342,28 @@ class ViewImage(ProcessImage):
 
         for contour in contour_pointset:
             if self.is_selected_contour(contour=contour):
-                _x, _y, _r, size2display = self.measure_object(contour)
+                _x, _y, _r, size_to_display = self.measure_object(contour)
                 self.annotate_object(x_coord=_x,
                                      y_coord=_y,
                                      radius=_r,
-                                     size=size2display)
+                                     size=size_to_display)
 
                 # Save each object_size measurement to the selected_sizes
                 #  list for reporting.
-                # Convert size2display string to float, assuming that individual
+                # Convert size_to_display string to float, assuming that individual
                 #  sizes listed in the report may be used in a spreadsheet
                 #  or for other statistical analysis.
-                self.selected_sizes.append(float(size2display))
+                self.selected_sizes.append(float(size_to_display))
+
+                # Specify object data for CNN training, as a convenience.
+                _x, _y, _w, _h = cv2.boundingRect(contour)
+                label_class = f'{manage.arguments()["prefix"]}'
+                self.object_labels.append([label_class,
+                                           _x, _y, _w, _h,
+                                           self.input_file_name,
+                                           self.input_w, self.input_ht,
+                                           size_to_display]
+                                          )
 
         # The sorted size list is used for reporting individual sizes
         #   and size summary metrics.
@@ -1421,9 +1433,12 @@ class ViewImage(ProcessImage):
         #  https://stackoverflow.com/questions/46441893/
         _x, _y, _w, _h = cv2.boundingRect(contour)
 
+        # ROI slices account for 0-based indexing.
+        y_slice = slice(_y-1, (_y + _h - 1))
+        x_slice = slice(_x-1, (_x + _w - 1))
         # Slightly expand the _c segment's ROI bounding box on the input image.
-        y_slice = slice(_y - 4, (_y + _h + 3))
-        x_slice = slice(_x - 4, (_x + _w + 3))
+        # y_slice = slice(_y - 4, (_y + _h + 3))
+        # x_slice = slice(_x - 4, (_x + _w + 3))
         roi = self.cvimg['input'][y_slice, x_slice]
 
         return roi, y_slice, x_slice
@@ -1485,10 +1500,13 @@ class ViewImage(ProcessImage):
                                               img2exp=export_chosen,
                                               index=selected_roi_idx,
                                               timestamp=time_now)
+
+                    utils.export_object_labels(path2input=self.input_file_path,
+                                               object_label=self.object_labels,
+                                               timestamp=time_now)
                 else:
                     print(f'There was a problem with segment # {selected_roi_idx},'
                           ' so it was not exported.')
-
         return selected_roi_idx
 
     def report_results(self) -> None:
