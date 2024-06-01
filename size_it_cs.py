@@ -1118,12 +1118,14 @@ class ViewImage(ProcessImage):
 
     def select_and_export_objects(self) -> None:
         """
-        Takes a list of contour segments, selects, masks and extracts
-        each, to a bounding rectangle, for export of ROI to file.
+        Takes a list of contour segments to select, mask and extract
+        each to a bounding rectangle for export of ROI to file.
         Generates a preview window for the first segment, then asks for
         user confirmation to export all selected segments.
-        Calls utility_modules/utils.export_each_segment().
-        Called from setup_main_menu() and configure_buttons().
+        Calls configure_buttons() and from utility_modules/utils:
+        no_objects_found_msg(), export_each_segment(), export_object_labels();
+        from manage module calls no_objects_found_msg().
+        Called from setup_main_menu().
 
         Returns: None
         """
@@ -1201,10 +1203,10 @@ class ViewImage(ProcessImage):
 
         if ok2export:
             self.show_info_message(
-                info=(f'\n{self.num_objects_selected} selected objects were individually\n'
-                      ' exported to the input image folder:\n'
-                      f'{self.input_folder_name}, with a timestamp.\n'
-                      f'A CSV file of object labels for CNN was also exported.\n'),
+                info=f'\n{self.num_objects_selected} selected objects were individually\n'
+                     ' exported to the input image folder:\n'
+                     f'{self.input_folder_name}, including a timestamp.\n'
+                     'A CSV file of object detection labels was exported too.\n',
                 color='blue')
 
             utils.export_object_labels(path2input=self.input_file_path,

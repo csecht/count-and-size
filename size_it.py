@@ -1445,10 +1445,14 @@ class ViewImage(ProcessImage):
 
     def select_and_export_objects(self) -> int:
         """
-        Takes a list of contour segments, selects, masks and extracts
-        each, to a bounding rectangle, for export of ROI to file.
-        Calls utility_modules/utils.export_each_segment().
-        Called from Button command in configure_buttons().
+        Takes a list of contour segments to select, mask and extract
+        each to a bounding rectangle for export of ROI to file.
+        Generates a preview window for the first segment, then asks for
+        user confirmation to export all selected segments.
+        Calls configure_buttons() and from utility_modules/utils:
+        no_objects_found_msg(), export_each_segment(), export_object_labels();
+        from manage module calls no_objects_found_msg().
+        Called from setup_main_menu().
 
         Returns: Integer count of exported segments.
         """
@@ -2339,9 +2343,11 @@ class SetupApp(ViewImage):
                            'No, export just segments, on white.\n')
 
             _num = self.select_and_export_objects()
-            _info = (f'\n\n{_num} selected objects were individually exported to:\n'
-                     f'{self.input_folder_name}\n\n')
-            self.show_info_message(info=_info, color='blue')
+            self.show_info_message(
+                info=f'\n\n{_num} selected objects were individually exported to:\n'
+                     f'{self.input_folder_name}\n'
+                     'A CSV file of object detection labels was exported too.\n',
+                color='blue')
 
         def _new_input():
             """

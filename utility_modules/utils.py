@@ -282,8 +282,9 @@ def export_object_labels(path2input: str,
     # Headers and data are structured after those in the GitHub repository
     #  https://github.com/harshatejas/pytorch_custom_object_detection
     # header = ['filename', 'width', 'height', 'class', 'xmin', 'ymin', 'xmax', 'ymax']
-    # Labeling app https://www.makesense.ai/ uses this structure for CSV files.
-    #  But here added object size to aid editing the CSV output, if needed.
+    # Labeling app https://www.makesense.ai/, https://github.com/SkalskiP/make-sense
+    #  uses these headers for its CSV file exports.
+    #  Added object size here to aid editing the CSV output, if needed.
     header = ['label_name', 'bbox_x', 'bbox_y', 'bbox_width', 'bbox_height',
               'image_name', 'image_width', 'image_height', 'object_size']
 
