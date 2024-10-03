@@ -12,11 +12,8 @@ ttk_styles: configures platform-specific ttk.Style for Buttons and Comboboxes.
 # Standard library imports.
 import argparse
 import tkinter as tk
-from sys import exit as sys_exit
+import sys
 from tkinter import ttk
-
-# noinspection PyCompatibility
-from __main__ import __doc__
 
 # Third party imports.
 import cv2
@@ -53,7 +50,7 @@ def arguments() -> dict:
 
     args = parser.parse_args()
 
-    about_text = (f'{__doc__}\n'
+    about_text = (f'{sys.modules["__main__"].__doc__}\n'
                   f'{"Author:".ljust(13)}{utility_modules.__author__}\n'
                   f'{"Version:".ljust(13)}{utility_modules.__version__}\n'
                   f'{"Status:".ljust(13)}{utility_modules.__status__}\n'
@@ -66,7 +63,7 @@ def arguments() -> dict:
         print('====================== ABOUT START ====================')
         print(about_text)
         print('====================== ABOUT END ====================')
-        sys_exit(0)
+        sys.exit(0)
 
     # The 'about' key is called from setup_start_window() Help menu.
     #  The 'terminal' key is called from utils.save_report_and_img().
