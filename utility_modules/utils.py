@@ -425,7 +425,7 @@ def quit_gui(mainloop: tk.Tk, confirm=True) -> None:
     """
 
     def _do_quit():
-        print('*** User has quit the program ***')
+        print('... user has quit the program')
         try:
             mainloop.update()
             mainloop.after(200)

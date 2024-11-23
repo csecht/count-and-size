@@ -36,6 +36,7 @@ Developed in Python 3.8 and 3.9, tested up to 3.11.
 from datetime import datetime
 from json import loads
 from pathlib import Path
+from signal import signal, SIGINT
 from statistics import mean, median
 from sys import exit as sys_exit
 from time import time
@@ -1485,6 +1486,7 @@ class SetupApp(ViewImage):
     grid_widgets
     open_input
     open_watershed_window
+    run_setups
     set_color_defaults
     set_defaults
     setup_image_windows
@@ -1787,6 +1789,20 @@ class SetupApp(ViewImage):
                     'Check and adjust if needed.\n\n', color='blue')
 
         return _Command
+
+    def run_setups(self):
+        """
+        Run the setup methods in the correct order.
+        Called from main().
+
+        Returns: None
+        """
+        # For proper menu functions, setup_main_menu() must be called
+        #  after setup_main_window().
+        self.setup_main_window()
+        self.setup_main_menu()
+        self.setup_start_window()
+        self.setup_watershed_window()
 
     def call_start_now(self, parent) -> None:
         """
@@ -3091,26 +3107,32 @@ def main() -> None:
 
     # Check system, versions, and command line arguments. Exit if any
     #  critical check fails or if the argument --about is used.
-    # Comment out run_checks to run PyInstaller.
+    # Comment out run_checks to run PyInstaller. Windows: run utils.check_platform()
     run_checks()
 
-    try:
-        print(f'{PROGRAM_NAME} has launched...')
-        app = SetupApp()
-        app.title(f'{PROGRAM_NAME} Report & Settings')
-        utils.set_icon(app)
+    print(f'{PROGRAM_NAME} has launched...')
+    app = SetupApp()
+    app.title(f'{PROGRAM_NAME} Report & Settings')
+    utils.set_icon(app)
+    app.run_setups()
 
-        app.setup_main_window()
+    # Allow user to quit from the Terminal command line using Ctrl-C
+    #  without the delay of waiting for tk event actions.
+    # Source: https://stackoverflow.com/questions/39840815/
+    #   exiting-a-tkinter-app-with-ctrl-c-and-catching-sigint
+    # Keep polling the mainloop to check for the SIGINT signal, Ctrl-C.
+    # Can comment out next three statements when using PyInstaller.
+    signal(
+        signalnum=SIGINT,
+        handler=lambda x, y: utils.quit_gui(app, confirm=False)
+    )
 
-        # For proper menu functions, setup_main_menu() must be called here,
-        #  in main(), and after setup_main_window().
-        app.setup_main_menu()
-        app.setup_start_window()
-        app.setup_watershed_window()
+    def tk_check():
+        app.after(500, tk_check)
 
-        app.mainloop()
-    except KeyboardInterrupt:
-        print('*** User quit the program from Terminal command line. ***\n')
+    app.after(500, tk_check)
+
+    app.mainloop()
 
 
 if __name__ == '__main__':
